@@ -21,6 +21,8 @@ namespace PowerChess.Core
         Armor = 4,
         SmallBomb = 8,
         BigBomb = 16,
+        /// <summary>One-shot: this piece can fire a Fireball instead of moving. Lost if the piece is destroyed.</summary>
+        Fireball = 32,
     }
 
     /// <summary>What a mystery square can contain. Perks go to the player's inventory, the rest apply to the piece.</summary>
@@ -42,14 +44,15 @@ namespace PowerChess.Core
         Steal,
         Boulder,
         Reroll,
+        Rewind,
     }
 
     public static class PowerupInfo
     {
         public static bool IsPerk(PowerupKind k)
         {
-            return k == PowerupKind.Fireball || k == PowerupKind.Steal || k == PowerupKind.Stun
-                || k == PowerupKind.Boulder || k == PowerupKind.Reroll;
+            return k == PowerupKind.Steal || k == PowerupKind.Stun || k == PowerupKind.Boulder
+                || k == PowerupKind.Reroll || k == PowerupKind.Rewind;
         }
 
         public static bool IsTransform(PowerupKind k)
@@ -125,7 +128,7 @@ namespace PowerChess.Core
     {
         public ActionKind Kind;
         public int From;
-        /// <summary>Target square. Fireball: the first piece in the chosen direction. Stun/PlaceBoulder: the square itself.</summary>
+        /// <summary>Target square. Fireball: the first piece in the chosen direction. Stun/PlaceBoulder: the square itself. Fireball From: the piece that earned it.</summary>
         public int To;
         /// <summary>Promotion piece type for pawn moves; direction index (0-7) for a Fireball.</summary>
         public int Aux;

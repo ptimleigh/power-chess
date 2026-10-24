@@ -27,6 +27,8 @@ namespace PowerChess.Core
         public int MaxBoulders = 4;
         /// <summary>Plies after which the game is drawn.</summary>
         public int MaxPly = 400;
+        /// <summary>Which sides can draw the Rewind perk (an AI opponent cannot use it, so switch it off for them).</summary>
+        public bool[] RewindAllowed = { true, true };
         public List<WeightedKind> Pool = DefaultPool();
 
         public static List<WeightedKind> DefaultPool()
@@ -48,6 +50,7 @@ namespace PowerChess.Core
                 new WeightedKind(PowerupKind.Steal, 6),
                 new WeightedKind(PowerupKind.Boulder, 6),
                 new WeightedKind(PowerupKind.Reroll, 8),
+                new WeightedKind(PowerupKind.Rewind, 5),
             };
         }
 

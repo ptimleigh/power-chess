@@ -34,7 +34,10 @@ namespace PowerChess.Core
             {
                 var child = root.Clone();
                 Rules.Apply(child, a);
-                int score = ScoreChild(root, child, Depth - 1, alpha, Inf);
+                int score;
+                GameResult ended = child.ToMove != root.ToMove ? Rules.GetResult(child) : GameResult.Ongoing;
+                if (ended == GameResult.Ongoing) score = ScoreChild(root, child, Depth - 1, alpha, Inf);
+                else score = ended == GameResult.Draw ? 0 : Mate; // take a mate, and never stalemate a won position away
                 if (score > alpha)
                 {
                     alpha = score;
@@ -131,6 +134,7 @@ namespace PowerChess.Core
                 else if (p.Type == PieceType.Pawn) v += 6 * (p.Side == Side.White ? r : 7 - r) + 2 * centre;
 
                 if (p.Has(Buff.DoubleMove)) v += 35;
+                if (p.Has(Buff.Fireball)) v += 90;
                 if (p.Has(Buff.Poison)) v += 30;
                 if (p.Has(Buff.Armor)) v += 15 * p.ArmorTurns;
                 if (p.Has(Buff.SmallBomb)) v += 50;
@@ -146,8 +150,7 @@ namespace PowerChess.Core
 
         static int PerkValue(GameState s, Side side)
         {
-            return 90 * s.Perks(side, PowerupKind.Fireball)
-                + 150 * s.Perks(side, PowerupKind.Steal)
+            return 150 * s.Perks(side, PowerupKind.Steal)
                 + 110 * s.Perks(side, PowerupKind.Stun)
                 + 40 * s.Perks(side, PowerupKind.Boulder)
                 + 25 * s.Perks(side, PowerupKind.Reroll);

@@ -167,11 +167,11 @@ namespace PowerChess.Core.Tests
         public void Fireball_hits_only_the_first_enemy_piece_in_the_chosen_direction()
         {
             var s = T.Fen("4k3/8/8/r7/8/8/p7/R3K3 w - - 0 1");
-            T.Perk(s, Side.White, PowerupKind.Fireball);
+            T.Give(s, "a1", Buff.Fireball);
             T.Do(s, "Fireball a1->a2");
             Assert.IsTrue(T.At(s, "a2").IsEmpty, "first piece destroyed");
             Assert.AreEqual(PieceType.Rook, T.At(s, "a5").Type, "piece behind it is untouched");
-            Assert.AreEqual(0, s.Perks(Side.White, PowerupKind.Fireball));
+            Assert.IsFalse(T.At(s, "a1").Has(Buff.Fireball), "the fireball is one-shot");
             Assert.AreEqual(Side.Black, s.ToMove, "using Fireball costs the turn");
         }
 
@@ -180,17 +180,17 @@ namespace PowerChess.Core.Tests
         {
             // Pawn fires straight up its file, even though pawns do not attack that way.
             var pawn = T.Fen("4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1");
-            T.Perk(pawn, Side.White, PowerupKind.Fireball);
+            T.Give(pawn, "e2", Buff.Fireball);
             T.Do(pawn, "Fireball e2->e7");
             Assert.IsTrue(T.At(pawn, "e7").IsEmpty);
 
             // Bishop fires along a rank; knight fires along a diagonal.
             var bishop = T.Fen("4k3/8/8/8/3B2p1/8/8/4K3 w - - 0 1");
-            T.Perk(bishop, Side.White, PowerupKind.Fireball);
+            T.Give(bishop, "d4", Buff.Fireball);
             Assert.IsTrue(T.IsLegal(bishop, "Fireball d4->g4"));
 
             var knight = T.Fen("4k3/6r1/8/8/3N4/8/8/4K3 w - - 0 1");
-            T.Perk(knight, Side.White, PowerupKind.Fireball);
+            T.Give(knight, "d4", Buff.Fireball);
             T.Do(knight, "Fireball d4->g7");
             Assert.IsTrue(T.At(knight, "g7").IsEmpty);
         }
@@ -200,11 +200,12 @@ namespace PowerChess.Core.Tests
         {
             // Own pawn blocks the file, own king blocks the rank, the black king is immune.
             var s = T.Fen("k7/8/8/8/8/8/P7/R3K3 w - - 0 1");
-            T.Perk(s, Side.White, PowerupKind.Fireball);
+            T.Give(s, "a1", Buff.Fireball);
+            T.Give(s, "a2", Buff.Fireball);
             Assert.IsFalse(MoveGen.LegalActions(s).Any(a => a.Kind == ActionKind.Fireball));
 
             var s2 = T.Fen("k7/8/8/8/8/8/8/R3K3 w - - 0 1");
-            T.Perk(s2, Side.White, PowerupKind.Fireball);
+            T.Give(s2, "a1", Buff.Fireball);
             Assert.IsFalse(MoveGen.LegalActions(s2).Any(a => a.Kind == ActionKind.Fireball), "kings are immune");
         }
 
@@ -214,7 +215,7 @@ namespace PowerChess.Core.Tests
             // d1 queen fires up the d-file over her own pawn on d3, past an armored pawn on d6.
             var s = T.Fen("4k3/3p4/3p4/3p4/8/3P4/8/3QK3 w - - 0 1");
             T.Give(s, "d6", Buff.Armor, 3);
-            T.Perk(s, Side.White, PowerupKind.Fireball);
+            T.Give(s, "d1", Buff.Fireball);
             T.Do(s, "Fireball d1->d5");
             Assert.IsTrue(T.At(s, "d5").IsEmpty, "first enemy destroyed");
             Assert.IsTrue(T.At(s, "d7").IsEmpty, "second enemy destroyed too");
@@ -227,10 +228,51 @@ namespace PowerChess.Core.Tests
         {
             var s = T.Fen("4k3/3p4/8/3p4/8/8/8/3QK3 w - - 0 1");
             s.Boulders[Sq.Parse("d6")] = true;
-            T.Perk(s, Side.White, PowerupKind.Fireball);
+            T.Give(s, "d1", Buff.Fireball);
             T.Do(s, "Fireball d1->d5");
             Assert.IsTrue(T.At(s, "d5").IsEmpty);
             Assert.AreEqual(PieceType.Pawn, T.At(s, "d7").Type, "the boulder shields the pawn behind it");
+        }
+
+        [Test]
+        public void Only_the_piece_that_earned_the_fireball_can_fire_it()
+        {
+            // The rook can hit a2 and the king could hit the rook on a5 diagonally, but only the rook has the fireball.
+            var s = T.Fen("4k3/8/8/r7/8/8/p7/R3K3 w - - 0 1");
+            T.Give(s, "a1", Buff.Fireball);
+            var shots = MoveGen.LegalActions(s).Where(a => a.Kind == ActionKind.Fireball).ToList();
+            Assert.IsNotEmpty(shots);
+            Assert.IsTrue(shots.All(a => a.From == Sq.Parse("a1")), "no other piece may fire");
+        }
+
+        [Test]
+        public void The_fireball_is_lost_when_its_piece_is_destroyed_or_stolen()
+        {
+            var captured = T.Fen("4k3/8/8/8/8/8/3r4/3RK3 w - - 0 1");
+            T.Give(captured, "d2", Buff.Fireball);
+            T.Do(captured, "d1d2");
+            Assert.IsFalse(MoveGen.LegalActions(captured).Any(a => a.Kind == ActionKind.Fireball));
+
+            var stolen = T.Fen("r3k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+            T.Give(stolen, "a8", Buff.Fireball);
+            T.Perk(stolen, Side.White, PowerupKind.Steal);
+            T.Do(stolen, "Steal a1->a8");
+            Assert.AreEqual(Buff.None, T.At(stolen, "a8").Buffs, "a stolen piece loses its buffs");
+        }
+
+        [Test]
+        public void Fireball_is_a_buff_so_kings_never_earn_it_but_other_pieces_do()
+        {
+            var cfg = Pool(PowerupKind.Fireball);
+            var king = T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1", cfg);
+            king.Mystery[Sq.Parse("e2")] = true;
+            T.Do(king, "e1e2");
+            Assert.AreEqual(Buff.None, T.At(king, "e2").Buffs);
+
+            var knight = T.Fen("4k3/8/8/8/8/1N6/8/4K3 w - - 0 1", cfg);
+            knight.Mystery[Sq.Parse("d4")] = true;
+            T.Do(knight, "b3d4");
+            Assert.IsTrue(T.At(knight, "d4").Has(Buff.Fireball));
         }
 
         [Test]
@@ -238,7 +280,7 @@ namespace PowerChess.Core.Tests
         {
             // The black knight on e5 shields our king from the rook on e8; burning it would open the file.
             var s = T.Fen("4r1k1/8/8/R3n3/8/8/8/4K3 w - - 0 1");
-            T.Perk(s, Side.White, PowerupKind.Fireball);
+            T.Give(s, "a5", Buff.Fireball);
             Assert.IsFalse(T.IsLegal(s, "Fireball a5->e5"));
         }
 

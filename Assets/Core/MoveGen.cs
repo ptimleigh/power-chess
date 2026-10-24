@@ -212,7 +212,6 @@ namespace PowerChess.Core
         static void GenSpecials(GameState s, List<GameAction> o)
         {
             Side me = s.ToMove;
-            bool hasFire = s.Perks(me, PowerupKind.Fireball) > 0;
             bool hasSteal = s.Perks(me, PowerupKind.Steal) > 0;
             bool hasStun = s.Perks(me, PowerupKind.Stun) > 0;
             var scratch = new List<int>(16);
@@ -222,9 +221,9 @@ namespace PowerChess.Core
                 var p = s.Cells[sq];
                 if (p.IsEmpty || p.Side != me) continue;
 
-                if (hasFire)
+                if (p.Has(Buff.Fireball))
                 {
-                    // Any piece can fire in any of 8 directions; only offer shots that would hit something.
+                    // The piece that earned the fireball can fire it in any of 8 directions; only offer shots that hit something.
                     for (int dir = 0; dir < 8; dir++)
                     {
                         scratch.Clear();

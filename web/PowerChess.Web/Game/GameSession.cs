@@ -48,6 +48,12 @@ public sealed class GameSession
     readonly Ai ai;
     int nextId = 1;
 
+    // Position history for the move viewer and the Rewind perk. viewHistory[i] holds the piece views at position i
+    // (the position before action i), so stepping through the past animates with the same piece identities.
+    readonly GameHistory history = new();
+    readonly List<List<PieceView>> viewHistory = new();
+    int reviewIndex = -1; // -1 = live game
+
     public GameState State { get; private set; } = null!;
     public List<PieceView> Pieces { get; } = new();
     public List<FxItem> Effects { get; } = new();
@@ -73,6 +79,20 @@ public sealed class GameSession
     public bool InCheck { get; private set; }
     public int Moves { get; private set; }
 
+    public bool Reviewing => reviewIndex >= 0 && reviewIndex < history.Count;
+    public int HistoryCount => history.Count;
+    /// <summary>Position being shown while reviewing (0 = start). Equals <see cref="HistoryCount"/> when live.</summary>
+    public int ReviewPosition => Reviewing ? reviewIndex : history.Count;
+    /// <summary>What the board shows: the live game, or a past position while reviewing.</summary>
+    public GameState View => Reviewing ? history[reviewIndex].Before : State;
+    public List<PieceView> ViewPieces => Reviewing ? viewHistory[reviewIndex] : Pieces;
+    public int ViewLastFrom => Reviewing ? LastOf(reviewIndex).from : LastFrom;
+    public int ViewLastTo => Reviewing ? LastOf(reviewIndex).to : LastTo;
+    public bool CanReview => history.Count > 0 && !Busy && !PickupPending;
+    public bool CanRewind => HumanTurn && !Reviewing && history.CanRewind(State, Me);
+    /// <summary>The side the player controls: White vs the AI, otherwise whoever is to move.</summary>
+    public Side Me => VsAi ? Side.White : State.ToMove;
+
     public Action? Changed;
     public Action<string>? Sfx;
 
@@ -86,7 +106,7 @@ public sealed class GameSession
     public bool VsAi => opt.Ai > 0;
     public bool GameOver => Result != GameResult.Ongoing;
     bool AiToMove => VsAi && !GameOver && State.ToMove == Side.Black;
-    public bool HumanTurn => !GameOver && !Busy && (!VsAi || State.ToMove == Side.White);
+    public bool HumanTurn => !GameOver && !Busy && !Reviewing && (!VsAi || State.ToMove == Side.White);
     public bool PickupPending => State.PendingSquare >= 0;
     public Side Turn => State.ToMove;
 
@@ -98,6 +118,7 @@ public sealed class GameSession
         if (opt.Pairs >= 0) cfg.InitialPairs = opt.Pairs;
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
+        cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
 
         if (opt.Fen == null)
         {
@@ -123,6 +144,9 @@ public sealed class GameSession
         Pieces.Clear();
         Effects.Clear();
         Toasts.Clear();
+        history.Clear();
+        viewHistory.Clear();
+        reviewIndex = -1;
         for (int sq = 0; sq < 64; sq++)
         {
             var c = State.Cells[sq];
@@ -147,6 +171,27 @@ public sealed class GameSession
     public bool CanUse(ActionKind kind) => HumanTurn && !PickupPending && State.ForcedMover < 0 && Legal.Any(a => a.Kind == kind);
 
     public bool HasDetonate => Selected >= 0 && Legal.Any(a => a.Kind == ActionKind.Detonate && a.From == Selected);
+
+    /// <summary>The selected piece earned a fireball and has at least one enemy in line.</summary>
+    public bool HasFireball => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Fireball && a.From == Selected);
+
+    /// <summary>Step 2 of firing: show the directions this piece can hit and let the player tap one.</summary>
+    public void StartFire()
+    {
+        if (!HasFireball) return;
+        Mode = InputMode.FireAim;
+        Targets.Clear();
+        Doomed.Clear();
+        foreach (var c in Legal.Where(a => a.Kind == ActionKind.Fireball && a.From == Selected))
+        {
+            Targets.Add(c.To);
+            var line = new List<int>();
+            Geometry.FireballVictims(State, c.From, c.Aux, line);
+            foreach (int v in line) if (v != c.To) Doomed.Add(v);
+        }
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
 
     public void ClearSelection()
     {
@@ -194,7 +239,7 @@ public sealed class GameSession
         Mode = InputMode.Armed;
         ArmedKind = kind;
         foreach (var a in Legal.Where(a => a.Kind == kind))
-            Targets.Add(kind == ActionKind.Fireball ? a.From : a.To);
+            Targets.Add(a.To);
         Sfx?.Invoke("click");
         Changed?.Invoke();
     }
@@ -205,7 +250,8 @@ public sealed class GameSession
         bool mine = !State.Cells[sq].IsEmpty && State.Cells[sq].Side == State.ToMove;
         if (!mine) return;
         var acts = Legal.Where(a => a.From == sq && a.Kind == ActionKind.Move).ToList();
-        if (acts.Count == 0 && !Legal.Any(a => a.Kind == ActionKind.Detonate && a.From == sq)) return;
+        bool special = Legal.Any(a => (a.Kind == ActionKind.Detonate || a.Kind == ActionKind.Fireball) && a.From == sq);
+        if (acts.Count == 0 && !special) return;
         Selected = sq;
         foreach (var a in acts) Targets.Add(a.To);
         Sfx?.Invoke("click");
@@ -218,25 +264,7 @@ public sealed class GameSession
         if (Mode == InputMode.Armed)
         {
             if (!Targets.Contains(sq)) { Cancel(); return; }
-            var cands = Legal.Where(a => a.Kind == ArmedKind && (ArmedKind == ActionKind.Fireball ? a.From == sq : a.To == sq)).ToList();
-            if (ArmedKind == ActionKind.Fireball)
-            {
-                // Step 2: choose the direction by tapping the first enemy in that line.
-                Mode = InputMode.FireAim;
-                Selected = sq;
-                Targets.Clear();
-                Doomed.Clear();
-                foreach (var c in cands)
-                {
-                    Targets.Add(c.To);
-                    var line = new List<int>();
-                    Geometry.FireballVictims(State, c.From, c.Aux, line);
-                    foreach (int v in line) if (v != c.To) Doomed.Add(v);
-                }
-                Sfx?.Invoke("click");
-                Changed?.Invoke();
-                return;
-            }
+            var cands = Legal.Where(a => a.Kind == ArmedKind && a.To == sq).ToList();
             await Human(cands[0]);
             return;
         }
@@ -334,7 +362,10 @@ public sealed class GameSession
     {
         Busy = true;
         Inspect = -1;
+        reviewIndex = -1;
         ClearSelection();
+        history.Record(State, a);
+        viewHistory.Add(SnapshotViews());
         var ev = new List<GameEvent>();
         Rules.Apply(State, a, ev);
         Moves++;
@@ -375,7 +406,8 @@ public sealed class GameSession
     {
         get
         {
-            if (GameOver) return ResultReason == "" ? "Game over" : ResultReason;
+            if (GameOver && !Reviewing) return ResultReason == "" ? "Game over" : ResultReason;
+            if (Reviewing) return "Reviewing past moves. Nothing here changes the game.";
             if (Thinking) return "Opponent is thinking...";
             if (Busy) return "";
             if (PickupPending) return "You found a powerup!";
@@ -395,6 +427,95 @@ public sealed class GameSession
             string who = VsAi ? "Your move" : (State.ToMove == Side.White ? "White to move" : "Black to move");
             return InCheck ? who + " - you are in check!" : who;
         }
+    }
+
+    // ---------- review (read-only) and Rewind (take back) ----------
+
+    List<PieceView> SnapshotViews() => Pieces.Where(p => !p.Dying).Select(Copy).ToList();
+
+    static PieceView Copy(PieceView p) => new()
+    {
+        Id = p.Id, Type = p.Type, Side = p.Side, Square = p.Square, Buffs = p.Buffs,
+        Stun = p.Stun, Armor = p.Armor, AnimSeq = 0,
+    };
+
+    (int from, int to) LastOf(int position)
+    {
+        if (position <= 0 || position > history.Count) return (-1, -1);
+        var a = history[position - 1].Action;
+        return a.Kind == ActionKind.Move ? (a.From, a.To) : (-1, -1);
+    }
+
+    /// <summary>Move the review position by <paramref name="delta"/>. Stepping past the newest position returns to the live game.</summary>
+    public void ReviewStep(int delta) => ReviewTo(ReviewPosition + delta);
+
+    public void ReviewTo(int position)
+    {
+        if (!CanReview && !Reviewing) return;
+        ClearSelection();
+        Inspect = -1;
+        position = Math.Clamp(position, 0, history.Count);
+        reviewIndex = position >= history.Count ? -1 : position;
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    public void ExitReview() => ReviewTo(history.Count);
+
+    /// <summary>Short description of the action that led into the position being shown.</summary>
+    public string ReviewLabel
+    {
+        get
+        {
+            int p = ReviewPosition;
+            if (p <= 0) return "Start of game";
+            return Describe(history[p - 1]);
+        }
+    }
+
+    string Describe(GameHistory.Entry e)
+    {
+        string who = VsAi ? (e.Mover == Side.White ? "You" : "Rival") : (e.Mover == Side.White ? "White" : "Black");
+        var a = e.Action;
+        string text = a.Kind switch
+        {
+            ActionKind.Move => $"{e.Before.Cells[a.From].Type} {Sq.Name(a.From)} to {Sq.Name(a.To)}"
+                + (!e.Before.Cells[a.To].IsEmpty ? " (capture)" : ""),
+            ActionKind.Fireball => $"Fireball from {Sq.Name(a.From)}",
+            ActionKind.Stun => $"Stun on {Sq.Name(a.To)}",
+            ActionKind.Steal => $"Steal on {Sq.Name(a.To)}",
+            ActionKind.PlaceBoulder => $"Boulder on {Sq.Name(a.To)}",
+            ActionKind.ClearBoulder => $"Smashed boulder on {Sq.Name(a.To)}",
+            ActionKind.Detonate => $"Bomb on {Sq.Name(a.From)}",
+            ActionKind.KeepPickup => "Kept the powerup",
+            ActionKind.RerollPickup => "Rerolled the powerup",
+            _ => a.Kind.ToString(),
+        };
+        return $"{who}: {text}";
+    }
+
+    /// <summary>Take back the player's last turn (and the reply to it), spending one Rewind.</summary>
+    public void UseRewind()
+    {
+        if (!CanRewind) return;
+        int index;
+        var restored = history.Rewind(State, Me, out index);
+        var views = viewHistory[index];
+        viewHistory.RemoveRange(index, viewHistory.Count - index);
+
+        State = restored;
+        Pieces.Clear();
+        foreach (var v in views) Pieces.Add(Copy(v));
+        Effects.Clear();
+        var (lf, lt) = LastOf(index);
+        LastFrom = lf;
+        LastTo = lt;
+        ClearSelection();
+        Inspect = -1;
+        Refresh();
+        AddToast("REWOUND", "Your last turn was taken back", "gold", "rewind");
+        Sfx?.Invoke("rewind");
+        Changed?.Invoke();
     }
 
     // ---------- events -> views and effects ----------

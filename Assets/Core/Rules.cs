@@ -58,7 +58,9 @@ namespace PowerChess.Core
 
                 case ActionKind.Fireball:
                 {
-                    s.AddPerk(me, PowerupKind.Fireball, -1);
+                    var shooter = s.Cells[a.From];
+                    shooter.Buffs &= ~Buff.Fireball;
+                    s.Cells[a.From] = shooter;
                     var victims = new List<int>(4);
                     Geometry.FireballVictims(s, a.From, a.Aux, victims);
                     Emit(ev, EventKind.FireballFired, a.From, a.To, s.Cells[a.From].Type, me, PowerupKind.Fireball);
@@ -343,6 +345,8 @@ namespace PowerChess.Core
                 if (target == PieceType.Pawn && (Sq.Rank(sq) == 0 || Sq.Rank(sq) == 7)) return false;
             }
             if (kind == PowerupKind.DoubleMove && p.Has(Buff.DoubleMove)) return false;
+            if (kind == PowerupKind.Fireball && p.Has(Buff.Fireball)) return false;
+            if (kind == PowerupKind.Rewind && !s.Config.RewindAllowed[(int)p.Side]) return false;
             return true;
         }
 
@@ -353,6 +357,7 @@ namespace PowerChess.Core
             {
                 case PowerupKind.DoubleMove: p.Buffs |= Buff.DoubleMove; break;
                 case PowerupKind.Poison: p.Buffs |= Buff.Poison; break;
+                case PowerupKind.Fireball: p.Buffs |= Buff.Fireball; break;
                 case PowerupKind.SpikedArmor:
                     p.Buffs |= Buff.Armor;
                     p.ArmorTurns = ArmorStartTurns;
@@ -364,7 +369,7 @@ namespace PowerChess.Core
                     p.Buffs &= ~Buff.SmallBomb;
                     p.Buffs |= Buff.BigBomb;
                     break;
-                case PowerupKind.Fireball:
+                case PowerupKind.Rewind:
                 case PowerupKind.Steal:
                 case PowerupKind.Stun:
                 case PowerupKind.Boulder:

@@ -12,8 +12,8 @@ namespace PowerChess.Core
         public readonly bool[] Boulders = new bool[64];
         /// <summary>Unopened powerup squares. Contents are drawn when a piece lands on one.</summary>
         public readonly bool[] Mystery = new bool[64];
-        /// <summary>Perk counts, indexed side * 16 + (int)PowerupKind.</summary>
-        public readonly byte[] Inventory = new byte[32];
+        /// <summary>Perk counts, indexed side * 32 + (int)PowerupKind.</summary>
+        public readonly byte[] Inventory = new byte[64];
 
         public Side ToMove;
         public int Castling;
@@ -44,11 +44,11 @@ namespace PowerChess.Core
             Config = config ?? new GameConfig();
         }
 
-        public int Perks(Side side, PowerupKind kind) { return Inventory[(int)side * 16 + (int)kind]; }
+        public int Perks(Side side, PowerupKind kind) { return Inventory[(int)side * 32 + (int)kind]; }
 
         public void AddPerk(Side side, PowerupKind kind, int n)
         {
-            int i = (int)side * 16 + (int)kind;
+            int i = (int)side * 32 + (int)kind;
             Inventory[i] = (byte)Math.Max(0, Inventory[i] + n);
         }
 
@@ -72,7 +72,7 @@ namespace PowerChess.Core
             Array.Copy(Cells, c.Cells, 64);
             Array.Copy(Boulders, c.Boulders, 64);
             Array.Copy(Mystery, c.Mystery, 64);
-            Array.Copy(Inventory, c.Inventory, 32);
+            Array.Copy(Inventory, c.Inventory, 64);
             c.ToMove = ToMove;
             c.Castling = Castling;
             c.EnPassant = EnPassant;

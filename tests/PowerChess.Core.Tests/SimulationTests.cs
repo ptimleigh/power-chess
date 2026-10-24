@@ -75,6 +75,17 @@ namespace PowerChess.Core.Tests
         }
 
         [Test]
+        public void Ai_mates_instead_of_stalemating_even_at_the_easiest_depth()
+        {
+            // Qc7 is stalemate; Qc8 is checkmate. A depth-1 search that cannot see the reply used to be able to pick Qc7.
+            var s = T.Fen("k7/8/1K6/8/8/8/8/2Q5 w - - 0 1");
+            var a = new Ai(1).Choose(s);
+            var after = s.Clone();
+            Rules.Apply(after, a);
+            Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(after), "chose " + a);
+        }
+
+        [Test]
         public void Ai_wins_material_instead_of_hanging_pieces()
         {
             // White queen can take an undefended rook; it should not walk into the pawn's capture.

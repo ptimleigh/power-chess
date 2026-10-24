@@ -35,11 +35,11 @@
                 {
                     int sq = Sq.Make(file, rank);
                     <div class="@TileClass(sq)" data-sq="@Sq.Name(sq)" @onclick="() => S.TapSquare(sq)">
-                        @if (S.State.Mystery[sq])
+                        @if (S.View.Mystery[sq])
                         {
                             <span class="mystery-mark">?</span>
                         }
-                        @if (S.State.Boulders[sq])
+                        @if (S.View.Boulders[sq])
                         {
                             <span class="boulder">@Icons.Svg("rock")</span>
                         }
@@ -56,7 +56,7 @@
             }
 
             <div class="layer pieces">
-                @foreach (var p in S.Pieces)
+                @foreach (var p in S.ViewPieces)
                 {
                     <div @key="p.Id" class="@PieceClass(p)" style="left:@(Sq.File(p.Square) * 12.5)%;top:@((7 - Sq.Rank(p.Square)) * 12.5)%"
                          data-piece="@PieceName(p)" data-at="@Sq.Name(p.Square)">
@@ -66,6 +66,7 @@
                         <div class="badges">
                             @if (p.Buffs.HasFlag(Buff.DoubleMove)) { <span class="badge dm" title="Double Move">@Icons.Svg("x2")</span> }
                             @if (p.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
+                            @if (p.Buffs.HasFlag(Buff.Fireball)) { <span class="badge fb" title="Fireball">@Icons.Svg("fire")</span> }
                             @if (p.Buffs.HasFlag(Buff.SmallBomb)) { <span class="badge bm" title="Small Bomb">@Icons.Svg("bomb")</span> }
                             @if (p.Buffs.HasFlag(Buff.BigBomb)) { <span class="badge bb" title="Big Bomb">@Icons.Svg("bigbomb")</span> }
                         </div>
@@ -107,6 +108,24 @@
     </section>
 
     <section class="actions">
+        @if (S.Reviewing)
+        {
+            <div class="review" data-testid="review">
+                <div class="review-label" data-testid="review-label">
+                    <span class="rp">Move @S.ReviewPosition of @S.HistoryCount</span>
+                    <span>@S.ReviewLabel</span>
+                </div>
+                <div class="review-btns">
+                    <button class="rbtn" data-review="first" disabled="@(S.ReviewPosition <= 0)" aria-label="First" @onclick="() => S.ReviewTo(0)">@Icons.Svg("first")</button>
+                    <button class="rbtn" data-review="prev" disabled="@(S.ReviewPosition <= 0)" aria-label="Previous move" @onclick="() => S.ReviewStep(-1)">@Icons.Svg("prev")</button>
+                    <button class="rbtn" data-review="next" aria-label="Next move" @onclick="() => S.ReviewStep(1)">@Icons.Svg("next")</button>
+                    <button class="rbtn" data-review="last" aria-label="Latest" @onclick="S.ExitReview">@Icons.Svg("last")</button>
+                    <button class="btn primary review-exit" data-action="exit-review" @onclick="S.ExitReview">Back to game</button>
+                </div>
+            </div>
+        }
+        else
+        {
         @foreach (var perk in PerkButtons)
         {
             var k = perk;
@@ -116,6 +135,20 @@
                 <span class="pi">@Icons.Svg(Names.Icon(k.Kind))</span>
                 <span class="pl">@k.Label</span>
                 <span class="pc">@S.Perk(ActiveSide, k.Kind)</span>
+            </button>
+        }
+        @if (S.Perk(ActiveSide, PowerupKind.Rewind) > 0)
+        {
+            <button class="perk" disabled="@(!S.CanRewind)" data-perk="rewind" @onclick="S.UseRewind">
+                <span class="pi">@Icons.Svg("rewind")</span>
+                <span class="pl">Rewind</span>
+                <span class="pc">@S.Perk(ActiveSide, PowerupKind.Rewind)</span>
+            </button>
+        }
+        @if (S.HasFireball)
+        {
+            <button class="perk fire-btn" data-action="fire" @onclick="S.StartFire">
+                <span class="pi">@Icons.Svg("fire")</span><span class="pl">Fireball</span>
             </button>
         }
         @if (S.HasDetonate)
@@ -128,11 +161,18 @@
         {
             <button class="perk ghost" @onclick="S.Cancel"><span class="pl">Cancel</span></button>
         }
+        @if (S.CanReview)
+        {
+            <button class="perk ghost" data-action="review" @onclick="() => S.ReviewStep(-1)">
+                <span class="pi">@Icons.Svg("history")</span><span class="pl">Moves</span>
+            </button>
+        }
+        }
     </section>
 
     <div class="status @(S.InCheck && !S.GameOver ? "warn" : "")" data-testid="status">@S.Status</div>
 
-    @if (S.Inspect >= 0 && !S.State.Cells[S.Inspect].IsEmpty)
+    @if (S.Inspect >= 0 && !S.Reviewing && !S.State.Cells[S.Inspect].IsEmpty)
     {
         var ip = S.State.Cells[S.Inspect];
         <div class="inspect" data-testid="inspect">
@@ -140,7 +180,7 @@
                 <b>@InspectTitle(ip)</b>
                 <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
             </div>
-            @foreach (var flag in new[] { Buff.DoubleMove, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
+            @foreach (var flag in new[] { Buff.DoubleMove, Buff.Poison, Buff.Armor, Buff.Fireball, Buff.SmallBomb, Buff.BigBomb })
             {
                 if (!ip.Has(flag)) { continue; }
                 var kind = Names.ForBuff(flag);
@@ -207,7 +247,7 @@
     </div>
 }
 
-@if (S.GameOver && !S.Busy)
+@if (S.GameOver && !S.Busy && !S.Reviewing)
 {
     <div class="modal" data-testid="gameover">
         <div class="card pop result @ResultClass">
@@ -215,6 +255,10 @@
             <h1>@ResultTitle</h1>
             <p>@ResultText</p>
             <button class="btn primary" data-action="again" @onclick="StartNew">Play again</button>
+            @if (S.CanReview)
+            {
+                <button class="btn ghost" data-action="review-game" @onclick="() => S.ReviewStep(-1)">Review the game</button>
+            }
         </div>
     </div>
 }
@@ -224,7 +268,7 @@
     <div class="modal" @onclick="() => showHelp = false">
         <div class="card help" @onclick:stopPropagation="true">
             <div class="kicker">How to play</div>
-            <p>Normal chess with checkmate. Gold <b>?</b> squares appear in matching pairs. Land a piece on one to open it. Tap any powered-up piece to see what it has.</p>
+            <p>Normal chess with checkmate. Gold <b>?</b> squares appear in matching pairs. Land a piece on one to open it. Tap any powered-up piece to see what it has. The Moves button lets you look back at the game without changing it.</p>
             <ul class="guide">
                 @foreach (var k in Names.Guide)
                 {
@@ -249,9 +293,17 @@
 
     record PerkBtn(PowerupKind Kind, ActionKind Action, string Label, string Tip);
 
+    static readonly PerkBtn[] ChipKinds =
+    {
+        new(PowerupKind.Steal, ActionKind.Steal, "Steal", "Steals"),
+        new(PowerupKind.Stun, ActionKind.Stun, "Stun", "Stuns"),
+        new(PowerupKind.Boulder, ActionKind.PlaceBoulder, "Boulder", "Boulders"),
+        new(PowerupKind.Reroll, ActionKind.ClearBoulder, "Smash boulder", "Rerolls: re-draw a powerup you find, or smash a boulder"),
+        new(PowerupKind.Rewind, ActionKind.Move, "Rewind", "Rewinds: take back your last turn"),
+    };
+
     static readonly PerkBtn[] PerkButtons =
     {
-        new(PowerupKind.Fireball, ActionKind.Fireball, "Fireball", "Fireballs"),
         new(PowerupKind.Steal, ActionKind.Steal, "Steal", "Steals"),
         new(PowerupKind.Stun, ActionKind.Stun, "Stun", "Stuns"),
         new(PowerupKind.Boulder, ActionKind.PlaceBoulder, "Boulder", "Boulders"),
@@ -306,10 +358,10 @@
     {
         bool light = (Sq.File(sq) + Sq.Rank(sq)) % 2 == 1;
         var c = "sq " + (light ? "light" : "dark");
-        var cell = S.State.Cells[sq];
-        if (S.State.Mystery[sq]) c += " mystery";
-        if (S.State.Boulders[sq]) c += " rock";
-        if (sq == S.LastFrom || sq == S.LastTo) c += " last";
+        var cell = S.View.Cells[sq];
+        if (S.View.Mystery[sq]) c += " mystery";
+        if (S.View.Boulders[sq]) c += " rock";
+        if (sq == S.ViewLastFrom || sq == S.ViewLastTo) c += " last";
         if (sq == S.Selected) c += " selected";
         if (S.Targets.Contains(sq))
         {
@@ -319,7 +371,7 @@
                 : enemy ? " target cap" : " target";
         }
         if (S.Doomed.Contains(sq)) c += " doomed";
-        if (S.InCheck && cell.Type == PieceType.King && cell.Side == S.Turn && !S.GameOver) c += " check";
+        if (S.InCheck && !S.Reviewing && cell.Type == PieceType.King && cell.Side == S.Turn && !S.GameOver) c += " check";
         return c;
     }
 
@@ -341,7 +393,7 @@
     static string N(double d) => d.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 
     RenderFragment InvChips(Side side) => @<text>
-        @foreach (var k in PerkButtons)
+        @foreach (var k in ChipKinds)
         {
             int n = S.Perk(side, k.Kind);
             <span class="chip @(n == 0 ? "zero" : "")" title="@k.Tip" data-chip="@k.Kind.ToString().ToLowerInvariant()">@Icons.Svg(Names.Icon(k.Kind))<b>@n</b></span>

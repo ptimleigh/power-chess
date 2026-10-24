@@ -1,0 +1,18 @@
+# .NET
+bin/
+obj/
+*.user
+
+# Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emory[Cc]aptures/
+*.csproj.user
+*.sln.DotSettings.user
+.vs/
+.idea/

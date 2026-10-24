@@ -49,3 +49,8 @@ Handy for reproducing a situation. All optional:
 | `perks` | `perks=w:fireball:2,b:steal` | Give perks |
 | `buffs` | `buffs=d4:smallbomb` | Give pieces a buff |
 | `pairs`, `spawn`, `rerolls` | `spawn=2` | Initial pairs, spawn interval, starting rerolls |
+| `tut` | `tut=1` | Powerup tutorials are off whenever scenario options are used; `tut=1` turns them on |
+| `demo` | `demo=fireball` | Open one powerup's animated tutorial directly (`doublemove`, `poison`, `spikedarmor`, `stun`, `smallbomb`, `bigbomb`, `fireball`, `steal`, `boulder`, `reroll`, `rewind`, `transformqueen`) |
+| `training` | `training=1` | Start on the small training board |
+
+With no options the game resumes where you left off after a refresh (saved in the browser), and a first-ever game starts on the training board.

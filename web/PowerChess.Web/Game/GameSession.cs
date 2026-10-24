@@ -104,11 +104,82 @@ public sealed class GameSession
     /// <summary>Called with a save string after every completed action, or null when there is nothing to resume (game over).</summary>
     public Action<string?>? Persist;
 
-    public GameSession(GameOptions options)
+    public GameSession(GameOptions options, TutorialState? tutorials = null)
     {
         opt = options;
+        Tut = tutorials ?? new TutorialState();
         ai = new Ai(opt.Ai switch { 1 => 1, 3 => 3, _ => 2 });
         NewGame();
+    }
+
+    // ---------- powerup tutorials ----------
+
+    public const string TrainingFen = "r3k3/pppp4/8/8/8/8/4PPPP/4K2R w - - 0 1";
+
+    public TutorialState Tut { get; }
+    /// <summary>The powerup whose tutorial sheet is open, if any.</summary>
+    public PowerupKind? Tutorial { get; private set; }
+    /// <summary>Bound to the "don't show tutorials again" checkbox.</summary>
+    public bool DontShowAgain { get; set; }
+    /// <summary>Called with the serialised <see cref="TutorialState"/> whenever it changes.</summary>
+    public Action<string>? TutorialsChanged;
+
+    void MaybeTutorial(PowerupKind kind)
+    {
+        if (!opt.Tutorials || !Tut.ShouldShow(kind)) return;
+        Tutorial = Tutorials.Normalize(kind);
+        DontShowAgain = false;
+    }
+
+    /// <summary>Open a tutorial on request ("Watch demo"), whether or not it has been seen.</summary>
+    public void ShowTutorial(PowerupKind kind)
+    {
+        if (!Tutorials.Has(kind)) return;
+        Tutorial = Tutorials.Normalize(kind);
+        DontShowAgain = false;
+        Changed?.Invoke();
+    }
+
+    public void DismissTutorial()
+    {
+        if (Tutorial is PowerupKind k) Tut.MarkSeen(k);
+        if (DontShowAgain) Tut.Off = true;
+        Tutorial = null;
+        DontShowAgain = false;
+        TutorialsChanged?.Invoke(Tut.Serialize());
+        Changed?.Invoke();
+    }
+
+    public void ResetTutorials()
+    {
+        Tut.Reset();
+        Tutorial = null;
+        TutorialsChanged?.Invoke(Tut.Serialize());
+        Changed?.Invoke();
+    }
+
+    /// <summary>The pickup modal embeds the demo when this is true.</summary>
+    public bool PickupTutorial => PickupPending && opt.Tutorials && Tut.ShouldShow(State.PendingKind);
+
+    void AcknowledgePickupTutorial()
+    {
+        if (!PickupTutorial) return;
+        Tut.MarkSeen(State.PendingKind);
+        if (DontShowAgain) Tut.Off = true;
+        DontShowAgain = false;
+        TutorialsChanged?.Invoke(Tut.Serialize());
+    }
+
+    /// <summary>The Rewind button: explain it the first time, then use it.</summary>
+    public void RewindClick()
+    {
+        if (opt.Tutorials && Tut.ShouldShow(PowerupKind.Rewind))
+        {
+            MaybeTutorial(PowerupKind.Rewind);
+            Changed?.Invoke();
+            return;
+        }
+        UseRewind();
     }
 
     public bool VsAi => opt.Ai > 0;
@@ -134,13 +205,22 @@ public sealed class GameSession
     {
         var cfg = BuildConfig();
 
-        if (opt.Fen == null)
+        string? fen = opt.Training ? TrainingFen : opt.Fen;
+        if (opt.Training)
+        {
+            // A small first game: a rook and pawns each, and two mystery squares in the middle holding friendly powerups.
+            cfg.InitialPairs = 0;
+            cfg.Pool = new[] { PowerupKind.Fireball, PowerupKind.SpikedArmor, PowerupKind.Poison, PowerupKind.Steal, PowerupKind.SmallBomb }
+                .Select(k => new WeightedKind(k, 1)).ToList();
+        }
+
+        if (fen == null)
         {
             State = GameState.NewGame(cfg, opt.Seed);
         }
         else
         {
-            State = GameState.FromFen(opt.Fen, cfg);
+            State = GameState.FromFen(fen, cfg);
             State.Rng = new Rng(opt.Seed);
             State.AddPerk(Side.White, PowerupKind.Reroll, cfg.StartRerolls);
             State.AddPerk(Side.Black, PowerupKind.Reroll, cfg.StartRerolls);
@@ -154,6 +234,12 @@ public sealed class GameSession
             if (!State.Cells[i].IsEmpty) Rules.ApplyPickup(State, State.Cells[i].Side, i, kind, null);
         }
         foreach (var sq in opt.Mystery) State.Mystery[Sq.Parse(sq)] = true;
+        if (opt.Training)
+        {
+            State.Mystery[Sq.Parse("d4")] = true;
+            State.Mystery[Sq.Parse("e5")] = true;
+            ai = new Ai(1);
+        }
 
         Pieces.Clear();
         Effects.Clear();
@@ -384,6 +470,13 @@ public sealed class GameSession
         ClearSelection();
         Mode = InputMode.Armed;
         ArmedKind = kind;
+        MaybeTutorial(kind switch
+        {
+            ActionKind.Steal => PowerupKind.Steal,
+            ActionKind.Stun => PowerupKind.Stun,
+            ActionKind.PlaceBoulder => PowerupKind.Boulder,
+            _ => PowerupKind.Reroll,
+        });
         foreach (var a in Legal.Where(a => a.Kind == kind))
             Targets.Add(a.To);
         Sfx?.Invoke("click");
@@ -401,6 +494,13 @@ public sealed class GameSession
         Selected = sq;
         foreach (var a in acts) Targets.Add(a.To);
         Sfx?.Invoke("click");
+        var held = State.Cells[sq];
+        foreach (var flag in new[] { Buff.Fireball, Buff.DoubleMove, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
+        {
+            if (!held.Has(flag)) continue;
+            var kind = flag == Buff.Armor ? PowerupKind.SpikedArmor : Names.ForBuff(flag);
+            if (opt.Tutorials && Tut.ShouldShow(kind)) { MaybeTutorial(kind); break; }
+        }
     }
 
     public async Task TapSquare(int sq)
@@ -471,12 +571,14 @@ public sealed class GameSession
     public async Task KeepPickup()
     {
         if (!HumanTurn || !PickupPending) return;
+        AcknowledgePickupTutorial();
         await Human(Legal.First(a => a.Kind == ActionKind.KeepPickup));
     }
 
     public async Task RerollPickup()
     {
         if (!HumanTurn || !PickupPending) return;
+        AcknowledgePickupTutorial();
         var a = Legal.FirstOrDefault(x => x.Kind == ActionKind.RerollPickup);
         if (a.Kind == ActionKind.RerollPickup) await Human(a);
     }

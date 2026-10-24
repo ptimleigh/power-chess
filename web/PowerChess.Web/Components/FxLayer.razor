@@ -1,0 +1,46 @@
+@* Renders the short-lived visual effects (bursts, rings, beams, ...) for a board. Shared by the real board and demo boards. *@
+@foreach (var fx in Items)
+{
+    @switch (fx.Kind)
+    {
+        case "burst":
+            <div class="fx-burst @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%">
+                @for (int i = 0; i < 12; i++)
+                {
+                    <i style="--a:@(i * 30)deg;--d:@(N((26 + (i % 3) * 14) * Scale))px"></i>
+                }
+            </div>
+            break;
+        case "ring":
+        case "flash":
+            <div class="fx-@fx.Kind @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;--s:@(N((2 * fx.Radius + 1) * Size))%"></div>
+            break;
+        case "ping":
+            <div class="fx-ping @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;width:@(N(Size))%;height:@(N(Size))%"></div>
+            break;
+        case "stars":
+            <div class="fx-stars @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%">
+                <i>@Icons.Svg("star")</i><i>@Icons.Svg("star")</i><i>@Icons.Svg("star")</i>
+            </div>
+            break;
+        case "beam":
+            double dx = Cx(fx.To) - Cx(fx.Sq), dy = Cy(fx.To) - Cy(fx.Sq);
+            double len = Math.Sqrt(dx * dx + dy * dy);
+            double ang = Math.Atan2(dy, dx) * 180 / Math.PI;
+            <div class="fx-beam @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;width:@(N(len))%;--r:@(N(ang))deg"></div>
+            break;
+    }
+}
+
+@code {
+    [Parameter] public IEnumerable<FxItem> Items { get; set; } = Array.Empty<FxItem>();
+    /// <summary>Squares per side of the board (8 for the real board).</summary>
+    [Parameter] public int Cols { get; set; } = 8;
+    /// <summary>Scales particle travel distance for smaller boards.</summary>
+    [Parameter] public double Scale { get; set; } = 1;
+
+    double Size => 100.0 / Cols;
+    double Cx(int sq) => (Sq.File(sq) + 0.5) * Size;
+    double Cy(int sq) => (Cols - 1 - Sq.Rank(sq) + 0.5) * Size;
+    static string N(double d) => d.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

@@ -1,0 +1,99 @@
+@implements IDisposable
+@* A small looping animation of one powerup, drawn with the same piece art and effects as the real board. *@
+<div class="demo-wrap" data-testid="demo" data-kind="@Kind">
+    <div class="board demo-board" style="--cols:@Cols">
+        @for (int rank = Cols - 1; rank >= 0; rank--)
+        {
+            for (int file = 0; file < Cols; file++)
+            {
+                int sq = Sq.Make(file, rank);
+                <div class="@TileClass(sq)">
+                    @if (ctx.Mysteries.Contains(sq)) { <span class="mystery-mark">?</span> }
+                    @if (ctx.Boulders.Contains(sq)) { <span class="boulder">@Icons.Svg("rock")</span> }
+                </div>
+            }
+        }
+        <div class="layer pieces">
+            @foreach (var p in ctx.Pieces)
+            {
+                <PieceItem @key="p.Id" P="p" Cols="Cols" Demo="true" />
+            }
+        </div>
+        <div class="layer fx">
+            <FxLayer Items="ctx.Effects" Cols="Cols" Scale="0.45" />
+        </div>
+    </div>
+    <div class="demo-caption" data-testid="demo-caption">@ctx.Caption</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PowerupKind Kind { get; set; }
+
+    DemoCtx ctx = new();
+    CancellationTokenSource? cts;
+    PowerupKind running = PowerupKind.None;
+    int Cols => Tutorials.For(Kind).Cols;
+
+    protected override void OnParametersSet()
+    {
+        var norm = Tutorials.Normalize(Kind);
+        if (norm == running) return;
+        running = norm;
+        cts?.Cancel();
+        cts = new CancellationTokenSource();
+        ctx = new DemoCtx();
+        _ = Run(Tutorials.For(Kind), ctx, cts.Token);
+    }
+
+    string TileClass(int sq)
+    {
+        bool light = (Sq.File(sq) + Sq.Rank(sq)) % 2 == 1;
+        var c = "sq " + (light ? "light" : "dark");
+        if (ctx.Mysteries.Contains(sq)) c += " mystery";
+        if (ctx.Boulders.Contains(sq)) c += " rock";
+        if (ctx.Aims.Contains(sq)) c += " aim";
+        return c;
+    }
+
+    async Task Run(DemoScript script, DemoCtx c, CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                c.Clear();
+                script.Setup(c);
+                await Refresh();
+                foreach (var (ms, act) in script.Steps)
+                {
+                    await Wait(c, ms, token);
+                    act(c);
+                    await Refresh();
+                }
+                await Wait(c, script.EndPauseMs, token);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    /// <summary>Sleep in short slices so expired effects and faded pieces are cleaned up while we wait.</summary>
+    async Task Wait(DemoCtx c, int ms, CancellationToken token)
+    {
+        int left = ms;
+        while (left > 0)
+        {
+            int slice = Math.Min(120, left);
+            await Task.Delay(slice, token);
+            left -= slice;
+            if (c.Sweep()) await Refresh();
+        }
+    }
+
+    Task Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+    }
+}

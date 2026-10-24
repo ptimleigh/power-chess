@@ -1,0 +1,59 @@
+@* One piece on a board: slides via CSS transitions when its square changes. Shared by the main board and demo boards. *@
+<div class="@Css" style="left:@(N(Sq.File(P.Square) * Size))%;top:@(N((Cols - 1 - Sq.Rank(P.Square)) * Size))%;width:@(N(Size))%;height:@(N(Size))%"
+     @attributes="Attrs">
+    <div class="piece-body land-@(P.AnimSeq % 2)">
+        <PieceSvg Type="P.Type" Side="P.Side" />
+    </div>
+    <div class="badges">
+        @if (P.Buffs.HasFlag(Buff.DoubleMove)) { <span class="badge dm" title="Double Move">@Icons.Svg("x2")</span> }
+        @if (P.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
+        @if (P.Buffs.HasFlag(Buff.Fireball)) { <span class="badge fb" title="Fireball">@Icons.Svg("fire")</span> }
+        @if (P.Buffs.HasFlag(Buff.SmallBomb)) { <span class="badge bm" title="Small Bomb">@Icons.Svg("bomb")</span> }
+        @if (P.Buffs.HasFlag(Buff.BigBomb)) { <span class="badge bb" title="Big Bomb">@Icons.Svg("bigbomb")</span> }
+    </div>
+    @if (P.Stun > 0)
+    {
+        <div class="stun-tag" title="Stunned">@Icons.Svg("star")<b>@P.Stun</b></div>
+    }
+    @if (P.Buffs.HasFlag(Buff.Armor))
+    {
+        <div class="armor-ring" title="Spiked Armor"><b>@P.Armor</b></div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PieceView P { get; set; } = null!;
+    [Parameter] public bool Lifted { get; set; }
+    /// <summary>Squares per side of the board this piece sits on (8 for the real board).</summary>
+    [Parameter] public int Cols { get; set; } = 8;
+    /// <summary>Demo boards use different data attributes so tests can tell them from the real board.</summary>
+    [Parameter] public bool Demo { get; set; }
+
+    double Size => 100.0 / Cols;
+
+    static string N(double d) => d.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    string Css
+    {
+        get
+        {
+            var c = "piece " + (P.Side == Side.White ? "side-w" : "side-b");
+            if (P.Dying) c += " dying";
+            if (P.Stun > 0) c += " stunned";
+            if (P.Buffs.HasFlag(Buff.Armor)) c += " armored";
+            if (P.Buffs.HasFlag(Buff.Poison)) c += " poisoned";
+            if (Lifted) c += " lifted";
+            return c;
+        }
+    }
+
+    Dictionary<string, object> Attrs
+    {
+        get
+        {
+            string name = (P.Side == Side.White ? "w" : "b") + P.Type.ToString().ToLowerInvariant();
+            string prefix = Demo ? "data-demo-" : "data-";
+            return new Dictionary<string, object> { [prefix + "piece"] = name, [prefix + "at"] = Sq.Name(P.Square) };
+        }
+    }
+}

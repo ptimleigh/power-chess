@@ -19,6 +19,14 @@ public sealed class GameOptions
     public List<(Side side, PowerupKind kind, int n)> Perks = new();
     public List<(string sq, PowerupKind kind)> Buffs = new();
     public List<string> Mystery = new();
+    /// <summary>Show powerup tutorials the first time each is selected.</summary>
+    public bool Tutorials = true;
+    /// <summary>The URL asked for tutorials explicitly (<c>tut=1</c>), even alongside scenario options.</summary>
+    public bool TutorialsExplicit;
+    /// <summary>Open this powerup's tutorial straight away (<c>demo=fireball</c>).</summary>
+    public PowerupKind? Demo;
+    /// <summary>Start on the small training board (one-shot; cleared once the game is created).</summary>
+    public bool Training;
 
     public static GameOptions FromQuery(string query)
     {
@@ -56,6 +64,9 @@ public sealed class GameOptions
                     }
                     break;
                 case "mystery": o.Mystery.AddRange(val.Split(',', StringSplitOptions.RemoveEmptyEntries)); break;
+                case "tut": o.Tutorials = val != "0"; o.TutorialsExplicit = val == "1"; break;
+                case "demo": if (Enum.TryParse<PowerupKind>(val, true, out var dk)) o.Demo = dk; break;
+                case "training": o.Training = val != "0"; break;
             }
         }
         return o;

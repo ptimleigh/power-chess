@@ -49,10 +49,10 @@ public sealed class DemoCtx
         return this;
     }
 
-    public DemoCtx Kill(string sq)
+    public DemoCtx Kill(string sq, bool burning = false)
     {
         var p = At(sq);
-        if (p != null) { p.Dying = true; dying[p] = Now + 800; }
+        if (p != null) { p.Dying = true; p.Burning = burning; dying[p] = Now + 800; }
         return this;
     }
 
@@ -72,11 +72,11 @@ public sealed class DemoCtx
 
     public DemoCtx Say(string text) { Caption = text; return this; }
 
-    public DemoCtx Fx(string kind, string sq, string to = "", int radius = 0, string css = "")
+    public DemoCtx Fx(string kind, string sq, string to = "", int radius = 0, string css = "", int durMs = 0)
     {
-        var fx = new FxItem { Id = nextId++, Kind = kind, Sq = Sq.Parse(sq), To = to == "" ? -1 : Sq.Parse(to), Radius = radius, Css = css };
+        var fx = new FxItem { Id = nextId++, Kind = kind, Sq = Sq.Parse(sq), To = to == "" ? -1 : Sq.Parse(to), Radius = radius, Css = css, DurMs = durMs };
         Effects.Add(fx);
-        expiry[fx] = Now + 1100;
+        expiry[fx] = Now + Math.Max(1100, durMs + 500);
         return this;
     }
 
@@ -174,13 +174,14 @@ public static class Tutorials
                 .Say("This rook earned a fireball. Pick a direction"),
         }
         .Then(1000, c => c.Aim("a3"))
-        .Then(800, c => c.Aim().Fx("beam", "a1", "a3", css: "fire").Fx("burst", "a3", css: "fire").Kill("a3").Strip("a1", Buff.Fireball)
-            .Say("It destroys the first enemy in line"))
+        .Then(700, c => c.Aim().Fx("fireball", "a1", "a3", css: "fire", durMs: 450).Strip("a1", Buff.Fireball).Say("It destroys the first enemy in line"))
+        .Then(450, c => c.Fx("burst", "a3", css: "fire").Fx("flash", "a3", radius: 0, css: "boom").Kill("a3", burning: true))
         .Then(2200, c => c.Clear().Place("d1", PieceType.Queen, W, Buff.Fireball).Place("d2", PieceType.Pawn, W)
             .Place("d3", PieceType.Pawn, B).Place("d5", PieceType.Knight, B).Say("A Queen's fireball burns the whole line"))
         .Then(900, c => c.Aim("d3"))
-        .Then(800, c => c.Aim().Fx("beam", "d1", "d3", css: "fire").Fx("beam", "d1", "d5", css: "fire")
-            .Fx("burst", "d3", css: "fire").Fx("burst", "d5", css: "fire").Kill("d3").Kill("d5").Strip("d1", Buff.Fireball)),
+        .Then(700, c => c.Aim().Fx("fireball", "d1", "d5", css: "fire", durMs: 600).Strip("d1", Buff.Fireball))
+        .Then(300, c => c.Fx("burst", "d3", css: "fire").Kill("d3", burning: true))
+        .Then(300, c => c.Fx("burst", "d5", css: "fire").Kill("d5", burning: true)),
 
         [PowerupKind.Steal] = new DemoScript
         {

@@ -9,15 +9,9 @@
     <header class="topbar">
         <div class="logo">POWER<span>CHESS</span></div>
         <div class="controls">
-            <select class="sel" value="@opt.Ai" @onchange="OnDifficulty" aria-label="Difficulty">
-                <option value="1">Easy</option>
-                <option value="2">Normal</option>
-                <option value="3">Hard</option>
-                <option value="0">2 players</option>
-            </select>
             <button class="icon-btn @(muted ? "muted" : "")" @onclick="ToggleMute" title="Sound" aria-label="Toggle sound">SFX</button>
             <button class="icon-btn" @onclick="() => showHelp = true" title="How to play" aria-label="How to play">?</button>
-            <button class="icon-btn wide" @onclick="StartNew">New</button>
+            <button class="icon-btn wide" data-action="new" @onclick="OpenNew">New</button>
         </div>
     </header>
 
@@ -34,10 +28,10 @@
                 for (int file = 0; file < 8; file++)
                 {
                     int sq = Sq.Make(file, rank);
-                    <div class="@TileClass(sq)" data-sq="@Sq.Name(sq)" @onclick="() => S.TapSquare(sq)">
+                    <div class="@TileClass(sq)" data-sq="@Sq.Name(sq)" data-content="@ContentName(sq)" @onclick="() => S.TapSquare(sq)">
                         @if (S.View.Mystery[sq])
                         {
-                            <span class="mystery-mark">?</span>
+                            <PowerupMark Kind="(PowerupKind)S.View.Content[sq]" />
                         }
                         @if (S.View.Boulders[sq])
                         {
@@ -193,6 +187,25 @@
     }
 </div>
 
+@if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.Mystery[S.InspectSquare])
+{
+    var sk = (PowerupKind)S.State.Content[S.InspectSquare];
+    <div class="inspect sqinfo" data-testid="inspect-square" data-content="@ContentName(S.InspectSquare)">
+        <div class="inspect-head">
+            <b>@(sk == PowerupKind.None ? "Mystery square" : Names.Name(sk))</b>
+            <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
+        </div>
+        <div class="inspect-row">
+            <span class="gi @(sk != PowerupKind.None && PowerupInfo.IsPerk(sk) ? "perk" : "buff")">@(sk == PowerupKind.None ? Icons.Svg("question") : Icons.Svg(Names.Icon(sk)))</span>
+            <span>@(sk == PowerupKind.None ? "Land a piece here to find out what it holds. Squares appear in matching pairs." : Names.Desc(sk))</span>
+            @if (sk != PowerupKind.None)
+            {
+                <button class="demo-btn" data-demo="@sk.ToString().ToLowerInvariant()" @onclick="() => S.ShowTutorial(sk)">Demo</button>
+            }
+        </div>
+    </div>
+}
+
 @if (S.Tutorial is PowerupKind tk)
 {
     <div class="tutorial" data-testid="tutorial" data-kind="@tk.ToString().ToLowerInvariant()">
@@ -269,6 +282,35 @@
     </div>
 }
 
+@if (showNew)
+{
+    <div class="modal" data-testid="newgame" @onclick="() => showNew = false">
+        <div class="card newgame" @onclick:stopPropagation="true">
+            <div class="kicker">New game</div>
+            <div class="opt-label">Powerup squares</div>
+            <div class="seg">
+                <button class="@Seg(selMode == SquareMode.Revealed)" data-mode="revealed" @onclick="() => selMode = SquareMode.Revealed">
+                    <b>Revealed</b><small>See what each square holds. A few stay a mystery.</small>
+                </button>
+                <button class="@Seg(selMode == SquareMode.Mystery)" data-mode="mystery" @onclick="() => selMode = SquareMode.Mystery">
+                    <b>Mystery</b><small>Every square is a "?" until you land on it.</small>
+                </button>
+            </div>
+            <div class="opt-label">Opponent</div>
+            <div class="seg four">
+                <button class="@Seg(selAi == 1)" data-ai="1" @onclick="() => selAi = 1">Easy</button>
+                <button class="@Seg(selAi == 2)" data-ai="2" @onclick="() => selAi = 2">Normal</button>
+                <button class="@Seg(selAi == 3)" data-ai="3" @onclick="() => selAi = 3">Hard</button>
+                <button class="@Seg(selAi == 0)" data-ai="0" @onclick="() => selAi = 0">2 players</button>
+            </div>
+            <div class="row newgame-row">
+                <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">Start game</button>
+                <button class="btn ghost" data-action="cancel-new" @onclick="() => showNew = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (showHelp)
 {
     <div class="modal" @onclick="() => showHelp = false">
@@ -299,6 +341,10 @@
     bool urlSeed;
     bool muted;
     bool showHelp;
+    bool showNew;
+    SquareMode selMode = SquareMode.Revealed;
+    int selAi = 2;
+    const string SettingsKey = "powerchess.settings.v1";
     GameSession S = null!;
 
     record PerkBtn(PowerupKind Kind, ActionKind Action, string Label, string Tip);
@@ -335,7 +381,7 @@
         opt = GameOptions.FromQuery(uri.Query);
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
-        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=" }
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game
@@ -343,7 +389,7 @@
         if (debugOptions && !opt.TutorialsExplicit) opt.Tutorials = false;
         StartNew(persist: false);
 
-        string? saved = null, played = null, tutText = null;
+        string? saved = null, played = null, tutText = null, settingsText = null;
         try
         {
             tutText = await JS.InvokeAsync<string?>("localStorage.getItem", TutKey);
@@ -351,6 +397,7 @@
             {
                 saved = await JS.InvokeAsync<string?>("localStorage.getItem", SaveKey);
                 played = await JS.InvokeAsync<string?>("localStorage.getItem", PlayedKey);
+                settingsText = await JS.InvokeAsync<string?>("localStorage.getItem", SettingsKey);
             }
         }
         catch { /* storage unavailable: just play */ }
@@ -363,12 +410,22 @@
         if (opt.Demo is PowerupKind demo) S.ShowTutorial(demo);
         if (debugOptions) return;
 
-        bool restored = !string.IsNullOrEmpty(saved) && S.Restore(saved);
-        if (!restored && played == null && !tut.Off && opt.Tutorials)
+        // Remembered choices from the New game sheet (mode and opponent).
+        bool haveSettings = false;
+        var sp = (settingsText ?? "").Split(':');
+        if (sp.Length == 2 && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 3)
         {
-            // Someone's very first game: start on the small training board.
-            opt.Training = true;
-            StartNew(persist: false);
+            opt.Mode = sp[0] == "mystery" ? SquareMode.Mystery : SquareMode.Revealed;
+            opt.Ai = savedAi;
+            haveSettings = true;
+        }
+
+        bool restored = !string.IsNullOrEmpty(saved) && S.Restore(saved);
+        if (!restored)
+        {
+            bool firstEver = played == null && !tut.Off && opt.Tutorials;
+            opt.Training = firstEver; // someone's very first game starts on the small training board
+            if (firstEver || haveSettings) StartNew(persist: false);
             opt.Training = false;
         }
         EnablePersist();
@@ -440,10 +497,30 @@
         try { await JS.InvokeVoidAsync("pcfx.setMuted", muted); } catch { }
     }
 
-    void OnDifficulty(ChangeEventArgs e)
+    void OpenNew()
     {
-        if (int.TryParse(e.Value?.ToString(), out var v)) opt.Ai = v;
+        selMode = opt.Mode;
+        selAi = opt.Ai;
+        showNew = true;
+    }
+
+    void StartFromSheet()
+    {
+        opt.Mode = selMode;
+        opt.Ai = selAi;
+        showNew = false;
+        _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi);
         StartNew();
+    }
+
+    static string Seg(bool on) => "seg-btn" + (on ? " on" : "");
+
+    /// <summary>"fireball", "hidden" or "" for what a powerup square shows, for styling and tests.</summary>
+    string ContentName(int sq)
+    {
+        if (!S.View.Mystery[sq]) return "";
+        var k = (PowerupKind)S.View.Content[sq];
+        return k == PowerupKind.None ? "hidden" : k.ToString().ToLowerInvariant();
     }
 
     public void Dispose()
@@ -458,7 +535,7 @@
         bool light = (Sq.File(sq) + Sq.Rank(sq)) % 2 == 1;
         var c = "sq " + (light ? "light" : "dark");
         var cell = S.View.Cells[sq];
-        if (S.View.Mystery[sq]) c += " mystery";
+        if (S.View.Mystery[sq]) c += " mystery powerup " + Names.SquareClass((PowerupKind)S.View.Content[sq]);
         if (S.View.Boulders[sq]) c += " rock";
         if (sq == S.ViewLastFrom || sq == S.ViewLastTo) c += " last";
         if (sq == S.Selected) c += " selected";

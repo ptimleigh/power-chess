@@ -1,0 +1,17 @@
+@* The flat face of a powerup square: a glowing edge and a "?" (hidden) or the powerup's icon (revealed). Shared by the real board and demo boards. *@
+<span class="pu-edge"></span>
+<span class="pu-glyph">
+    @if (Kind == PowerupKind.None)
+    {
+        <b>?</b>
+    }
+    else
+    {
+        @Icons.Svg(Names.Icon(Kind))
+    }
+</span>
+
+@code {
+    /// <summary>The powerup shown, or None for a hidden mystery.</summary>
+    [Parameter] public PowerupKind Kind { get; set; }
+}

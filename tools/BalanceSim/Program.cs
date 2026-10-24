@@ -1,7 +1,7 @@
 using System.Text;
 using PowerChess.Core;
 
-// (optional 4th argument: spawn interval in plies, default 4)
+// (optional 4th argument: spawn interval in plies, default 4; optional 5th: "revealed" or "mystery")
 // Plays AI-vs-AI games with every powerup enabled and reports game length, how games end, and how each powerup
 // correlates with winning. Usage: dotnet run --project tools/BalanceSim -c Release -- [games] [depth] [outFile]
 //
@@ -12,6 +12,7 @@ int games = args.Length > 0 ? int.Parse(args[0]) : 300;
 int depth = args.Length > 1 ? int.Parse(args[1]) : 1;
 string outFile = args.Length > 2 && args[2] != "-" ? args[2] : null;
 int spawn = args.Length > 3 ? int.Parse(args[3]) : 4;
+bool revealed = args.Length > 4 && args[4].Equals("revealed", StringComparison.OrdinalIgnoreCase);
 
 var kinds = Enum.GetValues(typeof(PowerupKind)).Cast<PowerupKind>().Where(k => k != PowerupKind.None && k != PowerupKind.Rewind).ToList();
 var obtained = kinds.ToDictionary(k => k, _ => new Outcome());
@@ -24,7 +25,7 @@ var rnd = new Random(12345);
 
 for (int g = 0; g < games; g++)
 {
-    var cfg = new GameConfig { MaxPly = 300, SpawnInterval = spawn };
+    var cfg = new GameConfig { MaxPly = 300, SpawnInterval = spawn, Squares = revealed ? SquareMode.Revealed : SquareMode.Mystery };
     cfg.RewindAllowed[0] = cfg.RewindAllowed[1] = false; // the AI cannot use Rewind
     var s = GameState.NewGame(cfg, (ulong)(1000 + g));
     var ai = new Ai(depth);
@@ -80,7 +81,7 @@ plies.Sort();
 var sb = new StringBuilder();
 sb.AppendLine("# Balance report");
 sb.AppendLine();
-sb.AppendLine($"{games} AI-vs-AI games at search depth {depth}, all powerups enabled (default pool), spawn every {spawn} plies, 300-ply limit, 4 random opening actions.");
+sb.AppendLine($"{games} AI-vs-AI games at search depth {depth}, all powerups enabled (default pool), spawn every {spawn} plies, {(revealed ? "revealed squares (20% stay hidden)" : "mystery squares")}, 300-ply limit, 4 random opening actions.");
 sb.AppendLine("The AI is shallow, so treat absolute numbers loosely and look for outliers. \"Win rate when obtained\" is how often a side won in games where it picked that powerup up at least once; it is a correlation (stronger sides also grab more squares), not proof of cause.");
 sb.AppendLine();
 sb.AppendLine("## Game length and endings");

@@ -17,6 +17,7 @@ namespace PowerChess.Core.Tests
                 Assert.AreEqual(a.Cells[i].StunTurns, b.Cells[i].StunTurns, context + " stun " + Sq.Name(i));
                 Assert.AreEqual(a.Boulders[i], b.Boulders[i], context + " boulder " + Sq.Name(i));
                 Assert.AreEqual(a.Mystery[i], b.Mystery[i], context + " mystery " + Sq.Name(i));
+                Assert.AreEqual(a.Content[i], b.Content[i], context + " content " + Sq.Name(i));
             }
             CollectionAssert.AreEqual(a.Inventory, b.Inventory, context + " inventory");
             Assert.AreEqual(a.ToMove, b.ToMove, context);
@@ -35,7 +36,7 @@ namespace PowerChess.Core.Tests
         {
             for (ulong seed = 1; seed <= 25; seed++)
             {
-                var cfg = new GameConfig();
+                var cfg = new GameConfig { Squares = seed % 2 == 0 ? SquareMode.Revealed : SquareMode.Mystery };
                 var s = GameState.NewGame(cfg, seed);
                 var h = new GameHistory();
                 var rnd = new Random((int)seed);
@@ -88,6 +89,27 @@ namespace PowerChess.Core.Tests
             int index;
             var back = h2.Rewind(s2, Side.White, out index);
             Assert.AreEqual(PieceType.Pawn, back.Cells[Sq.Parse("e2")].Type);
+        }
+
+        [Test]
+        public void Version_1_saves_from_before_revealed_squares_still_load()
+        {
+            var cfg = T.Cfg();
+            var s = GameState.NewGame(cfg, 1);
+            s.Mystery[Sq.Parse("d4")] = true; // a hidden mystery has no content, which is all version 1 could express
+            var v2 = Convert.FromBase64String(GameStateCodec.EncodeGame(s, new GameHistory()));
+
+            // Rewrite as version 1: drop the 64 content bytes (after the version byte, 64 cells x 5 bytes and two 8-byte bitsets).
+            int contentAt = 1 + 64 * 5 + 8 + 8;
+            var v1 = new byte[v2.Length - 64];
+            Array.Copy(v2, 0, v1, 0, contentAt);
+            Array.Copy(v2, contentAt + 64, v1, contentAt, v2.Length - contentAt - 64);
+            v1[0] = 1;
+
+            GameState s2;
+            GameHistory h2;
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(Convert.ToBase64String(v1), cfg, out s2, out h2));
+            AssertSame(s, s2, "v1 save");
         }
 
         [Test]

@@ -9,7 +9,7 @@ namespace PowerChess.Core
     /// </summary>
     public static class GameStateCodec
     {
-        const byte Version = 1;
+        const byte Version = 2;
         const int MaxHistory = 5000;
 
         public static string EncodeGame(GameState current, GameHistory history)
@@ -45,14 +45,15 @@ namespace PowerChess.Core
                 using (var ms = new MemoryStream(bytes))
                 using (var r = new BinaryReader(ms))
                 {
-                    if (r.ReadByte() != Version) return false;
-                    var state = ReadState(r, config);
+                    byte version = r.ReadByte();
+                    if (version != 1 && version != 2) return false; // version 1 saves predate revealed squares
+                    var state = ReadState(r, config, version);
                     int count = r.ReadInt32();
                     if (count < 0 || count > MaxHistory) return false;
                     var h = new GameHistory();
                     for (int i = 0; i < count; i++)
                     {
-                        var before = ReadState(r, config);
+                        var before = ReadState(r, config, version);
                         var action = new GameAction((ActionKind)r.ReadByte(), r.ReadInt16(), r.ReadInt16(), r.ReadInt16());
                         if (action.Kind > ActionKind.RerollPickup) return false;
                         h.Record(before, action);
@@ -82,6 +83,7 @@ namespace PowerChess.Core
             }
             w.Write(Pack(s.Boulders));
             w.Write(Pack(s.Mystery));
+            w.Write(s.Content);
             w.Write(s.Inventory);
             w.Write((byte)s.ToMove);
             w.Write((byte)s.Castling);
@@ -96,7 +98,7 @@ namespace PowerChess.Core
             w.Write(s.ClockReset);
         }
 
-        static GameState ReadState(BinaryReader r, GameConfig config)
+        static GameState ReadState(BinaryReader r, GameConfig config, byte version)
         {
             var s = new GameState(config);
             for (int i = 0; i < 64; i++)
@@ -114,6 +116,16 @@ namespace PowerChess.Core
             }
             Unpack(r.ReadUInt64(), s.Boulders);
             Unpack(r.ReadUInt64(), s.Mystery);
+            if (version >= 2)
+            {
+                var content = r.ReadBytes(64);
+                if (content.Length != 64) throw new InvalidDataException("bad content");
+                for (int i = 0; i < 64; i++)
+                {
+                    if (content[i] > (byte)PowerupKind.Rewind) throw new InvalidDataException("bad content kind");
+                    s.Content[i] = content[i];
+                }
+            }
             var inv = r.ReadBytes(64);
             if (inv.Length != 64) throw new InvalidDataException("bad inventory");
             Array.Copy(inv, s.Inventory, 64);

@@ -12,6 +12,8 @@ namespace PowerChess.Core
         public readonly bool[] Boulders = new bool[64];
         /// <summary>Unopened powerup squares. Contents are drawn when a piece lands on one.</summary>
         public readonly bool[] Mystery = new bool[64];
+        /// <summary>The powerup shown on a revealed square (0 = a hidden mystery). Only meaningful where <see cref="Mystery"/> is set.</summary>
+        public readonly byte[] Content = new byte[64];
         /// <summary>Perk counts, indexed side * 32 + (int)PowerupKind.</summary>
         public readonly byte[] Inventory = new byte[64];
 
@@ -72,6 +74,7 @@ namespace PowerChess.Core
             Array.Copy(Cells, c.Cells, 64);
             Array.Copy(Boulders, c.Boulders, 64);
             Array.Copy(Mystery, c.Mystery, 64);
+            Array.Copy(Content, c.Content, 64);
             Array.Copy(Inventory, c.Inventory, 64);
             c.ToMove = ToMove;
             c.Castling = Castling;
@@ -159,7 +162,7 @@ namespace PowerChess.Core
                         if (p.Side == Side.White) c = char.ToUpperInvariant(c);
                     }
                     else if (Boulders[sq]) c = '#';
-                    else if (Mystery[sq]) c = '?';
+                    else if (Mystery[sq]) c = Content[sq] != 0 ? '*' : '?';
                     sb.Append(c);
                 }
                 sb.Append('\n');

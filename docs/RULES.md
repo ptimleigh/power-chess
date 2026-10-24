@@ -15,6 +15,14 @@ stalemate are real. Stalemate and the 50-move rule are draws; a ply cap ends end
   draw is final). With no Reroll it applies immediately.
 - Kings only ever draw perks, never buffs.
 
+### Revealed squares (the web default)
+- In `Revealed` mode each pair is drawn when it spawns and shows its powerup on the square. Both squares of a pair hold
+  the same powerup (fair for both sides). About 20% of pairs (`MysteryChance`) stay hidden and are drawn on landing.
+- Landing on a revealed square applies the powerup shown, through the same Keep / Reroll step. If the lander cannot use
+  it (a king and a buff, a capped perk, a duplicate buff, a no-op transform) nothing happens and the square stays, so a
+  piece can stand on it and a king can walk over it.
+- `Mystery` mode keeps every square hidden, as above.
+
 ## Piece buffs (lost if the piece is destroyed)
 | Buff | Rule |
 |---|---|

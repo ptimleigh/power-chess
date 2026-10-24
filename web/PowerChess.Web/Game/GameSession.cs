@@ -15,6 +15,10 @@ public sealed class PieceView
     public int Stun;
     public int Armor;
     public bool Dying;
+    /// <summary>Destroyed by the engine but kept on the board until a fireball reaches it.</summary>
+    public bool PendingDeath;
+    /// <summary>Dies in flames (hit by a fireball) rather than just fading.</summary>
+    public bool Burning;
     public int AnimSeq;
 }
 
@@ -25,6 +29,8 @@ public sealed class FxItem
     public int Sq;
     public int To = -1;
     public int Radius;
+    /// <summary>Flight time for projectile effects (fireball), in milliseconds.</summary>
+    public int DurMs;
     public string Css = "";
 }
 
@@ -47,6 +53,7 @@ public sealed class GameSession
     readonly Random rnd = new();
     Ai ai;
     int nextId = 1;
+    int lastFireMs;
 
     // Position history for the move viewer and the Rewind perk. viewHistory[i] holds the piece views at position i
     // (the position before action i), so stepping through the past animates with the same piece identities.
@@ -79,6 +86,8 @@ public sealed class GameSession
     public int BombEnemyLosses { get; private set; }
     /// <summary>Square of the powered-up piece whose info card is open, or -1.</summary>
     public int Inspect { get; private set; } = -1;
+    /// <summary>Square of the powerup square whose info card is open, or -1.</summary>
+    public int InspectSquare { get; private set; } = -1;
     public List<GameAction> PromoChoices { get; private set; } = new();
     public int LastFrom { get; private set; } = -1;
     public int LastTo { get; private set; } = -1;
@@ -198,6 +207,8 @@ public sealed class GameSession
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
         cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
+        cfg.Squares = opt.Mode;
+        cfg.MysteryChance = opt.HiddenChance;
         return cfg;
     }
 
@@ -234,10 +245,19 @@ public sealed class GameSession
             if (!State.Cells[i].IsEmpty) Rules.ApplyPickup(State, State.Cells[i].Side, i, kind, null);
         }
         foreach (var sq in opt.Mystery) State.Mystery[Sq.Parse(sq)] = true;
+        foreach (var (sq, kind) in opt.Reveal)
+        {
+            State.Mystery[Sq.Parse(sq)] = true;
+            State.Content[Sq.Parse(sq)] = (byte)kind;
+        }
         if (opt.Training)
         {
-            State.Mystery[Sq.Parse("d4")] = true;
-            State.Mystery[Sq.Parse("e5")] = true;
+            // Two revealed fireball squares in the middle: the flagship powerup, visible from move one.
+            foreach (var sq in new[] { "d4", "e5" })
+            {
+                State.Mystery[Sq.Parse(sq)] = true;
+                State.Content[Sq.Parse(sq)] = (byte)PowerupKind.Fireball;
+            }
             ai = new Ai(1);
         }
 
@@ -279,7 +299,7 @@ public sealed class GameSession
         }
         foreach (var views in viewHistory) AddIds(views);
         AddIds(Pieces);
-        return string.Join("|", GameStateCodec.EncodeGame(State, history), nextId, opt.Ai, Convert.ToBase64String(ids.ToArray()));
+        return string.Join("|", GameStateCodec.EncodeGame(State, history), nextId, opt.Ai, Convert.ToBase64String(ids.ToArray()), opt.Mode == SquareMode.Revealed ? "r" : "m");
     }
 
     /// <summary>Restore a saved game. Returns false (leaving the current game untouched) if the save is not usable.</summary>
@@ -288,18 +308,21 @@ public sealed class GameSession
         try
         {
             var parts = saved.Split('|');
-            if (parts.Length != 4) return false;
+            if (parts.Length != 4 && parts.Length != 5) return false;
             int savedNextId = int.Parse(parts[1]);
             int savedAi = int.Parse(parts[2]);
             var idBytes = Convert.FromBase64String(parts[3]);
 
             int oldAi = opt.Ai;
+            var oldMode = opt.Mode;
             opt.Ai = Math.Clamp(savedAi, 0, 3);
+            opt.Mode = parts.Length == 5 && parts[4] == "r" ? SquareMode.Revealed : SquareMode.Mystery; // older saves were all mystery
             GameState state;
             GameHistory hist;
             if (!GameStateCodec.TryDecodeGame(parts[0], BuildConfig(), out state, out hist) || idBytes.Length != (hist.Count + 1) * 128)
             {
                 opt.Ai = oldAi;
+                opt.Mode = oldMode;
                 return false;
             }
 
@@ -437,6 +460,7 @@ public sealed class GameSession
     public void CloseInspect()
     {
         Inspect = -1;
+        InspectSquare = -1;
         Changed?.Invoke();
     }
 
@@ -449,6 +473,7 @@ public sealed class GameSession
     public void Cancel()
     {
         Inspect = -1;
+        InspectSquare = -1;
         ClearSelection();
         AutoSelectForced();
         Changed?.Invoke();
@@ -544,7 +569,9 @@ public sealed class GameSession
 
         // Tapping a powered-up piece (either side) opens its info card; tapping it again closes it.
         bool wasInspected = Inspect == sq;
+        bool wasSquareInspected = InspectSquare == sq;
         Inspect = -1;
+        InspectSquare = -1;
         if (Selected == sq && State.ForcedMover < 0)
         {
             ClearSelection();
@@ -553,6 +580,8 @@ public sealed class GameSession
         {
             if (State.ForcedMover < 0) SelectPiece(sq);
             if (IsPowered(sq) && !wasInspected) Inspect = sq;
+            // An empty powerup square: tap it to read what it is (and what it holds, when revealed).
+            if (State.Mystery[sq] && State.Cells[sq].IsEmpty && !wasSquareInspected && Selected < 0) InspectSquare = sq;
         }
         Changed?.Invoke();
     }
@@ -619,11 +648,13 @@ public sealed class GameSession
     {
         Busy = true;
         Inspect = -1;
+        InspectSquare = -1;
         reviewIndex = -1;
         ClearSelection();
         history.Record(State, a);
         viewHistory.Add(SnapshotViews());
         var ev = new List<GameEvent>();
+        lastFireMs = 0;
         Rules.Apply(State, a, ev);
         Moves++;
         Process(ev);
@@ -633,7 +664,9 @@ public sealed class GameSession
 
         bool big = ev.Any(e => e.Kind == EventKind.Detonated || e.Kind == EventKind.FireballFired);
         bool hit = ev.Any(e => e.Kind == EventKind.Captured || e.Kind == EventKind.Destroyed || e.Kind == EventKind.Converted);
-        await Task.Delay(big ? 1000 : hit ? 700 : 450);
+        int wait = big ? 1000 : hit ? 700 : 450;
+        if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn
+        await Task.Delay(wait);
 
         if (GameOver)
         {
@@ -787,8 +820,10 @@ public sealed class GameSession
     {
         int movedId = -1;
         int fireFrom = -1;
-        foreach (var e in events)
+        var fireDelay = new Dictionary<int, int>();
+        for (int ei = 0; ei < events.Count; ei++)
         {
+            var e = events[ei];
             switch (e.Kind)
             {
                 case EventKind.Moved:
@@ -842,17 +877,41 @@ public sealed class GameSession
                 case EventKind.Destroyed:
                 {
                     var v = At(e.From);
-                    if (v != null) Kill(v);
-                    AddFx("burst", e.From, css: fireFrom >= 0 ? "fire" : "boom");
-                    if (fireFrom >= 0) AddFx("beam", fireFrom, e.From, css: "fire");
+                    if (fireFrom >= 0 && v != null && fireDelay.TryGetValue(e.From, out var wait))
+                    {
+                        // Stays on the board until the ball reaches it, then ignites.
+                        v.PendingDeath = true;
+                        Later(wait, () => { v.PendingDeath = false; Ignite(v); });
+                    }
+                    else
+                    {
+                        if (v != null) Kill(v);
+                        AddFx("burst", e.From, css: "boom");
+                    }
                     break;
                 }
                 case EventKind.FireballFired:
+                {
+                    // Look ahead at what this shot destroys so the ball can fly to the farthest victim and each
+                    // piece ignites at the moment the ball reaches it (a queen's ball rolls the whole line).
+                    var victims = new List<int>();
+                    for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++) victims.Add(events[j].From);
+                    int far = 1;
+                    int target = e.From;
+                    foreach (int v in victims)
+                    {
+                        int d = Distance(e.From, v);
+                        if (d >= far) { far = d; target = v; }
+                    }
+                    int dur = Math.Max(350, far * 110);
+                    lastFireMs = dur;
+                    AddFx("fireball", e.From, target, css: "fire", durMs: dur);
+                    foreach (int v in victims) fireDelay[v] = (int)(dur * (double)Distance(e.From, v) / far);
                     fireFrom = e.From;
                     AddToast("FIREBALL!", "", "fire", "fire");
-                    Shake();
                     Sfx?.Invoke("fire");
                     break;
+                }
                 case EventKind.Detonated:
                 {
                     int r = e.Powerup == PowerupKind.BigBomb ? 2 : 1;
@@ -929,7 +988,7 @@ public sealed class GameSession
     /// <summary>Copies buffs/types from the engine so the view can never drift from the rules.</summary>
     void SyncViews()
     {
-        foreach (var v in Pieces.Where(p => !p.Dying).ToList())
+        foreach (var v in Pieces.Where(p => !p.Dying && !p.PendingDeath).ToList())
         {
             var c = State.Cells[v.Square];
             if (c.IsEmpty) { Kill(v); continue; }
@@ -955,11 +1014,24 @@ public sealed class GameSession
         Later(650, () => Pieces.Remove(v));
     }
 
-    void AddFx(string kind, int sq, int to = -1, int radius = 0, string css = "")
+    /// <summary>A fireball reaches this piece: it bursts into flame and burns away.</summary>
+    void Ignite(PieceView v)
     {
-        var fx = new FxItem { Id = nextId++, Kind = kind, Sq = sq, To = to, Radius = radius, Css = css };
+        v.Burning = true;
+        Kill(v);
+        AddFx("burst", v.Square, css: "fire");
+        AddFx("flash", v.Square, radius: 0, css: "boom");
+        Shake();
+        Sfx?.Invoke("capture");
+    }
+
+    static int Distance(int a, int b) => Math.Max(Math.Abs(Sq.File(a) - Sq.File(b)), Math.Abs(Sq.Rank(a) - Sq.Rank(b)));
+
+    void AddFx(string kind, int sq, int to = -1, int radius = 0, string css = "", int durMs = 0)
+    {
+        var fx = new FxItem { Id = nextId++, Kind = kind, Sq = sq, To = to, Radius = radius, Css = css, DurMs = durMs };
         Effects.Add(fx);
-        Later(1100, () => Effects.Remove(fx));
+        Later(Math.Max(1100, durMs + 500), () => Effects.Remove(fx));
     }
 
     void AddToast(string title, string text, string css, string icon)

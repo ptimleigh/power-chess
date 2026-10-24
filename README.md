@@ -33,7 +33,7 @@ dotnet run --project web/PowerChess.Web
 or publish static files (`dotnet publish web/PowerChess.Web -c Release -o out`) and serve `out/wwwroot` with any static
 file server.
 
-Tap a piece, then a highlighted square. Land on a gold `?` square to open it. Use the buttons under the board for perks,
+Tap a piece, then a highlighted square. Land on a glowing powerup square to claim it (a purple `?` square is a mystery). Use the buttons under the board for perks,
 and the Detonate button when a bomber is selected.
 
 ### Debug URL options
@@ -52,6 +52,8 @@ Handy for reproducing a situation. All optional:
 | `pairs`, `spawn`, `rerolls` | `spawn=2` | Initial pairs, spawn interval, starting rerolls |
 | `tut` | `tut=1` | Powerup tutorials are off whenever scenario options are used; `tut=1` turns them on |
 | `demo` | `demo=fireball` | Open one powerup's animated tutorial directly (`doublemove`, `poison`, `spikedarmor`, `stun`, `smallbomb`, `bigbomb`, `fireball`, `steal`, `boulder`, `reroll`, `rewind`, `transformqueen`) |
+| `mode` | `mode=mystery` | `revealed` (default: powerups shown on squares, 20% hidden) or `mystery` (all hidden) |
+| `hidden` | `hidden=0.5` | Chance a revealed pair stays hidden |
 | `training` | `training=1` | Start on the small training board |
 
 With no options the game resumes where you left off after a refresh (saved in the browser), and a first-ever game starts on the training board.

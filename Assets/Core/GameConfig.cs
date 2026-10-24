@@ -14,9 +14,21 @@ namespace PowerChess.Core
         }
     }
 
+    /// <summary>How powerup squares present their contents.</summary>
+    public enum SquareMode
+    {
+        /// <summary>Every square is a "?" and its powerup is drawn when a piece lands on it.</summary>
+        Mystery,
+        /// <summary>The powerup is chosen when the square spawns and shown on it; an occasional square stays a mystery.</summary>
+        Revealed,
+    }
+
     /// <summary>Tunable rules. Account level can gate <see cref="Pool"/> to unlock powerups gradually.</summary>
     public sealed class GameConfig
     {
+        public SquareMode Squares = SquareMode.Mystery;
+        /// <summary>In Revealed mode, the chance that a spawned pair stays a hidden mystery.</summary>
+        public double MysteryChance = 0.2;
         /// <summary>A new mirrored pair of mystery squares appears every this many plies. 0 disables spawning.</summary>
         public int SpawnInterval = 4;
         public int InitialPairs = 2;

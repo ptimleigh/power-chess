@@ -20,7 +20,8 @@ namespace PowerChess.Core.Tests
                 if (!p.IsEmpty)
                 {
                     Assert.IsFalse(s.Boulders[i], "piece on a boulder. " + context + "\n" + s);
-                    Assert.IsFalse(s.Mystery[i], "piece on an unopened square. " + context + "\n" + s);
+                    // Only a revealed square can have a piece standing on it (a piece that cannot use what it shows).
+                    if (s.Mystery[i]) Assert.AreNotEqual((byte)0, s.Content[i], "piece on a hidden mystery square. " + context + "\n" + s);
                     if (p.Type == PieceType.King)
                         Assert.AreEqual(Buff.None, p.Buffs, "king received a buff. " + context + "\n" + s);
                 }
@@ -30,9 +31,9 @@ namespace PowerChess.Core.Tests
             Assert.AreEqual(1, blackKings, "black kings. " + context + "\n" + s);
         }
 
-        static GameResult PlayRandomGame(ulong seed, Func<GameState, GameAction> chooser, int maxActions = 1500)
+        static GameResult PlayRandomGame(ulong seed, Func<GameState, GameAction> chooser, int maxActions = 1500, GameConfig cfg = null)
         {
-            var s = GameState.NewGame(new GameConfig { MaxPly = 250 }, seed);
+            var s = GameState.NewGame(cfg ?? new GameConfig { MaxPly = 250 }, seed);
             var rnd = new Random((int)seed);
             for (int n = 0; n < maxActions; n++)
             {
@@ -63,6 +64,16 @@ namespace PowerChess.Core.Tests
                 results[r] = results.ContainsKey(r) ? results[r] + 1 : 1;
             }
             TestContext.Out.WriteLine(string.Join(", ", results.Select(kv => kv.Key + "=" + kv.Value)));
+        }
+
+        [Test]
+        public void Random_games_in_revealed_mode_keep_invariants_and_terminate()
+        {
+            for (ulong seed = 1; seed <= 40; seed++)
+            {
+                var cfg = new GameConfig { MaxPly = 250, Squares = SquareMode.Revealed };
+                PlayRandomGame(seed, null, 1500, cfg);
+            }
         }
 
         [Test]

@@ -27,6 +27,12 @@ public sealed class GameOptions
     public PowerupKind? Demo;
     /// <summary>Start on the small training board (one-shot; cleared once the game is created).</summary>
     public bool Training;
+    /// <summary>Revealed shows the powerup on each square (an occasional one stays a mystery); Mystery hides every one.</summary>
+    public SquareMode Mode = SquareMode.Revealed;
+    /// <summary>In Revealed mode, how often a spawned pair stays a hidden mystery.</summary>
+    public double HiddenChance = 0.2;
+    /// <summary>Squares to show as revealed, e.g. <c>reveal=d4:fireball,e5:steal</c>.</summary>
+    public List<(string sq, PowerupKind kind)> Reveal = new();
 
     public static GameOptions FromQuery(string query)
     {
@@ -67,6 +73,15 @@ public sealed class GameOptions
                 case "tut": o.Tutorials = val != "0"; o.TutorialsExplicit = val == "1"; break;
                 case "demo": if (Enum.TryParse<PowerupKind>(val, true, out var dk)) o.Demo = dk; break;
                 case "training": o.Training = val != "0"; break;
+                case "mode": o.Mode = val.Equals("mystery", StringComparison.OrdinalIgnoreCase) ? SquareMode.Mystery : SquareMode.Revealed; break;
+                case "hidden": if (double.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var hc)) o.HiddenChance = Math.Clamp(hc, 0, 1); break;
+                case "reveal":
+                    foreach (var item in val.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var f = item.Split(':');
+                        if (f.Length == 2 && Enum.TryParse<PowerupKind>(f[1], true, out var rk)) o.Reveal.Add((f[0], rk));
+                    }
+                    break;
             }
         }
         return o;

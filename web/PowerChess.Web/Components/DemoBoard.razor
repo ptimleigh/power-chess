@@ -8,7 +8,7 @@
             {
                 int sq = Sq.Make(file, rank);
                 <div class="@TileClass(sq)">
-                    @if (ctx.Mysteries.Contains(sq)) { <span class="mystery-mark">?</span> }
+                    @if (ctx.Mysteries.Contains(sq)) { <PowerupMark Kind="PowerupKind.None" /> }
                     @if (ctx.Boulders.Contains(sq)) { <span class="boulder">@Icons.Svg("rock")</span> }
                 </div>
             }
@@ -49,7 +49,7 @@
     {
         bool light = (Sq.File(sq) + Sq.Rank(sq)) % 2 == 1;
         var c = "sq " + (light ? "light" : "dark");
-        if (ctx.Mysteries.Contains(sq)) c += " mystery";
+        if (ctx.Mysteries.Contains(sq)) c += " mystery powerup pu-hidden";
         if (ctx.Boulders.Contains(sq)) c += " rock";
         if (ctx.Aims.Contains(sq)) c += " aim";
         return c;

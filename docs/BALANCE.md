@@ -58,3 +58,20 @@ Baseline for any side: win 42.6%, draw 14.8%, loss 42.6%.
 - Boulder cleared: 83 total, 0.14 per game
 - Big Bomb detonated: 53 total, 0.09 per game
 - Double Move cancelled by check: 5 total, 0.01 per game
+
+## Mystery vs Revealed squares
+
+500 games each, depth 2, same settings (see `bal-*` runs; `BalanceSim ... mystery|revealed`).
+
+| | Mystery | Revealed (20% hidden) |
+|---|---|---|
+| Median plies | 64 | 64 |
+| 75th percentile plies | 109 | 134 |
+| Checkmates | 85.2% | 83.6% |
+| 50-move / ply-cap draws | 12.2% / 2.6% | 12.0% / 4.2% |
+| Squares opened per game | 10.0 | 14.8 |
+
+Revealed play is about 50% more active (the AI now chases squares it can see) with the same median length and
+checkmate rate. Spread across powerups stays within about +-4 points except Transform to Queen (+12.5 to +15.6 in both
+modes, already down-weighted) and tiny samples (Transform to Pawn). Big Bomb looks strong in Mystery (+8.3) but falls to
+-0.8 in Revealed, which is within noise at this sample size. No pool changes made for Revealed.

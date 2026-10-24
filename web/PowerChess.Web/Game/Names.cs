@@ -57,6 +57,9 @@ public static class Names
         _ => PowerupInfo.IsTransform(k) ? "spark" : "question",
     };
 
+    /// <summary>Style class for a powerup square: hidden mystery, a buff for a piece, or a perk for the player.</summary>
+    public static string SquareClass(PowerupKind k) => k == PowerupKind.None ? "pu-hidden" : PowerupInfo.IsPerk(k) ? "pu-perk" : "pu-buff";
+
     public static PowerupKind ForBuff(Buff b) => b switch
     {
         Buff.DoubleMove => PowerupKind.DoubleMove,

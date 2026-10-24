@@ -189,22 +189,50 @@ namespace PowerChess.Core
 
             if (alive && s.Mystery[a.To])
             {
-                s.Mystery[a.To] = false;
-                if (!s.SearchMode)
+                var shown = (PowerupKind)s.Content[a.To];
+                if (shown == PowerupKind.None)
                 {
-                    var kind = Draw(s, s.Cells[a.To], a.To);
-                    if (kind != PowerupKind.None)
+                    // A hidden mystery: the powerup is drawn now.
+                    s.Mystery[a.To] = false;
+                    if (!s.SearchMode)
                     {
-                        Emit(ev, EventKind.PickupFound, a.To, a.To, s.Cells[a.To].Type, me, kind);
+                        var kind = Draw(s, s.Cells[a.To], a.To);
+                        if (kind != PowerupKind.None)
+                        {
+                            Emit(ev, EventKind.PickupFound, a.To, a.To, s.Cells[a.To].Type, me, kind);
+                            if (s.Perks(me, PowerupKind.Reroll) > 0)
+                            {
+                                s.PendingSquare = a.To;
+                                s.PendingKind = kind;
+                                return;
+                            }
+                            ApplyPickup(s, me, a.To, kind, ev);
+                        }
+                    }
+                }
+                else if (Eligible(s, s.Cells[a.To], a.To, shown))
+                {
+                    // A revealed square: the player knew what it held. The AI's lookahead applies it too (no randomness).
+                    s.Mystery[a.To] = false;
+                    s.Content[a.To] = 0;
+                    if (s.SearchMode)
+                    {
+                        ApplyPickup(s, me, a.To, shown, null);
+                    }
+                    else
+                    {
+                        Emit(ev, EventKind.PickupFound, a.To, a.To, s.Cells[a.To].Type, me, shown);
                         if (s.Perks(me, PowerupKind.Reroll) > 0)
                         {
                             s.PendingSquare = a.To;
-                            s.PendingKind = kind;
+                            s.PendingKind = shown;
                             return;
                         }
-                        ApplyPickup(s, me, a.To, kind, ev);
+                        ApplyPickup(s, me, a.To, shown, ev);
                     }
                 }
+                // Otherwise the piece cannot use what the square holds (a king and a buff, a capped perk, ...):
+                // the square is left untouched, so it is still there when something that can use it arrives.
             }
 
             Finish(s, ev);
@@ -332,7 +360,8 @@ namespace PowerChess.Core
             return PowerupKind.None;
         }
 
-        static bool Eligible(GameState s, Piece p, int sq, PowerupKind kind)
+        /// <summary>Can this piece receive this powerup right now? Kings only take perks, caps and duplicates apply.</summary>
+        public static bool Eligible(GameState s, Piece p, int sq, PowerupKind kind)
         {
             bool perk = PowerupInfo.IsPerk(kind);
             // Kings are immune to buffs, so they only ever pick up player perks.
@@ -408,8 +437,38 @@ namespace PowerChess.Core
             int pick = candidates[s.Rng.Range(candidates.Count)];
             s.Mystery[pick] = true;
             s.Mystery[Sq.Mirror(pick)] = true;
-            Emit(ev, EventKind.SquareSpawned, pick, Sq.Mirror(pick), PieceType.None, s.ToMove, PowerupKind.None);
+            var shown = PowerupKind.None;
+            if (s.Config.Squares == SquareMode.Revealed && s.Rng.Range(1000) >= (int)(s.Config.MysteryChance * 1000))
+            {
+                // Both squares of a mirrored pair hold the same powerup, so neither side is favoured.
+                shown = DrawForSquare(s);
+                s.Content[pick] = (byte)shown;
+                s.Content[Sq.Mirror(pick)] = (byte)shown;
+            }
+            Emit(ev, EventKind.SquareSpawned, pick, Sq.Mirror(pick), PieceType.None, s.ToMove, shown);
             return true;
+        }
+
+        /// <summary>Weighted draw from the pool for a revealed square (no particular piece in mind).</summary>
+        public static PowerupKind DrawForSquare(GameState s)
+        {
+            var pool = s.Config.Pool;
+            bool rewind = s.Config.RewindAllowed[0] || s.Config.RewindAllowed[1];
+            int total = 0;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                if (pool[i].Kind == PowerupKind.Rewind && !rewind) continue;
+                total += pool[i].Weight;
+            }
+            if (total <= 0) return PowerupKind.None;
+            int roll = s.Rng.Range(total);
+            for (int i = 0; i < pool.Count; i++)
+            {
+                if (pool[i].Kind == PowerupKind.Rewind && !rewind) continue;
+                roll -= pool[i].Weight;
+                if (roll < 0) return pool[i].Kind;
+            }
+            return PowerupKind.None;
         }
 
         static bool IsSpawnable(GameState s, int sq)

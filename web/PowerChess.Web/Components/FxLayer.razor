@@ -23,6 +23,14 @@
                 <i>@Icons.Svg("star")</i><i>@Icons.Svg("star")</i><i>@Icons.Svg("star")</i>
             </div>
             break;
+        case "fireball":
+            double fdx = Cx(fx.To) - Cx(fx.Sq), fdy = Cy(fx.To) - Cy(fx.Sq);
+            double flen = Math.Max(0.01, Math.Sqrt(fdx * fdx + fdy * fdy));
+            double fang = Math.Atan2(fdy, fdx) * 180 / Math.PI;
+            <div class="fx-fireball" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;width:@(N(flen))%;--r:@(N(fang))deg;--bw:@(N(Size * 0.95 / flen * 100))%;--dur:@(fx.DurMs)ms">
+                <div class="ball"><i></i><i></i><i></i></div>
+            </div>
+            break;
         case "beam":
             double dx = Cx(fx.To) - Cx(fx.Sq), dy = Cy(fx.To) - Cy(fx.Sq);
             double len = Math.Sqrt(dx * dx + dy * dy);

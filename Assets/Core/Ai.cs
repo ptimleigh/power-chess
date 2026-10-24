@@ -124,11 +124,14 @@ namespace PowerChess.Core
             int score = 0;
             int mysteryCount = 0;
             var mystery = new int[8];
+            var weight = new int[8];
             for (int sq = 0; sq < 64 && mysteryCount < 8; sq++)
             {
-                if (s.Mystery[sq]) mystery[mysteryCount++] = sq;
+                if (!s.Mystery[sq]) continue;
+                weight[mysteryCount] = SquareWeight((PowerupKind)s.Content[sq]);
+                mystery[mysteryCount++] = sq;
             }
-            int nearestWhite = 99, nearestBlack = 99;
+            int pullWhite = 0, pullBlack = 0;
 
             for (int sq = 0; sq < 64; sq++)
             {
@@ -140,8 +143,9 @@ namespace PowerChess.Core
                     for (int m = 0; m < mysteryCount; m++)
                     {
                         int d = Math.Max(Math.Abs(Sq.File(sq) - Sq.File(mystery[m])), Math.Abs(Sq.Rank(sq) - Sq.Rank(mystery[m])));
-                        if (p.Side == Side.White) { if (d < nearestWhite) nearestWhite = d; }
-                        else if (d < nearestBlack) nearestBlack = d;
+                        int pull = d <= 3 ? (4 - d) * weight[m] : 0;
+                        if (p.Side == Side.White) { if (pull > pullWhite) pullWhite = pull; }
+                        else if (pull > pullBlack) pullBlack = pull;
                     }
                 }
                 int v = PieceValue[(int)p.Type];
@@ -163,7 +167,7 @@ namespace PowerChess.Core
             }
 
             score += PerkValue(s, Side.White) - PerkValue(s, Side.Black);
-            score += MysteryPull(nearestWhite) - MysteryPull(nearestBlack);
+            score += pullWhite - pullBlack;
             return s.ToMove == Side.White ? score : -score;
         }
 
@@ -174,6 +178,22 @@ namespace PowerChess.Core
         static int MysteryPull(int distance)
         {
             return distance <= 3 ? (4 - distance) * 4 : 0;
+        }
+
+        /// <summary>Per-step pull of a powerup square: hidden ones get a flat amount, revealed ones scale with their worth.</summary>
+        static int SquareWeight(PowerupKind kind)
+        {
+            switch (kind)
+            {
+                case PowerupKind.None: return 4;
+                case PowerupKind.Steal: return 8;
+                case PowerupKind.BigBomb: return 6;
+                case PowerupKind.Stun: return 6;
+                case PowerupKind.Fireball: return 5;
+                case PowerupKind.SmallBomb: return 4;
+                case PowerupKind.SpikedArmor: return 3;
+                default: return PowerupInfo.IsTransform(kind) ? 6 : 2;
+            }
         }
 
         static int PerkValue(GameState s, Side side)

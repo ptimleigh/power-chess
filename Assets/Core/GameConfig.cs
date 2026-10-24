@@ -45,7 +45,7 @@ namespace PowerChess.Core
                 new WeightedKind(PowerupKind.TransformKnight, 3),
                 new WeightedKind(PowerupKind.TransformBishop, 3),
                 new WeightedKind(PowerupKind.TransformRook, 3),
-                new WeightedKind(PowerupKind.TransformQueen, 3),
+                new WeightedKind(PowerupKind.TransformQueen, 1),
                 new WeightedKind(PowerupKind.Fireball, 8),
                 new WeightedKind(PowerupKind.Steal, 6),
                 new WeightedKind(PowerupKind.Boulder, 6),

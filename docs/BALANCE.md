@@ -1,0 +1,60 @@
+# Balance report
+
+Generated with `dotnet run --project tools/BalanceSim -c Release -- <games> <depth> <outFile> [spawnInterval]`.
+
+## Findings and what changed
+
+- **Transform to Queen was the one big outlier.** Sides that picked one up won about 25 points more often than baseline (68% vs 44%, 101 samples), which makes sense: it turns a cheap piece into a queen. I cut its weight in `GameConfig.DefaultPool` from 3 to 1. It now turns up about 0.10 times per game instead of 0.25 and is a rare jackpot square. Holders still win more often (the table below, 61 samples), which is expected for a free queen; if it still feels swingy in play, the next lever is restricting what it can upgrade.
+- **Big Bomb is consistently a little strong** (+7 to +9 points across four runs) but is rare (weight 2), so I left it. Worth watching.
+- **Everything else is within a few points of baseline** at depth 2, so no other powerup is dominant or useless.
+- **Stun looked weak at depth 1 (-6 points) but is neutral at depth 2 (-1 point).** The depth-1 AI wasted turns on it, so that was AI behaviour, not the rule.
+- **Spawn rate does not change game length.** Median length was 70 plies with a new pair every 2 plies, 64 every 4, and 69 every 7, with about 10 squares opened per game in each case. I kept 4. Game length comes from how the AI plays, so tune it with AI strength or a move limit rather than spawn rate.
+- **Endings:** about 85% of depth-2 games end in checkmate; most of the rest are 50-move draws. The depth-1 AI is too weak to finish games (37% 50-move draws), so use depth 2 or higher for balance questions.
+- The AI cannot use Rewind (so it never draws it), and uses Reroll only when a pickup comes up, so those two perks are under-represented here.
+
+Method, 600 games below after the change; the "before" numbers in this section come from 400 games at depth 2 with Transform-to-Queen at weight 3.
+
+600 AI-vs-AI games at search depth 2, all powerups enabled (default pool), spawn every 4 plies, 300-ply limit, 4 random opening actions.
+The AI is shallow, so treat absolute numbers loosely and look for outliers. "Win rate when obtained" is how often a side won in games where it picked that powerup up at least once; it is a correlation (stronger sides also grab more squares), not proof of cause.
+
+## Game length and endings
+
+- Plies per game: median 64, 25th percentile 44, 75th percentile 107, longest 300
+- Mystery squares opened per game: 9.9
+- Win: Checkmate: 511 (85.2%)
+- Draw: 50-move rule: 74 (12.3%)
+- Draw: Move limit reached: 15 (2.5%)
+
+## Powerups
+
+Baseline for any side: win 42.6%, draw 14.8%, loss 42.6%.
+
+| Powerup | Times a side obtained it | Win rate when obtained | Draw | Loss | Win vs baseline |
+|---|---|---|---|---|---|
+| TransformQueen | 61 | 57.4% | 14.8% | 27.9% | +14.8% |
+| BigBomb | 130 | 50.0% | 23.1% | 26.9% | +7.4% |
+| SpikedArmor | 474 | 46.2% | 15.2% | 38.6% | +3.6% |
+| Fireball | 445 | 46.1% | 17.5% | 36.4% | +3.5% |
+| SmallBomb | 304 | 45.7% | 18.8% | 35.5% | +3.1% |
+| TransformRook | 150 | 45.3% | 17.3% | 37.3% | +2.8% |
+| Poison | 471 | 43.9% | 18.0% | 38.0% | +1.4% |
+| DoubleMove | 538 | 42.8% | 18.0% | 39.2% | +0.2% |
+| Stun | 527 | 42.5% | 19.7% | 37.8% | -0.1% |
+| Reroll | 515 | 41.2% | 17.9% | 41.0% | -1.4% |
+| TransformBishop | 151 | 41.1% | 19.9% | 39.1% | -1.5% |
+| Boulder | 404 | 40.3% | 19.8% | 39.9% | -2.2% |
+| TransformKnight | 111 | 38.7% | 19.8% | 41.4% | -3.8% |
+| Steal | 405 | 38.3% | 18.8% | 43.0% | -4.3% |
+| TransformPawn | 7 | 14.3% | 42.9% | 42.9% | -28.3% |
+
+## Uses
+
+- Stun used: 586 total, 0.98 per game
+- Steal used: 411 total, 0.69 per game
+- Fireball fired: 402 total, 0.67 per game
+- Boulder placed: 299 total, 0.50 per game
+- Poison triggered: 243 total, 0.41 per game
+- Small Bomb detonated: 113 total, 0.19 per game
+- Boulder cleared: 83 total, 0.14 per game
+- Big Bomb detonated: 53 total, 0.09 per game
+- Double Move cancelled by check: 5 total, 0.01 per game

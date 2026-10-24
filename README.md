@@ -16,6 +16,7 @@ as play (short, juicy moments), with ads as the revenue model.
 | `src/PowerChess.Core` | A `.csproj` that compiles `Assets/Core` outside Unity. |
 | `tests/PowerChess.Core.Tests` | NUnit tests: perft counts, every powerup, seeded random-game simulations, AI. |
 | `web/PowerChess.Web` | Playable Blazor WebAssembly prototype that reuses the engine unchanged. |
+| `tools/BalanceSim` | Plays thousands of AI-vs-AI games and writes [docs/BALANCE.md](docs/BALANCE.md). |
 
 ## Run the tests
 

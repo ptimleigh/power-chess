@@ -122,10 +122,28 @@ namespace PowerChess.Core
         public static int Evaluate(GameState s)
         {
             int score = 0;
+            int mysteryCount = 0;
+            var mystery = new int[8];
+            for (int sq = 0; sq < 64 && mysteryCount < 8; sq++)
+            {
+                if (s.Mystery[sq]) mystery[mysteryCount++] = sq;
+            }
+            int nearestWhite = 99, nearestBlack = 99;
+
             for (int sq = 0; sq < 64; sq++)
             {
                 var p = s.Cells[sq];
                 if (p.IsEmpty) continue;
+
+                if (mysteryCount > 0 && p.Type != PieceType.King)
+                {
+                    for (int m = 0; m < mysteryCount; m++)
+                    {
+                        int d = Math.Max(Math.Abs(Sq.File(sq) - Sq.File(mystery[m])), Math.Abs(Sq.Rank(sq) - Sq.Rank(mystery[m])));
+                        if (p.Side == Side.White) { if (d < nearestWhite) nearestWhite = d; }
+                        else if (d < nearestBlack) nearestBlack = d;
+                    }
+                }
                 int v = PieceValue[(int)p.Type];
                 int f = Sq.File(sq), r = Sq.Rank(sq);
                 int centre = 6 - (Math.Abs(2 * f - 7) + Math.Abs(2 * r - 7)) / 2;
@@ -145,7 +163,17 @@ namespace PowerChess.Core
             }
 
             score += PerkValue(s, Side.White) - PerkValue(s, Side.Black);
+            score += MysteryPull(nearestWhite) - MysteryPull(nearestBlack);
             return s.ToMove == Side.White ? score : -score;
+        }
+
+        /// <summary>
+        /// Small reward for the piece closest to an unopened mystery square, so the AI goes after powerups. Capped well
+        /// below a pawn so it never gives up material for one.
+        /// </summary>
+        static int MysteryPull(int distance)
+        {
+            return distance <= 3 ? (4 - distance) * 4 : 0;
         }
 
         static int PerkValue(GameState s, Side side)

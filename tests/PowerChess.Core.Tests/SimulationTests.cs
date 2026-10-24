@@ -86,6 +86,23 @@ namespace PowerChess.Core.Tests
         }
 
         [Test]
+        public void Ai_heads_for_an_unopened_mystery_square_when_nothing_else_matters()
+        {
+            var s = T.Fen("4k3/8/8/8/8/8/8/1N2K3 w - - 0 1");
+            s.Mystery[Sq.Parse("d4")] = true;
+            Assert.AreEqual("b1c3", new Ai(2).Choose(s).ToString());
+        }
+
+        [Test]
+        public void Ai_will_not_give_up_a_piece_for_a_mystery_square()
+        {
+            // The knight could step onto the mystery square on d5, but the pawn on e6 would simply capture it.
+            var s = T.Fen("4k3/8/4p3/8/8/2N5/8/4K3 w - - 0 1");
+            s.Mystery[Sq.Parse("d5")] = true;
+            Assert.AreNotEqual("c3d5", new Ai(2).Choose(s).ToString());
+        }
+
+        [Test]
         public void Ai_wins_material_instead_of_hanging_pieces()
         {
             // White queen can take an undefended rook; it should not walk into the pawn's capture.

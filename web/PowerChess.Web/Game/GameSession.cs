@@ -45,7 +45,7 @@ public sealed class GameSession
 {
     readonly GameOptions opt;
     readonly Random rnd = new();
-    readonly Ai ai;
+    Ai ai;
     int nextId = 1;
 
     // Position history for the move viewer and the Rewind perk. viewHistory[i] holds the piece views at position i
@@ -95,6 +95,8 @@ public sealed class GameSession
 
     public Action? Changed;
     public Action<string>? Sfx;
+    /// <summary>Called with a save string after every completed action, or null when there is nothing to resume (game over).</summary>
+    public Action<string?>? Persist;
 
     public GameSession(GameOptions options)
     {
@@ -112,13 +114,19 @@ public sealed class GameSession
 
     // ---------- setup ----------
 
-    public void NewGame()
+    GameConfig BuildConfig()
     {
         var cfg = new GameConfig { StartRerolls = opt.Rerolls };
         if (opt.Pairs >= 0) cfg.InitialPairs = opt.Pairs;
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
         cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
+        return cfg;
+    }
+
+    public void NewGame()
+    {
+        var cfg = BuildConfig();
 
         if (opt.Fen == null)
         {
@@ -160,9 +168,109 @@ public sealed class GameSession
         ClearSelection();
         Refresh();
         Changed?.Invoke();
+        Save();
     }
 
     public void Restart() => NewGame();
+
+    // ---------- save / resume ----------
+
+    /// <summary>Serialise the game (engine state, history and piece identities) so a reload can pick up where it left off.</summary>
+    public string SaveString()
+    {
+        var ids = new List<byte>();
+        void AddIds(List<PieceView> views)
+        {
+            var map = new ushort[64];
+            foreach (var v in views) if (!v.Dying) map[v.Square] = (ushort)v.Id;
+            foreach (var id in map) { ids.Add((byte)(id & 255)); ids.Add((byte)(id >> 8)); }
+        }
+        foreach (var views in viewHistory) AddIds(views);
+        AddIds(Pieces);
+        return string.Join("|", GameStateCodec.EncodeGame(State, history), nextId, opt.Ai, Convert.ToBase64String(ids.ToArray()));
+    }
+
+    /// <summary>Restore a saved game. Returns false (leaving the current game untouched) if the save is not usable.</summary>
+    public bool Restore(string saved)
+    {
+        try
+        {
+            var parts = saved.Split('|');
+            if (parts.Length != 4) return false;
+            int savedNextId = int.Parse(parts[1]);
+            int savedAi = int.Parse(parts[2]);
+            var idBytes = Convert.FromBase64String(parts[3]);
+
+            int oldAi = opt.Ai;
+            opt.Ai = Math.Clamp(savedAi, 0, 3);
+            GameState state;
+            GameHistory hist;
+            if (!GameStateCodec.TryDecodeGame(parts[0], BuildConfig(), out state, out hist) || idBytes.Length != (hist.Count + 1) * 128)
+            {
+                opt.Ai = oldAi;
+                return false;
+            }
+
+            List<PieceView> ViewsFor(GameState at, int index)
+            {
+                var list = new List<PieceView>();
+                for (int sq = 0; sq < 64; sq++)
+                {
+                    int id = idBytes[index * 128 + sq * 2] | (idBytes[index * 128 + sq * 2 + 1] << 8);
+                    var c = at.Cells[sq];
+                    if (c.IsEmpty) continue;
+                    if (id == 0) throw new InvalidOperationException("missing piece id");
+                    list.Add(new PieceView { Id = id, Type = c.Type, Side = c.Side, Square = sq, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns });
+                }
+                return list;
+            }
+
+            var newViews = new List<List<PieceView>>();
+            for (int i = 0; i < hist.Count; i++) newViews.Add(ViewsFor(hist[i].Before, i));
+            var live = ViewsFor(state, hist.Count);
+
+            history.Clear();
+            for (int i = 0; i < hist.Count; i++) history.Record(hist[i].Before, hist[i].Action);
+            viewHistory.Clear();
+            viewHistory.AddRange(newViews);
+            Pieces.Clear();
+            Pieces.AddRange(live);
+            State = state;
+            nextId = Math.Max(savedNextId, 1);
+            ai = new Ai(opt.Ai switch { 1 => 1, 3 => 3, _ => 2 });
+            Effects.Clear();
+            Toasts.Clear();
+            reviewIndex = -1;
+            Busy = false;
+            Thinking = false;
+            var (lf, lt) = LastOf(history.Count);
+            LastFrom = lf;
+            LastTo = lt;
+            ClearSelection();
+            Inspect = -1;
+            Refresh();
+            AddToast("Game restored", "Picked up where you left off", "gold", "history");
+            Changed?.Invoke();
+            Save();
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>After a restore, let the AI move if it is its turn.</summary>
+    public async Task ResumeAi()
+    {
+        await AiLoop();
+    }
+
+    void Save()
+    {
+        if (Persist == null) return;
+        Persist(GameOver ? null : SaveString());
+    }
 
     // ---------- input ----------
 
@@ -383,6 +491,7 @@ public sealed class GameSession
             Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == Side.Black ? "lose" : "win"));
         }
         Busy = false;
+        Save();
         Changed?.Invoke();
     }
 
@@ -515,6 +624,7 @@ public sealed class GameSession
         Refresh();
         AddToast("REWOUND", "Your last turn was taken back", "gold", "rewind");
         Sfx?.Invoke("rewind");
+        Save();
         Changed?.Invoke();
     }
 

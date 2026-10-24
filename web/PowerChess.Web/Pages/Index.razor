@@ -313,21 +313,58 @@
     /// <summary>The side whose inventory the action bar shows (the human, or whoever is to move in 2-player mode).</summary>
     Side ActiveSide => S.VsAi ? Side.White : S.Turn;
 
-    protected override void OnInitialized()
+    const string SaveKey = "powerchess.save.v1";
+    bool debugOptions;
+
+    protected override async Task OnInitializedAsync()
     {
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
         opt = GameOptions.FromQuery(uri.Query);
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
-        StartNew();
+        // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=" }
+            .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+        // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game
+        // before we have read it.
+        StartNew(persist: false);
+        if (debugOptions) return;
+
+        string? saved = null;
+        try { saved = await JS.InvokeAsync<string?>("localStorage.getItem", SaveKey); }
+        catch { /* storage unavailable: just play */ }
+
+        bool restored = !string.IsNullOrEmpty(saved) && S.Restore(saved);
+        EnablePersist();
+        if (restored) await S.ResumeAi();
     }
 
-    void StartNew()
+    void StartNew() => StartNew(persist: true);
+
+    void StartNew(bool persist)
     {
-        if (S != null) { S.Changed = null; S.Sfx = null; }
+        if (S != null) { S.Changed = null; S.Sfx = null; S.Persist = null; }
         if (!urlSeed) opt.Seed = (ulong)DateTime.UtcNow.Ticks;
         S = new GameSession(opt);
         S.Changed = () => InvokeAsync(StateHasChanged);
         S.Sfx = name => { _ = PlaySfx(name); };
+        if (persist && !debugOptions) EnablePersist();
+    }
+
+    void EnablePersist()
+    {
+        S.Persist = text => { _ = PersistAsync(text); };
+        S.Persist(S.GameOver ? null : S.SaveString());
+    }
+
+    async Task PersistAsync(string? text)
+    {
+        try
+        {
+            if (text == null) await JS.InvokeVoidAsync("localStorage.removeItem", SaveKey);
+            else await JS.InvokeVoidAsync("localStorage.setItem", SaveKey, text);
+        }
+        catch { /* private mode or quota: resuming just will not work */ }
     }
 
     async Task PlaySfx(string name)
@@ -349,7 +386,7 @@
 
     public void Dispose()
     {
-        if (S != null) { S.Changed = null; S.Sfx = null; }
+        if (S != null) { S.Changed = null; S.Sfx = null; S.Persist = null; }
     }
 
     // ---------- presentation helpers ----------

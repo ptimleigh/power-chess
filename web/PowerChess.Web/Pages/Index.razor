@@ -153,8 +153,14 @@
         }
         @if (S.HasDetonate)
         {
-            <button class="perk boom-btn" data-action="detonate" @onclick="S.Detonate">
+            <button class="perk boom-btn" data-action="detonate" @onclick="S.PreviewBomb">
                 <span class="pi">@Icons.Svg("bomb")</span><span class="pl">Detonate</span>
+            </button>
+        }
+        @if (S.Mode == InputMode.BombPreview)
+        {
+            <button class="perk boom-btn" data-action="bomb-confirm" @onclick="S.Detonate">
+                <span class="pi">@Icons.Svg("bomb")</span><span class="pl">Confirm blast</span>
             </button>
         }
         @if (S.Mode != InputMode.Normal && S.Mode != InputMode.Promotion)
@@ -408,6 +414,8 @@
                 : enemy ? " target cap" : " target";
         }
         if (S.Doomed.Contains(sq)) c += " doomed";
+        if (S.Spared.Contains(sq)) c += " spared";
+        if (S.BlastArea.Contains(sq)) c += " blast";
         if (S.InCheck && !S.Reviewing && cell.Type == PieceType.King && cell.Side == S.Turn && !S.GameOver) c += " check";
         return c;
     }

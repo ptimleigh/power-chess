@@ -2,7 +2,7 @@ using PowerChess.Core;
 
 namespace PowerChess.Web.Game;
 
-public enum InputMode { Normal, Armed, FireAim, Promotion }
+public enum InputMode { Normal, Armed, FireAim, BombPreview, Promotion }
 
 /// <summary>A piece with a stable identity so CSS transitions can animate it as the engine state changes.</summary>
 public sealed class PieceView
@@ -71,6 +71,12 @@ public sealed class GameSession
     public HashSet<int> Targets { get; } = new();
     /// <summary>Extra pieces a queen's fireball would also destroy along the aimed lines (preview only).</summary>
     public HashSet<int> Doomed { get; } = new();
+    /// <summary>Bomb preview: pieces inside the blast that survive (kings, armored pieces).</summary>
+    public HashSet<int> Spared { get; } = new();
+    /// <summary>Bomb preview: every square inside the blast.</summary>
+    public HashSet<int> BlastArea { get; } = new();
+    public int BombOwnLosses { get; private set; }
+    public int BombEnemyLosses { get; private set; }
     /// <summary>Square of the powered-up piece whose info card is open, or -1.</summary>
     public int Inspect { get; private set; } = -1;
     public List<GameAction> PromoChoices { get; private set; } = new();
@@ -278,7 +284,37 @@ public sealed class GameSession
 
     public bool CanUse(ActionKind kind) => HumanTurn && !PickupPending && State.ForcedMover < 0 && Legal.Any(a => a.Kind == kind);
 
-    public bool HasDetonate => Selected >= 0 && Legal.Any(a => a.Kind == ActionKind.Detonate && a.From == Selected);
+    public bool HasDetonate => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Detonate && a.From == Selected);
+
+    /// <summary>Show exactly what the selected bomber would destroy, then wait for a confirm.</summary>
+    public void PreviewBomb()
+    {
+        if (!HasDetonate) return;
+        int bomber = Selected;
+        var piece = State.Cells[bomber];
+        Mode = InputMode.BombPreview;
+        Targets.Clear();
+        Doomed.Clear();
+        Spared.Clear();
+        BlastArea.Clear();
+        BombOwnLosses = BombEnemyLosses = 0;
+        var area = new List<int>();
+        Geometry.AreaAround(bomber, Geometry.BombRadius(piece), area);
+        foreach (int sq in area)
+        {
+            BlastArea.Add(sq);
+            var c = State.Cells[sq];
+            if (Geometry.IsVulnerableToBomb(c))
+            {
+                Doomed.Add(sq);
+                if (c.Side == piece.Side) BombOwnLosses++; else BombEnemyLosses++;
+            }
+            else if (State.Boulders[sq]) Doomed.Add(sq);
+            else if (!c.IsEmpty) Spared.Add(sq);
+        }
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
 
     /// <summary>The selected piece earned a fireball and has at least one enemy in line.</summary>
     public bool HasFireball => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Fireball && a.From == Selected);
@@ -306,6 +342,8 @@ public sealed class GameSession
         Selected = -1;
         Targets.Clear();
         Doomed.Clear();
+        Spared.Clear();
+        BlastArea.Clear();
         Mode = InputMode.Normal;
         PromoChoices = new List<GameAction>();
     }
@@ -369,6 +407,12 @@ public sealed class GameSession
     {
         if (!HumanTurn || PickupPending || Mode == InputMode.Promotion) return;
 
+        if (Mode == InputMode.BombPreview)
+        {
+            Cancel(); // tapping the board backs out; the Confirm button is the only way to detonate
+            return;
+        }
+
         if (Mode == InputMode.Armed)
         {
             if (!Targets.Contains(sq)) { Cancel(); return; }
@@ -415,10 +459,13 @@ public sealed class GameSession
 
     public async Task Choose(GameAction a) => await Human(a);
 
+    /// <summary>Confirm step of the bomb preview: actually detonate the selected bomber.</summary>
     public async Task Detonate()
     {
-        if (!HasDetonate) return;
-        await Human(Legal.First(a => a.Kind == ActionKind.Detonate && a.From == Selected));
+        if (Mode != InputMode.BombPreview || Selected < 0) return;
+        var action = Legal.FirstOrDefault(a => a.Kind == ActionKind.Detonate && a.From == Selected);
+        if (action.Kind != ActionKind.Detonate) return;
+        await Human(action);
     }
 
     public async Task KeepPickup()
@@ -531,6 +578,8 @@ public sealed class GameSession
                     _ => "",
                 };
             if (Mode == InputMode.FireAim) return "Fireball: tap an enemy to choose the direction";
+            if (Mode == InputMode.BombPreview)
+                return $"Bomb: destroys {BombOwnLosses} of your pieces and {BombEnemyLosses} of theirs. Confirm or cancel.";
             if (Mode == InputMode.Promotion) return "Promote to...";
             if (State.ForcedMover >= 0) return "Double Move! Move that piece again";
             string who = VsAi ? "Your move" : (State.ToMove == Side.White ? "White to move" : "Black to move");

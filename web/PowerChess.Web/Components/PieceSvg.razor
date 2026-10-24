@@ -1,0 +1,58 @@
+@* Chunky arcade-style chess pieces drawn with plain SVG shapes (no fonts needed). Fills come from CSS gradients. *@
+<svg viewBox="0 0 100 100" class="piece-svg @(Side == Side.White ? "w" : "b")" aria-hidden="true">
+    <ellipse cx="50" cy="93" rx="30" ry="4" class="shadow" />
+    @switch (Type)
+    {
+        case PieceType.Pawn:
+            <rect x="24" y="80" width="52" height="12" rx="6" class="body" />
+            <path d="M34 82 C34 64 42 54 50 48 C58 54 66 64 66 82 Z" class="body" />
+            <rect x="36" y="44" width="28" height="8" rx="4" class="body" />
+            <circle cx="50" cy="30" r="15" class="body" />
+            <circle cx="45" cy="25" r="4" class="shine" />
+            break;
+        case PieceType.Rook:
+            <rect x="22" y="80" width="56" height="12" rx="6" class="body" />
+            <path d="M30 82 L34 42 L66 42 L70 82 Z" class="body" />
+            <path d="M26 42 L26 18 L38 18 L38 26 L45 26 L45 18 L55 18 L55 26 L62 26 L62 18 L74 18 L74 42 Z" class="body" />
+            <rect x="38" y="50" width="8" height="22" rx="3" class="shine" />
+            break;
+        case PieceType.Knight:
+            <rect x="22" y="80" width="56" height="12" rx="6" class="body" />
+            <path d="M28 82 C27 62 34 50 44 44 C38 43 30 46 24 53 L18 46 C24 36 34 28 42 24 L42 12 L52 19 C68 19 80 34 78 56 C77 66 76 74 76 82 Z" class="body" />
+            <circle cx="55" cy="33" r="3.5" class="eye" />
+            <path d="M58 24 C66 28 70 36 70 46" class="line" />
+            <path d="M24 53 L32 55" class="line" />
+            break;
+        case PieceType.Bishop:
+            <rect x="26" y="80" width="48" height="12" rx="6" class="body" />
+            <path d="M36 82 C37 68 42 62 50 58 C58 62 63 68 64 82 Z" class="body" />
+            <ellipse cx="50" cy="40" rx="16" ry="22" class="body" />
+            <circle cx="50" cy="13" r="7" class="body" />
+            <path d="M50 26 L58 38" class="line" />
+            <ellipse cx="44" cy="34" rx="4" ry="8" class="shine" />
+            break;
+        case PieceType.Queen:
+            <rect x="22" y="80" width="56" height="12" rx="6" class="body" />
+            <path d="M28 82 L22 36 L38 54 L50 28 L62 54 L78 36 L72 82 Z" class="body" />
+            <circle cx="22" cy="32" r="6" class="body" />
+            <circle cx="38" cy="22" r="6" class="body" />
+            <circle cx="50" cy="16" r="6.5" class="body" />
+            <circle cx="62" cy="22" r="6" class="body" />
+            <circle cx="78" cy="32" r="6" class="body" />
+            <rect x="34" y="62" width="32" height="6" rx="3" class="shine" />
+            break;
+        case PieceType.King:
+            <rect x="22" y="80" width="56" height="12" rx="6" class="body" />
+            <path d="M30 82 C30 64 38 52 50 46 C62 52 70 64 70 82 Z" class="body" />
+            <rect x="32" y="42" width="36" height="9" rx="4.5" class="body" />
+            <rect x="45" y="8" width="10" height="32" rx="4" class="body" />
+            <rect x="35" y="18" width="30" height="10" rx="4" class="body" />
+            <rect x="38" y="64" width="24" height="6" rx="3" class="shine" />
+            break;
+    }
+</svg>
+
+@code {
+    [Parameter] public PieceType Type { get; set; }
+    [Parameter] public Side Side { get; set; }
+}

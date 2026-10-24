@@ -418,6 +418,14 @@ namespace PowerChess.Core
 
         public static GameResult GetResult(GameState s)
         {
+            string reason;
+            return GetResult(s, out reason);
+        }
+
+        /// <summary>Result plus a short human-readable reason ("Checkmate", "Stalemate", ...). Empty while ongoing.</summary>
+        public static GameResult GetResult(GameState s, out string reason)
+        {
+            reason = "";
             if (s.PendingSquare < 0 && s.ForcedMover < 0)
             {
                 // Insufficient material: bare kings.
@@ -427,15 +435,32 @@ namespace PowerChess.Core
                     var p = s.Cells[i];
                     if (!p.IsEmpty && p.Type != PieceType.King) onlyKings = false;
                 }
-                if (onlyKings) return GameResult.Draw;
+                if (onlyKings)
+                {
+                    reason = "Only kings left";
+                    return GameResult.Draw;
+                }
             }
 
-            if (s.HalfmoveClock >= 100 || s.Ply >= s.Config.MaxPly) return GameResult.Draw;
+            if (s.HalfmoveClock >= 100)
+            {
+                reason = "50-move rule";
+                return GameResult.Draw;
+            }
+            if (s.Ply >= s.Config.MaxPly)
+            {
+                reason = "Move limit reached";
+                return GameResult.Draw;
+            }
 
             if (MoveGen.LegalActions(s).Count == 0)
             {
                 if (Geometry.IsKingAttacked(s, s.ToMove))
+                {
+                    reason = "Checkmate";
                     return s.ToMove == Side.White ? GameResult.BlackWins : GameResult.WhiteWins;
+                }
+                reason = "Stalemate";
                 return GameResult.Draw;
             }
             return GameResult.Ongoing;

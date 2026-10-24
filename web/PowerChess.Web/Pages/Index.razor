@@ -1,0 +1,366 @@
+@page "/"
+@implements IDisposable
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Power Chess</PageTitle>
+
+<div class="app">
+    <header class="topbar">
+        <div class="logo">POWER<span>CHESS</span></div>
+        <div class="controls">
+            <select class="sel" value="@opt.Ai" @onchange="OnDifficulty" aria-label="Difficulty">
+                <option value="1">Easy</option>
+                <option value="2">Normal</option>
+                <option value="3">Hard</option>
+                <option value="0">2 players</option>
+            </select>
+            <button class="icon-btn @(muted ? "muted" : "")" @onclick="ToggleMute" title="Sound" aria-label="Toggle sound">SFX</button>
+            <button class="icon-btn" @onclick="() => showHelp = true" title="How to play" aria-label="How to play">?</button>
+            <button class="icon-btn wide" @onclick="StartNew">New</button>
+        </div>
+    </header>
+
+    <section class="player opp @(S.Turn == Side.Black && !S.GameOver ? "active" : "")">
+        <div class="avatar b"></div>
+        <div class="pname">@(S.VsAi ? "Rival" : "Black")</div>
+        <div class="chips">@InvChips(Side.Black)</div>
+    </section>
+
+    <div class="board-frame">
+        <div class="board @(S.Shaking ? "shaking" : "")" data-testid="board">
+            @for (int rank = 7; rank >= 0; rank--)
+            {
+                for (int file = 0; file < 8; file++)
+                {
+                    int sq = Sq.Make(file, rank);
+                    <div class="@TileClass(sq)" data-sq="@Sq.Name(sq)" @onclick="() => S.TapSquare(sq)">
+                        @if (S.State.Mystery[sq])
+                        {
+                            <span class="mystery-mark">?</span>
+                        }
+                        @if (S.State.Boulders[sq])
+                        {
+                            <span class="boulder">@Icons.Svg("rock")</span>
+                        }
+                        @if (file == 0)
+                        {
+                            <i class="coord rank">@(rank + 1)</i>
+                        }
+                        @if (rank == 0)
+                        {
+                            <i class="coord file">@((char)('a' + file))</i>
+                        }
+                    </div>
+                }
+            }
+
+            <div class="layer pieces">
+                @foreach (var p in S.Pieces)
+                {
+                    <div @key="p.Id" class="@PieceClass(p)" style="left:@(Sq.File(p.Square) * 12.5)%;top:@((7 - Sq.Rank(p.Square)) * 12.5)%"
+                         data-piece="@PieceName(p)" data-at="@Sq.Name(p.Square)">
+                        <div class="piece-body land-@(p.AnimSeq % 2)">
+                            <PieceSvg Type="p.Type" Side="p.Side" />
+                        </div>
+                        <div class="badges">
+                            @if (p.Buffs.HasFlag(Buff.DoubleMove)) { <span class="badge dm" title="Double Move">@Icons.Svg("x2")</span> }
+                            @if (p.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
+                            @if (p.Buffs.HasFlag(Buff.StunStrike)) { <span class="badge sg" title="Stun Strike">@Icons.Svg("star")</span> }
+                            @if (p.Buffs.HasFlag(Buff.SmallBomb)) { <span class="badge bm" title="Small Bomb">@Icons.Svg("bomb")</span> }
+                            @if (p.Buffs.HasFlag(Buff.BigBomb)) { <span class="badge bb" title="Big Bomb">@Icons.Svg("bigbomb")</span> }
+                        </div>
+                        @if (p.Stun > 0)
+                        {
+                            <div class="stun-tag" title="Stunned">@Icons.Svg("star")<b>@p.Stun</b></div>
+                        }
+                        @if (p.Buffs.HasFlag(Buff.Armor))
+                        {
+                            <div class="armor-ring" title="Spiked Armor"><b>@p.Armor</b></div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="layer fx">
+                @foreach (var fx in S.Effects)
+                {
+                    @FxView(fx)
+                }
+            </div>
+
+            <div class="toasts">
+                @foreach (var t in S.Toasts)
+                {
+                    <div @key="t.Id" class="toast @t.Css">
+                        <span class="ticon">@Icons.Svg(t.Icon)</span>
+                        <span class="ttext"><b>@t.Title</b>@if (t.Text != "") { <small>@t.Text</small> }</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <section class="player me @(S.Turn == Side.White && !S.GameOver ? "active" : "")">
+        <div class="avatar w"></div>
+        <div class="pname">@(S.VsAi ? "You" : "White")</div>
+        <div class="chips">@InvChips(Side.White)</div>
+    </section>
+
+    <section class="actions">
+        @foreach (var perk in PerkButtons)
+        {
+            var k = perk;
+            <button class="perk @(S.Mode == InputMode.Armed && S.ArmedKind == k.Action ? "on" : "")" disabled="@(!S.CanUse(k.Action))"
+                    data-perk="@k.Kind.ToString().ToLowerInvariant()" @onclick="() => S.Arm(k.Action)">
+                <span class="pi">@Icons.Svg(Names.Icon(k.Kind))</span>
+                <span class="pl">@k.Label</span>
+                <span class="pc">@S.Perk(ActiveSide, k.Kind)</span>
+            </button>
+        }
+        @if (S.HasDetonate)
+        {
+            <button class="perk boom-btn" data-action="detonate" @onclick="S.Detonate">
+                <span class="pi">@Icons.Svg("bomb")</span><span class="pl">Detonate</span>
+            </button>
+        }
+        @if (S.Mode != InputMode.Normal && S.Mode != InputMode.Promotion)
+        {
+            <button class="perk ghost" @onclick="S.Cancel"><span class="pl">Cancel</span></button>
+        }
+    </section>
+
+    <div class="status @(S.InCheck && !S.GameOver ? "warn" : "")" data-testid="status">@S.Status</div>
+</div>
+
+@if (S.PickupPending && S.HumanTurn)
+{
+    var kind = S.State.PendingKind;
+    <div class="modal" data-testid="pickup">
+        <div class="card pop">
+            <div class="kicker">Mystery square!</div>
+            <div class="big-icon @(PowerupInfo.IsPerk(kind) ? "perk" : "buff")">@Icons.Svg(Names.Icon(kind))</div>
+            <h2>@Names.Name(kind)</h2>
+            <p>@Names.Desc(kind)</p>
+            <div class="row">
+                <button class="btn primary" data-action="keep" @onclick="S.KeepPickup">Keep it</button>
+                @if (S.Perk(S.Turn, PowerupKind.Reroll) > 0)
+                {
+                    <button class="btn" data-action="reroll" @onclick="S.RerollPickup">Reroll (@S.Perk(S.Turn, PowerupKind.Reroll))</button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (S.Mode == InputMode.Promotion)
+{
+    <div class="modal" data-testid="promotion">
+        <div class="card pop">
+            <div class="kicker">Promote your pawn</div>
+            <div class="row promo">
+                @foreach (var a in S.PromoChoices)
+                {
+                    var choice = a;
+                    <button class="btn promo-btn" data-promo="@((PieceType)choice.Aux)" @onclick="() => S.Choose(choice)">
+                        <PieceSvg Type="(PieceType)choice.Aux" Side="S.Turn" />
+                    </button>
+                }
+            </div>
+            <button class="btn ghost" @onclick="S.Cancel">Cancel</button>
+        </div>
+    </div>
+}
+
+@if (S.GameOver && !S.Busy)
+{
+    <div class="modal" data-testid="gameover">
+        <div class="card pop result @ResultClass">
+            <div class="kicker">@S.Status</div>
+            <h1>@ResultTitle</h1>
+            <p>@ResultText</p>
+            <button class="btn primary" data-action="again" @onclick="StartNew">Play again</button>
+        </div>
+    </div>
+}
+
+@if (showHelp)
+{
+    <div class="modal" @onclick="() => showHelp = false">
+        <div class="card help" @onclick:stopPropagation="true">
+            <div class="kicker">How to play</div>
+            <p>Normal chess with checkmate. Gold <b>?</b> squares appear in matching pairs. Land a piece on one to open it.</p>
+            <ul class="guide">
+                @foreach (var k in Names.Guide)
+                {
+                    <li>
+                        <span class="gi @(PowerupInfo.IsPerk(k) ? "perk" : "buff")">@Icons.Svg(Names.Icon(k))</span>
+                        <span><b>@Names.Name(k)</b> @Names.Desc(k)</span>
+                    </li>
+                }
+            </ul>
+            <p class="fine">Kings are immune to every powerup. Perks, bombs and stun strikes use your turn.</p>
+            <button class="btn primary" @onclick="() => showHelp = false">Got it</button>
+        </div>
+    </div>
+}
+
+@code {
+    GameOptions opt = new();
+    bool urlSeed;
+    bool muted;
+    bool showHelp;
+    GameSession S = null!;
+
+    record PerkBtn(PowerupKind Kind, ActionKind Action, string Label);
+
+    static readonly PerkBtn[] PerkButtons =
+    {
+        new(PowerupKind.Fireball, ActionKind.Fireball, "Fireball"),
+        new(PowerupKind.Steal, ActionKind.Steal, "Steal"),
+        new(PowerupKind.Boulder, ActionKind.PlaceBoulder, "Boulder"),
+        new(PowerupKind.Reroll, ActionKind.ClearBoulder, "Smash"),
+    };
+
+    /// <summary>The side whose inventory the action bar shows (the human, or whoever is to move in 2-player mode).</summary>
+    Side ActiveSide => S.VsAi ? Side.White : S.Turn;
+
+    protected override void OnInitialized()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        opt = GameOptions.FromQuery(uri.Query);
+        urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
+        StartNew();
+    }
+
+    void StartNew()
+    {
+        if (S != null) { S.Changed = null; S.Sfx = null; }
+        if (!urlSeed) opt.Seed = (ulong)DateTime.UtcNow.Ticks;
+        S = new GameSession(opt);
+        S.Changed = () => InvokeAsync(StateHasChanged);
+        S.Sfx = name => { _ = PlaySfx(name); };
+    }
+
+    async Task PlaySfx(string name)
+    {
+        try { await JS.InvokeVoidAsync("pcfx.play", name); } catch { }
+    }
+
+    async Task ToggleMute()
+    {
+        muted = !muted;
+        try { await JS.InvokeVoidAsync("pcfx.setMuted", muted); } catch { }
+    }
+
+    void OnDifficulty(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var v)) opt.Ai = v;
+        StartNew();
+    }
+
+    public void Dispose()
+    {
+        if (S != null) { S.Changed = null; S.Sfx = null; }
+    }
+
+    // ---------- presentation helpers ----------
+
+    string TileClass(int sq)
+    {
+        bool light = (Sq.File(sq) + Sq.Rank(sq)) % 2 == 1;
+        var c = "sq " + (light ? "light" : "dark");
+        var cell = S.State.Cells[sq];
+        if (S.State.Mystery[sq]) c += " mystery";
+        if (S.State.Boulders[sq]) c += " rock";
+        if (sq == S.LastFrom || sq == S.LastTo) c += " last";
+        if (sq == S.Selected) c += " selected";
+        if (S.Targets.Contains(sq))
+        {
+            bool enemy = !cell.IsEmpty && cell.Side != S.Turn;
+            c += S.Mode == InputMode.Armed || S.Mode == InputMode.KnightAim
+                ? " aim"
+                : enemy ? " target cap" : " target";
+        }
+        if (S.InCheck && cell.Type == PieceType.King && cell.Side == S.Turn && !S.GameOver) c += " check";
+        return c;
+    }
+
+    string PieceClass(PieceView p)
+    {
+        var c = "piece " + (p.Side == Side.White ? "side-w" : "side-b");
+        if (p.Dying) c += " dying";
+        if (p.Stun > 0) c += " stunned";
+        if (p.Buffs.HasFlag(Buff.Armor)) c += " armored";
+        if (p.Buffs.HasFlag(Buff.Poison)) c += " poisoned";
+        if (p.Square == S.Selected) c += " lifted";
+        return c;
+    }
+
+    static string PieceName(PieceView p) => (p.Side == Side.White ? "w" : "b") + p.Type.ToString().ToLowerInvariant();
+
+    static double Cx(int sq) => (Sq.File(sq) + 0.5) * 12.5;
+    static double Cy(int sq) => (7 - Sq.Rank(sq) + 0.5) * 12.5;
+    static string N(double d) => d.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    RenderFragment InvChips(Side side) => @<text>
+        @foreach (var k in PerkButtons)
+        {
+            int n = S.Perk(side, k.Kind);
+            <span class="chip @(n == 0 ? "zero" : "")" title="@k.Label">@Icons.Svg(Names.Icon(k.Kind))<b>@n</b></span>
+        }
+    </text>;
+
+    RenderFragment FxView(FxItem fx) => @<text>
+        @switch (fx.Kind)
+        {
+            case "burst":
+                <div class="fx-burst @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%">
+                    @for (int i = 0; i < 12; i++)
+                    {
+                        <i style="--a:@(i * 30)deg;--d:@(26 + (i % 3) * 14)px"></i>
+                    }
+                </div>
+                break;
+            case "ring":
+            case "flash":
+                <div class="fx-@fx.Kind @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;--s:@(N((2 * fx.Radius + 1) * 12.5))%"></div>
+                break;
+            case "ping":
+                <div class="fx-ping @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%"></div>
+                break;
+            case "stars":
+                <div class="fx-stars @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%">
+                    <i>@Icons.Svg("star")</i><i>@Icons.Svg("star")</i><i>@Icons.Svg("star")</i>
+                </div>
+                break;
+            case "beam":
+                double dx = Cx(fx.To) - Cx(fx.Sq), dy = Cy(fx.To) - Cy(fx.Sq);
+                double len = Math.Sqrt(dx * dx + dy * dy);
+                double ang = Math.Atan2(dy, dx) * 180 / Math.PI;
+                <div class="fx-beam @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;width:@(N(len))%;--r:@(N(ang))deg"></div>
+                break;
+        }
+    </text>;
+
+    string DrawText => S.ResultReason switch
+    {
+        "Stalemate" => "The player to move has no legal move and is not in check.",
+        "Only kings left" => "Nothing is left to checkmate with.",
+        "50-move rule" => "Fifty moves without a capture or pawn move.",
+        "Move limit reached" => "The game ran out of moves.",
+        _ => "Nobody could finish it.",
+    };
+
+    string ResultClass => S.Result == GameResult.Draw ? "draw" : (S.VsAi && S.Winner() == Side.Black ? "lose" : "win");
+
+    string ResultTitle => S.Result == GameResult.Draw
+        ? "DRAW"
+        : S.VsAi ? (S.Winner() == Side.White ? "VICTORY" : "DEFEATED")
+        : (S.Winner() == Side.White ? "WHITE WINS" : "BLACK WINS");
+
+    string ResultText => S.Result == GameResult.Draw
+        ? DrawText
+        : S.VsAi ? (S.Winner() == Side.White ? "Nice. Checkmate!" : "The rival got you this time.")
+        : "Checkmate.";
+}

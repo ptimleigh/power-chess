@@ -87,6 +87,25 @@ namespace PowerChess.Core.Tests
             Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(stunned));
         }
 
+        // ---------- Result reasons ----------
+
+        [Test]
+        public void Results_explain_themselves()
+        {
+            string reason;
+            Assert.AreEqual(GameResult.Draw, Rules.GetResult(T.Fen("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"), out reason));
+            Assert.AreEqual("Stalemate", reason);
+
+            Assert.AreEqual(GameResult.Draw, Rules.GetResult(T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1"), out reason));
+            Assert.AreEqual("Only kings left", reason);
+
+            Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(T.Fen("R6k/6pp/8/8/8/8/8/4K3 b - - 0 1"), out reason));
+            Assert.AreEqual("Checkmate", reason);
+
+            Assert.AreEqual(GameResult.Ongoing, Rules.GetResult(T.Fen("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"), out reason));
+            Assert.AreEqual("", reason);
+        }
+
         // ---------- Double move ----------
 
         [Test]

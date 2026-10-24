@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0d0b1e" />
+    <title>Power Chess</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/app.css" />
+</head>
+
+<body>
+    <!-- Shared gradients for the SVG pieces -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <linearGradient id="gW" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffffff" />
+                <stop offset="0.55" stop-color="#cfe9ff" />
+                <stop offset="1" stop-color="#7fb8ff" />
+            </linearGradient>
+            <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#6b3fd1" />
+                <stop offset="0.55" stop-color="#3a1b80" />
+                <stop offset="1" stop-color="#1f0c4d" />
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <div id="app">
+        <div class="boot">
+            <div class="boot-logo">POWER<span>CHESS</span></div>
+            <div class="boot-bar"><i></i></div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Something went wrong.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">x</a>
+    </div>
+    <script src="js/fx.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

@@ -36,7 +36,7 @@ namespace PowerChess.Core
                 new WeightedKind(PowerupKind.DoubleMove, 10),
                 new WeightedKind(PowerupKind.Poison, 8),
                 new WeightedKind(PowerupKind.SpikedArmor, 8),
-                new WeightedKind(PowerupKind.StunStrike, 8),
+                new WeightedKind(PowerupKind.Stun, 8),
                 new WeightedKind(PowerupKind.SmallBomb, 5),
                 new WeightedKind(PowerupKind.BigBomb, 2),
                 new WeightedKind(PowerupKind.TransformPawn, 2),

@@ -122,8 +122,7 @@ namespace PowerChess.Core
                 return;
             }
             if (!Geometry.IsVulnerable(t, p.Side)) return;
-            if (p.Has(Buff.StunStrike)) o.Add(new GameAction(ActionKind.StunStrike, from, to, 0));
-            else o.Add(GameAction.Move(from, to));
+            o.Add(GameAction.Move(from, to));
         }
 
         static void GenPawn(GameState s, Piece p, int from, List<GameAction> o)
@@ -155,8 +154,7 @@ namespace PowerChess.Core
                 if (!t.IsEmpty)
                 {
                     if (!Geometry.IsVulnerable(t, p.Side)) continue;
-                    if (p.Has(Buff.StunStrike)) o.Add(new GameAction(ActionKind.StunStrike, from, to, 0));
-                    else AddPawnMove(from, to, r1 == lastRank, o);
+                    AddPawnMove(from, to, r1 == lastRank, o);
                 }
                 else if (to == s.EnPassant && !s.Boulders[to])
                 {
@@ -216,6 +214,7 @@ namespace PowerChess.Core
             Side me = s.ToMove;
             bool hasFire = s.Perks(me, PowerupKind.Fireball) > 0;
             bool hasSteal = s.Perks(me, PowerupKind.Steal) > 0;
+            bool hasStun = s.Perks(me, PowerupKind.Stun) > 0;
             var scratch = new List<int>(16);
 
             for (int sq = 0; sq < 64; sq++)
@@ -225,23 +224,12 @@ namespace PowerChess.Core
 
                 if (hasFire)
                 {
-                    if (p.Type == PieceType.Knight)
-                    {
-                        for (int i = 0; i < 8; i++)
-                        {
-                            int nf = Sq.File(sq) + Geometry.KnightFile[i], nr = Sq.Rank(sq) + Geometry.KnightRank[i];
-                            if (!Sq.OnBoard(nf, nr)) continue;
-                            int dest = Sq.Make(nf, nr);
-                            scratch.Clear();
-                            Geometry.FireballVictims(s, sq, dest, scratch);
-                            if (scratch.Count > 0) o.Add(new GameAction(ActionKind.Fireball, sq, dest, 0));
-                        }
-                    }
-                    else
+                    // Any piece can fire in any of 8 directions; only offer shots that would hit something.
+                    for (int dir = 0; dir < 8; dir++)
                     {
                         scratch.Clear();
-                        Geometry.FireballVictims(s, sq, -1, scratch);
-                        if (scratch.Count > 0) o.Add(new GameAction(ActionKind.Fireball, sq, -1, 0));
+                        Geometry.FireballVictims(s, sq, dir, scratch);
+                        if (scratch.Count > 0) o.Add(new GameAction(ActionKind.Fireball, sq, scratch[0], dir));
                     }
                 }
 
@@ -266,6 +254,16 @@ namespace PowerChess.Core
                         if (s.Boulders[t] || Geometry.IsVulnerableToBomb(s.Cells[t])) { any = true; break; }
                     }
                     if (any) o.Add(new GameAction(ActionKind.Detonate, sq, -1, 0));
+                }
+            }
+
+            if (hasStun)
+            {
+                for (int sq = 0; sq < 64; sq++)
+                {
+                    var t = s.Cells[sq];
+                    if (Geometry.IsVulnerable(t, me) && !t.IsStunned)
+                        o.Add(new GameAction(ActionKind.Stun, sq, sq, 0));
                 }
             }
 

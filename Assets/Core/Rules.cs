@@ -45,15 +45,13 @@ namespace PowerChess.Core
                     return;
                 }
 
-                case ActionKind.StunStrike:
+                case ActionKind.Stun:
                 {
-                    var attacker = s.Cells[a.From];
+                    s.AddPerk(me, PowerupKind.Stun, -1);
                     var target = s.Cells[a.To];
                     target.StunTurns = StunDuration;
                     s.Cells[a.To] = target;
-                    attacker.Buffs &= ~Buff.StunStrike;
-                    s.Cells[a.From] = attacker;
-                    Emit(ev, EventKind.StunStruck, a.From, a.To, target.Type, me, PowerupKind.StunStrike);
+                    Emit(ev, EventKind.StunStruck, a.To, a.To, target.Type, me, PowerupKind.Stun);
                     Finish(s, ev);
                     return;
                 }
@@ -62,7 +60,7 @@ namespace PowerChess.Core
                 {
                     s.AddPerk(me, PowerupKind.Fireball, -1);
                     var victims = new List<int>(4);
-                    Geometry.FireballVictims(s, a.From, a.To, victims);
+                    Geometry.FireballVictims(s, a.From, a.Aux, victims);
                     Emit(ev, EventKind.FireballFired, a.From, a.To, s.Cells[a.From].Type, me, PowerupKind.Fireball);
                     foreach (int v in victims) Destroy(s, v, ev);
                     s.ClockReset = true;
@@ -359,7 +357,6 @@ namespace PowerChess.Core
                     p.Buffs |= Buff.Armor;
                     p.ArmorTurns = ArmorStartTurns;
                     break;
-                case PowerupKind.StunStrike: p.Buffs |= Buff.StunStrike; break;
                 case PowerupKind.SmallBomb:
                     if (!p.Has(Buff.BigBomb)) p.Buffs |= Buff.SmallBomb;
                     break;
@@ -369,6 +366,7 @@ namespace PowerChess.Core
                     break;
                 case PowerupKind.Fireball:
                 case PowerupKind.Steal:
+                case PowerupKind.Stun:
                 case PowerupKind.Boulder:
                 case PowerupKind.Reroll:
                     s.AddPerk(me, kind, 1);

@@ -19,9 +19,8 @@ namespace PowerChess.Core
         DoubleMove = 1,
         Poison = 2,
         Armor = 4,
-        StunStrike = 8,
-        SmallBomb = 16,
-        BigBomb = 32,
+        SmallBomb = 8,
+        BigBomb = 16,
     }
 
     /// <summary>What a mystery square can contain. Perks go to the player's inventory, the rest apply to the piece.</summary>
@@ -31,7 +30,7 @@ namespace PowerChess.Core
         DoubleMove,
         Poison,
         SpikedArmor,
-        StunStrike,
+        Stun,
         SmallBomb,
         BigBomb,
         TransformPawn,
@@ -49,7 +48,7 @@ namespace PowerChess.Core
     {
         public static bool IsPerk(PowerupKind k)
         {
-            return k == PowerupKind.Fireball || k == PowerupKind.Steal
+            return k == PowerupKind.Fireball || k == PowerupKind.Steal || k == PowerupKind.Stun
                 || k == PowerupKind.Boulder || k == PowerupKind.Reroll;
         }
 
@@ -112,7 +111,7 @@ namespace PowerChess.Core
     public enum ActionKind : byte
     {
         Move,
-        StunStrike,
+        Stun,
         Fireball,
         Steal,
         PlaceBoulder,
@@ -126,9 +125,9 @@ namespace PowerChess.Core
     {
         public ActionKind Kind;
         public int From;
-        /// <summary>Target square. For a knight Fireball: the destination of the chosen L path.</summary>
+        /// <summary>Target square. Fireball: the first piece in the chosen direction. Stun/PlaceBoulder: the square itself.</summary>
         public int To;
-        /// <summary>Promotion piece type for pawn moves.</summary>
+        /// <summary>Promotion piece type for pawn moves; direction index (0-7) for a Fireball.</summary>
         public int Aux;
 
         public GameAction(ActionKind kind, int from, int to, int aux)

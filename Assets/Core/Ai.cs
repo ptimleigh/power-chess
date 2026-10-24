@@ -109,7 +109,7 @@ namespace PowerChess.Core
                 }
                 case ActionKind.Fireball: return 500;
                 case ActionKind.Steal: return 450;
-                case ActionKind.StunStrike: return 300;
+                case ActionKind.Stun: return 300;
                 case ActionKind.Detonate: return 200;
                 default: return 0;
             }
@@ -133,7 +133,6 @@ namespace PowerChess.Core
                 if (p.Has(Buff.DoubleMove)) v += 35;
                 if (p.Has(Buff.Poison)) v += 30;
                 if (p.Has(Buff.Armor)) v += 15 * p.ArmorTurns;
-                if (p.Has(Buff.StunStrike)) v += 40;
                 if (p.Has(Buff.SmallBomb)) v += 50;
                 if (p.Has(Buff.BigBomb)) v += 110;
                 if (p.IsStunned) v -= (PieceValue[(int)p.Type] / 6) * p.StunTurns / 3 + 10;
@@ -149,6 +148,7 @@ namespace PowerChess.Core
         {
             return 90 * s.Perks(side, PowerupKind.Fireball)
                 + 150 * s.Perks(side, PowerupKind.Steal)
+                + 110 * s.Perks(side, PowerupKind.Stun)
                 + 40 * s.Perks(side, PowerupKind.Boulder)
                 + 25 * s.Perks(side, PowerupKind.Reroll);
         }

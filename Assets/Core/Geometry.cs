@@ -156,45 +156,29 @@ namespace PowerChess.Core
         }
 
         /// <summary>
-        /// Enemy pieces a Fireball from <paramref name="from"/> would destroy. Sliders, kings and pawns hit only the
-        /// first piece on each of their attack lines. A knight hits everything on the three squares of the L path
-        /// ending at <paramref name="knightDest"/> (long leg first).
+        /// Enemy pieces a Fireball fired from <paramref name="from"/> in direction <paramref name="dir"/> (0-7, see
+        /// <see cref="DirFile"/>) would destroy. Any piece can fire in any of the 8 directions with unlimited range.
+        /// Most pieces destroy only the first piece on the line, and only if it is a vulnerable enemy. A queen's
+        /// fireball destroys every vulnerable enemy on the whole line and flies over its own pieces, kings and armored
+        /// pieces. Boulders stop it either way.
         /// </summary>
-        public static void FireballVictims(GameState s, int from, int knightDest, List<int> result)
+        public static void FireballVictims(GameState s, int from, int dir, List<int> result)
         {
-            var p = s.Cells[from];
-            int f = Sq.File(from), r = Sq.Rank(from);
-            if (p.Type == PieceType.Knight)
+            var shooter = s.Cells[from];
+            bool pierce = shooter.Type == PieceType.Queen;
+            int cf = Sq.File(from) + DirFile[dir], cr = Sq.Rank(from) + DirRank[dir];
+            while (Sq.OnBoard(cf, cr))
             {
-                int dx = Sq.File(knightDest) - f, dy = Sq.Rank(knightDest) - r;
-                int ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
-                if (!((ax == 2 && ay == 1) || (ax == 1 && ay == 2))) return;
-                int sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
-                int[] pf = new int[3], pr = new int[3];
-                if (ax == 2)
+                int idx = Sq.Make(cf, cr);
+                if (s.Boulders[idx]) break;
+                var p = s.Cells[idx];
+                if (!p.IsEmpty)
                 {
-                    pf[0] = f + sx; pr[0] = r;
-                    pf[1] = f + dx; pr[1] = r;
+                    if (IsVulnerable(p, shooter.Side)) result.Add(idx);
+                    if (!pierce) break;
                 }
-                else
-                {
-                    pf[0] = f; pr[0] = r + sy;
-                    pf[1] = f; pr[1] = r + dy;
-                }
-                pf[2] = f + dx; pr[2] = r + dy;
-                for (int i = 0; i < 3; i++)
-                {
-                    int idx = Sq.Make(pf[i], pr[i]);
-                    if (IsVulnerable(s.Cells[idx], p.Side)) result.Add(idx);
-                }
-                return;
-            }
-
-            var hits = new List<int>(8);
-            AttackedPieces(s, from, hits);
-            foreach (int idx in hits)
-            {
-                if (IsVulnerable(s.Cells[idx], p.Side) && !result.Contains(idx)) result.Add(idx);
+                cf += DirFile[dir];
+                cr += DirRank[dir];
             }
         }
 

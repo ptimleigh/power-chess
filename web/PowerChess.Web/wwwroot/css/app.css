@@ -146,7 +146,6 @@ button:disabled { cursor: default; }
 .badge svg { width: 100%; height: 100%; }
 .badge.dm { background: var(--gold); color: #3a2a00; }
 .badge.ps { background: #7dff4f; color: #123a00; }
-.badge.sg { background: var(--magenta); color: #fff; }
 .badge.bm { background: #ff8a3d; color: #3a1500; }
 .badge.bb { background: var(--red); color: #fff; animation: bob 1s infinite; }
 
@@ -240,3 +239,13 @@ button:disabled { cursor: default; }
 .help .btn { display: block; margin: 8px auto 0; }
 
 @media (max-height: 640px) { :root { --b: min(calc(100vw - 20px), calc(100svh - 270px), 600px); } }
+
+/* ---------- fireball aim preview + piece inspect card ---------- */
+.sq.doomed::before { content: ""; position: absolute; inset: 14%; border-radius: 10px; border: 3px dashed var(--red); box-shadow: 0 0 12px var(--red); animation: ringpulse .8s infinite ease-in-out; z-index: 3; }
+
+.inspect { width: calc(var(--b) + 12px); background: linear-gradient(180deg, #2a1f66ee, #150e3cee); border: 2px solid #7a5cffaa; border-radius: 14px; padding: 8px 10px; animation: pop .25s cubic-bezier(.34, 1.56, .64, 1); display: grid; gap: 6px; }
+.inspect-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; letter-spacing: .5px; }
+.inspect-head .x { background: #ffffff14; border: 1px solid var(--line); border-radius: 8px; width: 26px; height: 26px; line-height: 1; font-weight: 900; }
+.inspect-row { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--dim); line-height: 1.25; }
+.inspect-row b { color: var(--text); display: block; }
+.inspect-row .gi { width: 30px; height: 30px; padding: 5px; }

@@ -2,7 +2,7 @@ using PowerChess.Core;
 
 namespace PowerChess.Web.Game;
 
-public enum InputMode { Normal, Armed, KnightAim, Promotion }
+public enum InputMode { Normal, Armed, FireAim, Promotion }
 
 /// <summary>A piece with a stable identity so CSS transitions can animate it as the engine state changes.</summary>
 public sealed class PieceView
@@ -63,6 +63,10 @@ public sealed class GameSession
     public ActionKind ArmedKind { get; private set; }
     public int Selected { get; private set; } = -1;
     public HashSet<int> Targets { get; } = new();
+    /// <summary>Extra pieces a queen's fireball would also destroy along the aimed lines (preview only).</summary>
+    public HashSet<int> Doomed { get; } = new();
+    /// <summary>Square of the powered-up piece whose info card is open, or -1.</summary>
+    public int Inspect { get; private set; } = -1;
     public List<GameAction> PromoChoices { get; private set; } = new();
     public int LastFrom { get; private set; } = -1;
     public int LastTo { get; private set; } = -1;
@@ -148,12 +152,26 @@ public sealed class GameSession
     {
         Selected = -1;
         Targets.Clear();
+        Doomed.Clear();
         Mode = InputMode.Normal;
         PromoChoices = new List<GameAction>();
     }
 
+    public void CloseInspect()
+    {
+        Inspect = -1;
+        Changed?.Invoke();
+    }
+
+    public bool IsPowered(int sq)
+    {
+        var c = State.Cells[sq];
+        return !c.IsEmpty && (c.Buffs != Buff.None || c.IsStunned);
+    }
+
     public void Cancel()
     {
+        Inspect = -1;
         ClearSelection();
         AutoSelectForced();
         Changed?.Invoke();
@@ -186,7 +204,7 @@ public sealed class GameSession
         ClearSelection();
         bool mine = !State.Cells[sq].IsEmpty && State.Cells[sq].Side == State.ToMove;
         if (!mine) return;
-        var acts = Legal.Where(a => a.From == sq && (a.Kind == ActionKind.Move || a.Kind == ActionKind.StunStrike)).ToList();
+        var acts = Legal.Where(a => a.From == sq && a.Kind == ActionKind.Move).ToList();
         if (acts.Count == 0 && !Legal.Any(a => a.Kind == ActionKind.Detonate && a.From == sq)) return;
         Selected = sq;
         foreach (var a in acts) Targets.Add(a.To);
@@ -201,12 +219,21 @@ public sealed class GameSession
         {
             if (!Targets.Contains(sq)) { Cancel(); return; }
             var cands = Legal.Where(a => a.Kind == ArmedKind && (ArmedKind == ActionKind.Fireball ? a.From == sq : a.To == sq)).ToList();
-            if (ArmedKind == ActionKind.Fireball && cands.Count > 1)
+            if (ArmedKind == ActionKind.Fireball)
             {
-                Mode = InputMode.KnightAim;
+                // Step 2: choose the direction by tapping the first enemy in that line.
+                Mode = InputMode.FireAim;
                 Selected = sq;
                 Targets.Clear();
-                foreach (var c in cands) Targets.Add(c.To);
+                Doomed.Clear();
+                foreach (var c in cands)
+                {
+                    Targets.Add(c.To);
+                    var line = new List<int>();
+                    Geometry.FireballVictims(State, c.From, c.Aux, line);
+                    foreach (int v in line) if (v != c.To) Doomed.Add(v);
+                }
+                Sfx?.Invoke("click");
                 Changed?.Invoke();
                 return;
             }
@@ -214,7 +241,7 @@ public sealed class GameSession
             return;
         }
 
-        if (Mode == InputMode.KnightAim)
+        if (Mode == InputMode.FireAim)
         {
             if (!Targets.Contains(sq)) { Cancel(); return; }
             await Human(Legal.First(a => a.Kind == ActionKind.Fireball && a.From == Selected && a.To == sq));
@@ -223,7 +250,7 @@ public sealed class GameSession
 
         if (Selected >= 0 && Targets.Contains(sq))
         {
-            var moves = Legal.Where(a => (a.Kind == ActionKind.Move || a.Kind == ActionKind.StunStrike) && a.From == Selected && a.To == sq).ToList();
+            var moves = Legal.Where(a => a.Kind == ActionKind.Move && a.From == Selected && a.To == sq).ToList();
             if (moves.Count > 1)
             {
                 Mode = InputMode.Promotion;
@@ -235,13 +262,17 @@ public sealed class GameSession
             return;
         }
 
+        // Tapping a powered-up piece (either side) opens its info card; tapping it again closes it.
+        bool wasInspected = Inspect == sq;
+        Inspect = -1;
         if (Selected == sq && State.ForcedMover < 0)
         {
             ClearSelection();
         }
-        else if (State.ForcedMover < 0)
+        else
         {
-            SelectPiece(sq);
+            if (State.ForcedMover < 0) SelectPiece(sq);
+            if (IsPowered(sq) && !wasInspected) Inspect = sq;
         }
         Changed?.Invoke();
     }
@@ -302,6 +333,7 @@ public sealed class GameSession
     async Task Play(GameAction a)
     {
         Busy = true;
+        Inspect = -1;
         ClearSelection();
         var ev = new List<GameEvent>();
         Rules.Apply(State, a, ev);
@@ -350,13 +382,14 @@ public sealed class GameSession
             if (Mode == InputMode.Armed)
                 return ArmedKind switch
                 {
-                    ActionKind.Fireball => "Fireball: pick the piece to fire from",
+                    ActionKind.Fireball => "Fireball: pick one of your pieces to fire from",
                     ActionKind.Steal => "Steal: pick the enemy piece to convert",
+                    ActionKind.Stun => "Stun: pick any enemy piece to freeze for 3 turns",
                     ActionKind.PlaceBoulder => "Boulder: pick an empty square",
                     ActionKind.ClearBoulder => "Reroll: pick a boulder to smash",
                     _ => "",
                 };
-            if (Mode == InputMode.KnightAim) return "Fireball: pick the end of the L path";
+            if (Mode == InputMode.FireAim) return "Fireball: tap an enemy to choose the direction";
             if (Mode == InputMode.Promotion) return "Promote to...";
             if (State.ForcedMover >= 0) return "Double Move! Move that piece again";
             string who = VsAi ? "Your move" : (State.ToMove == Side.White ? "White to move" : "Black to move");

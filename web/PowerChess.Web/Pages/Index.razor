@@ -66,7 +66,6 @@
                         <div class="badges">
                             @if (p.Buffs.HasFlag(Buff.DoubleMove)) { <span class="badge dm" title="Double Move">@Icons.Svg("x2")</span> }
                             @if (p.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
-                            @if (p.Buffs.HasFlag(Buff.StunStrike)) { <span class="badge sg" title="Stun Strike">@Icons.Svg("star")</span> }
                             @if (p.Buffs.HasFlag(Buff.SmallBomb)) { <span class="badge bm" title="Small Bomb">@Icons.Svg("bomb")</span> }
                             @if (p.Buffs.HasFlag(Buff.BigBomb)) { <span class="badge bb" title="Big Bomb">@Icons.Svg("bigbomb")</span> }
                         </div>
@@ -111,6 +110,7 @@
         @foreach (var perk in PerkButtons)
         {
             var k = perk;
+            if (k.Action == ActionKind.ClearBoulder && S.State.BoulderCount() == 0) { continue; }
             <button class="perk @(S.Mode == InputMode.Armed && S.ArmedKind == k.Action ? "on" : "")" disabled="@(!S.CanUse(k.Action))"
                     data-perk="@k.Kind.ToString().ToLowerInvariant()" @onclick="() => S.Arm(k.Action)">
                 <span class="pi">@Icons.Svg(Names.Icon(k.Kind))</span>
@@ -131,6 +131,41 @@
     </section>
 
     <div class="status @(S.InCheck && !S.GameOver ? "warn" : "")" data-testid="status">@S.Status</div>
+
+    @if (S.Inspect >= 0 && !S.State.Cells[S.Inspect].IsEmpty)
+    {
+        var ip = S.State.Cells[S.Inspect];
+        <div class="inspect" data-testid="inspect">
+            <div class="inspect-head">
+                <b>@InspectTitle(ip)</b>
+                <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
+            </div>
+            @foreach (var flag in new[] { Buff.DoubleMove, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
+            {
+                if (!ip.Has(flag)) { continue; }
+                var kind = Names.ForBuff(flag);
+                <div class="inspect-row">
+                    <span class="gi buff">@Icons.Svg(Names.Icon(kind))</span>
+                    <span>
+                        <b>@Names.Name(kind)</b>
+                        @(flag == Buff.Armor
+                            ? $"Immune to capture and effects for {ip.ArmorTurns} more opponent {(ip.ArmorTurns == 1 ? "turn" : "turns")}."
+                            : Names.Desc(kind))
+                    </span>
+                </div>
+            }
+            @if (ip.IsStunned)
+            {
+                <div class="inspect-row">
+                    <span class="gi perk">@Icons.Svg("star")</span>
+                    <span>
+                        <b>Frozen</b>
+                        @($"Can't move for {ip.StunTurns} more of its owner's {(ip.StunTurns == 1 ? "turn" : "turns")}, and can't give check.")
+                    </span>
+                </div>
+            }
+        </div>
+    }
 </div>
 
 @if (S.PickupPending && S.HumanTurn)
@@ -189,7 +224,7 @@
     <div class="modal" @onclick="() => showHelp = false">
         <div class="card help" @onclick:stopPropagation="true">
             <div class="kicker">How to play</div>
-            <p>Normal chess with checkmate. Gold <b>?</b> squares appear in matching pairs. Land a piece on one to open it.</p>
+            <p>Normal chess with checkmate. Gold <b>?</b> squares appear in matching pairs. Land a piece on one to open it. Tap any powered-up piece to see what it has.</p>
             <ul class="guide">
                 @foreach (var k in Names.Guide)
                 {
@@ -212,14 +247,15 @@
     bool showHelp;
     GameSession S = null!;
 
-    record PerkBtn(PowerupKind Kind, ActionKind Action, string Label);
+    record PerkBtn(PowerupKind Kind, ActionKind Action, string Label, string Tip);
 
     static readonly PerkBtn[] PerkButtons =
     {
-        new(PowerupKind.Fireball, ActionKind.Fireball, "Fireball"),
-        new(PowerupKind.Steal, ActionKind.Steal, "Steal"),
-        new(PowerupKind.Boulder, ActionKind.PlaceBoulder, "Boulder"),
-        new(PowerupKind.Reroll, ActionKind.ClearBoulder, "Smash"),
+        new(PowerupKind.Fireball, ActionKind.Fireball, "Fireball", "Fireballs"),
+        new(PowerupKind.Steal, ActionKind.Steal, "Steal", "Steals"),
+        new(PowerupKind.Stun, ActionKind.Stun, "Stun", "Stuns"),
+        new(PowerupKind.Boulder, ActionKind.PlaceBoulder, "Boulder", "Boulders"),
+        new(PowerupKind.Reroll, ActionKind.ClearBoulder, "Smash boulder", "Rerolls: re-draw a powerup you find, or smash a boulder"),
     };
 
     /// <summary>The side whose inventory the action bar shows (the human, or whoever is to move in 2-player mode).</summary>
@@ -278,10 +314,11 @@
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;
-            c += S.Mode == InputMode.Armed || S.Mode == InputMode.KnightAim
+            c += S.Mode == InputMode.Armed || S.Mode == InputMode.FireAim
                 ? " aim"
                 : enemy ? " target cap" : " target";
         }
+        if (S.Doomed.Contains(sq)) c += " doomed";
         if (S.InCheck && cell.Type == PieceType.King && cell.Side == S.Turn && !S.GameOver) c += " check";
         return c;
     }
@@ -307,7 +344,7 @@
         @foreach (var k in PerkButtons)
         {
             int n = S.Perk(side, k.Kind);
-            <span class="chip @(n == 0 ? "zero" : "")" title="@k.Label">@Icons.Svg(Names.Icon(k.Kind))<b>@n</b></span>
+            <span class="chip @(n == 0 ? "zero" : "")" title="@k.Tip" data-chip="@k.Kind.ToString().ToLowerInvariant()">@Icons.Svg(Names.Icon(k.Kind))<b>@n</b></span>
         }
     </text>;
 
@@ -342,6 +379,12 @@
                 break;
         }
     </text>;
+
+    string InspectTitle(Piece p)
+    {
+        string owner = S.VsAi ? (p.Side == Side.White ? "Your" : "Rival") : (p.Side == Side.White ? "White" : "Black");
+        return owner + " " + p.Type;
+    }
 
     string DrawText => S.ResultReason switch
     {

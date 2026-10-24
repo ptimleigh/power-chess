@@ -6,6 +6,8 @@ as play (short, juicy moments), with ads as the revenue model.
 - Rules reference: [docs/RULES.md](docs/RULES.md)
 - Roadmap and design decisions live in the project plan.
 
+**Play it:** https://ptimleigh.github.io/power-chess/ (deployed from the default branch by `.github/workflows/pages.yml`; needs Settings > Pages > Source = GitHub Actions once).
+
 ## Layout
 
 | Path | What |

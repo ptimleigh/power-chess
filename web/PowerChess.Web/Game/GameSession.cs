@@ -159,7 +159,7 @@ public sealed class GameSession
     {
         opt = options;
         Tut = tutorials ?? new TutorialState();
-        ai = new Ai(opt.Ai switch { 1 => 1, 3 => 3, _ => 2 });
+        ai = Ai.ForLevel(opt.Ai);
         NewGame();
     }
 
@@ -255,6 +255,14 @@ public sealed class GameSession
         cfg.PortalChance = opt.Portals && tele ? 0.12 : 0;
         cfg.Squares = opt.Mode;
         cfg.MysteryChance = opt.HiddenChance;
+        if (opt.Only.Count == 0 && opt.Puzzle == null && !opt.Training)
+        {
+            int spawn = opt.Spawn;
+            Presets.Apply(cfg, opt.Preset, opt.Freq, opt.Custom, opt.Level);
+            if (spawn >= 0) cfg.SpawnInterval = spawn;
+            if (!tele && cfg.PortalChance > 0) cfg.PortalChance = 0;
+            if (!opt.Portals) cfg.PortalChance = 0;
+        }
         return cfg;
     }
 
@@ -263,7 +271,7 @@ public sealed class GameSession
         var def = opt.Puzzle!;
         State = def.NewState(PuzzleDef.Config());
         State.Rng = new Rng(opt.Seed);
-        ai = new Ai(2);
+        ai = Ai.ForLevel(2);
         Puzzle = def;
         PuzzleMoves = 0;
         PuzzleOutcome = PuzzleResult.None;
@@ -321,7 +329,7 @@ public sealed class GameSession
                 State.Mystery[Sq.Parse(sq)] = true;
                 State.Content[Sq.Parse(sq)] = (byte)PowerupKind.Fireball;
             }
-            ai = new Ai(1);
+            ai = Ai.ForLevel(1);
         }
 
     }
@@ -388,7 +396,7 @@ public sealed class GameSession
 
             int oldAi = opt.Ai;
             var oldMode = opt.Mode;
-            opt.Ai = Math.Clamp(savedAi, 0, 3);
+            opt.Ai = Math.Clamp(savedAi, 0, 5);
             opt.Mode = parts.Length == 5 && parts[4] == "r" ? SquareMode.Revealed : SquareMode.Mystery; // older saves were all mystery
             GameState state;
             GameHistory hist;
@@ -426,7 +434,7 @@ public sealed class GameSession
             State = state;
             ResetTracker(true);
             nextId = Math.Max(savedNextId, 1);
-            ai = new Ai(opt.Ai switch { 1 => 1, 3 => 3, _ => 2 });
+            ai = Ai.ForLevel(opt.Ai);
             Effects.Clear();
             Toasts.Clear();
             reviewIndex = -1;
@@ -838,14 +846,9 @@ public sealed class GameSession
             Busy = true;
             Changed?.Invoke();
             await Task.Delay(550); // let the UI paint before the (synchronous) search
-            GameAction act;
-            if (opt.Ai == 1 && rnd.NextDouble() < 0.3) act = Legal[rnd.Next(Legal.Count)];
-            else
-            {
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-                act = ai.Choose(State);
-                Console.WriteLine($"[ai] depth {ai.Depth} chose {act} in {sw.ElapsedMilliseconds} ms");
-            }
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            GameAction act = ai.Choose(State);
+            Console.WriteLine($"[ai] {Ai.LevelName(opt.Ai)} chose {act} in {sw.ElapsedMilliseconds} ms");
             Thinking = false;
             await Play(act);
         }
@@ -910,7 +913,9 @@ public sealed class GameSession
             if (!endReported && tracker != null && Puzzle == null)
             {
                 endReported = true;
-                GameEnded?.Invoke(tracker.Finish(Result, ResultReason));
+                var summary = tracker.Finish(Result, ResultReason);
+                summary.XpScale = Presets.XpScale(opt.Preset, opt.Freq, opt.Level);
+                GameEnded?.Invoke(summary);
             }
             Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == Side.Black ? "lose" : "win"));
         }

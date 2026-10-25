@@ -96,7 +96,7 @@
 
     <section class="player me @(S.Turn == Side.White && !S.GameOver ? "active" : "")">
         <div class="avatar w"></div>
-        <div class="pname">@(S.VsAi ? "You" : "White")</div>
+        <div class="pname">@(S.VsAi ? "You" : "White")@if (RulesLabel.Length > 0) { <span class="rules-badge" data-testid="rules-badge">@RulesLabel</span> }</div>
         <div class="chips">@InvChips(Side.White)</div>
     </section>
 
@@ -458,11 +458,44 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 </button>
             </div>
             <div class="opt-label">Opponent</div>
-            <div class="seg four">
-                <button class="@Seg(selAi == 1)" data-ai="1" @onclick="() => selAi = 1">Easy</button>
-                <button class="@Seg(selAi == 2)" data-ai="2" @onclick="() => selAi = 2">Normal</button>
-                <button class="@Seg(selAi == 3)" data-ai="3" @onclick="() => selAi = 3">Hard</button>
-                <button class="@Seg(selAi == 0)" data-ai="0" @onclick="() => selAi = 0">2 players</button>
+            <div class="seg six">
+                @foreach (var lv in new[] { 1, 2, 3, 4, 5, 0 })
+                {
+                    int level = lv;
+                    <button class="@Seg(selAi == level)" data-ai="@level" @onclick="() => selAi = level">@Ai.LevelName(level)</button>
+                }
+            </div>
+            <div class="opt-label">Rules</div>
+            <div class="chips" data-testid="preset-chips">
+                @foreach (var pr in PresetChoices())
+                {
+                    var choice = pr;
+                    bool open = Presets.Available(choice.id, EffectiveLevel);
+                    <button class="@Seg(selPreset == choice.id && open) chip-btn @(open ? "" : "locked")" data-preset="@choice.id" disabled="@(!open)" title="@choice.blurb" @onclick="() => selPreset = choice.id">
+                        <b>@choice.name</b>
+                        @if (!open) { <small>Level @choice.level</small> }
+                    </button>
+                }
+            </div>
+            @if (selPreset != Presets.Classic && Presets.Available(selPreset, EffectiveLevel))
+            {
+                <div class="preset-blurb" data-testid="preset-blurb">@PresetBlurb(selPreset) <em>Half XP.</em></div>
+            }
+            @if (selPreset == Presets.Custom && Presets.Available(selPreset, EffectiveLevel))
+            {
+                <button class="btn ghost small" data-action="customize" @onclick="() => showCustom = true">Customize powerups</button>
+            }
+            <div class="opt-label">Square frequency</div>
+            <div class="chips" data-testid="freq-chips">
+                @foreach (var fq in new[] { Frequency.Rare, Frequency.Normal, Frequency.Frequent, Frequency.Chaos })
+                {
+                    var f = fq;
+                    bool open = Presets.FrequencyAvailable(EffectiveLevel);
+                    <button class="@Seg(selFreq == f && (open || f == Frequency.Normal)) chip-btn @(open || f == Frequency.Normal ? "" : "locked")" data-freq="@((int)f)" disabled="@(!open && f != Frequency.Normal)" @onclick="() => selFreq = f">
+                        <b>@Presets.FrequencyName(f)</b>
+                        @if (!open && f != Frequency.Normal) { <small>Level @Presets.FrequencyLevel</small> }
+                    </button>
+                }
             </div>
             <div class="opt-label">Effects</div>
             <div class="seg">
@@ -476,6 +509,32 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <div class="row newgame-row">
                 <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">Start game</button>
                 <button class="btn ghost" data-action="cancel-new" @onclick="() => showNew = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showCustom)
+{
+    <div class="modal" data-testid="custom-sheet" @onclick="() => showCustom = false">
+        <div class="card custom-sheet" @onclick:stopPropagation="true">
+            <div class="kicker">Custom powerups</div>
+            <div class="custom-list">
+                @{ var kinds = Presets.CustomKinds(); }
+                @for (int i = 0; i < kinds.Count; i++)
+                {
+                    int idx = i;
+                    var kind = kinds[i];
+                    int v = Presets.CustomLevelOf(selCustom, idx);
+                    <div class="custom-row" data-custom="@kind.ToString().ToLowerInvariant()">
+                        <span>@Names.Name(kind)</span>
+                        <button class="chip-btn on" data-level="@v" @onclick="() => selCustom = Presets.SetCustom(selCustom, idx, (Presets.CustomLevelOf(selCustom, idx) + 1) % 4)">@(new[] { "Off", "Low", "Normal", "High" }[v])</button>
+                    </div>
+                }
+            </div>
+            <div class="row newgame-row">
+                <button class="btn primary" data-action="custom-done" @onclick="() => showCustom = false">Done</button>
+                <button class="btn ghost" data-action="custom-reset" @onclick="() => selCustom = Presets.DefaultCustom()">Reset</button>
             </div>
         </div>
     </div>
@@ -736,7 +795,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
         showDebug = uri.Query.Contains("debug=1", StringComparison.OrdinalIgnoreCase);
-        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=" }
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=", "preset=", "freq=", "custom=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game
@@ -772,9 +831,15 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         // Remembered choices from the New game sheet (mode and opponent).
         bool haveSettings = false;
         var sp = (settingsText ?? "").Split(':');
-        if ((sp.Length == 2 || sp.Length == 3) && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 3)
+        if (sp.Length >= 2 && sp.Length <= 6 && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 5)
         {
-            if (sp.Length == 3) opt.Drama = sp[2] != "0";
+            if (sp.Length >= 3) opt.Drama = sp[2] != "0";
+            if (sp.Length >= 5)
+            {
+                opt.Preset = sp[3] == Presets.Custom || Presets.Find(sp[3]) != null ? sp[3] : Presets.Classic;
+                if (int.TryParse(sp[4], out var sf)) opt.Freq = (Frequency)Math.Clamp(sf, 0, 3);
+            }
+            if (sp.Length == 6 && sp[5].Length > 0) opt.Custom = sp[5];
             opt.Mode = sp[0] == "mystery" ? SquareMode.Mystery : SquareMode.Revealed;
             opt.Ai = savedAi;
             haveSettings = true;
@@ -862,6 +927,9 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         selMode = opt.Mode;
         selAi = opt.Ai;
         selDrama = opt.Drama;
+        selPreset = Presets.Available(opt.Preset, EffectiveLevel) ? opt.Preset : Presets.Classic;
+        selFreq = Presets.FrequencyAvailable(EffectiveLevel) ? opt.Freq : Frequency.Normal;
+        selCustom = opt.Custom;
         showNew = true;
     }
 
@@ -870,10 +938,29 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         opt.Mode = selMode;
         opt.Ai = selAi;
         opt.Drama = selDrama;
+        opt.Preset = selPreset;
+        opt.Freq = selFreq;
+        opt.Custom = selCustom;
         showNew = false;
-        _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi + ":" + (selDrama ? "1" : "0"));
+        _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi + ":" + (selDrama ? "1" : "0") + ":" + selPreset + ":" + (int)selFreq + ":" + selCustom);
         StartNew();
     }
+
+    string RulesLabel => S.Puzzle != null ? "" : Presets.Label(opt.Preset, opt.Freq, EffectiveLevel);
+
+    string selPreset = Presets.Classic;
+    Frequency selFreq = Frequency.Normal;
+    string selCustom = Presets.DefaultCustom();
+    bool showCustom;
+
+    static IEnumerable<(string id, string name, string blurb, int level)> PresetChoices()
+    {
+        yield return (Presets.Classic, "Standard", "The normal powerup mix.", 1);
+        foreach (var p in Presets.All) yield return (p.Id, p.Name, p.Blurb, p.UnlockLevel);
+        yield return (Presets.Custom, "Custom", "Choose which powerups appear and how often.", Presets.CustomLevel);
+    }
+
+    static string PresetBlurb(string id) => Presets.Find(id)?.Blurb ?? "Choose which powerups appear and how often.";
 
     static string Seg(bool on) => "seg-btn" + (on ? " on" : "");
 

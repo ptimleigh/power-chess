@@ -106,6 +106,13 @@ namespace PowerChess.Core
             return false;
         }
 
+        /// <summary>Does this first White action lead to a forced mate within the budget?</summary>
+        public static bool IsWinningFirstMove(GameState s, GameAction a, int whiteMoves)
+        {
+            Nodes = 0;
+            return Works(s, a, whiteMoves);
+        }
+
         static bool Works(GameState s, GameAction a, int left)
         {
             var c = s.Clone();

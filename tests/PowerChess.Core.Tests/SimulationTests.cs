@@ -31,7 +31,7 @@ namespace PowerChess.Core.Tests
             Assert.AreEqual(1, blackKings, "black kings. " + context + "\n" + s);
         }
 
-        static GameResult PlayRandomGame(ulong seed, Func<GameState, GameAction> chooser, int maxActions = 1500, GameConfig cfg = null)
+        internal static GameResult PlayRandomGame(ulong seed, Func<GameState, GameAction> chooser, int maxActions = 1500, GameConfig cfg = null)
         {
             var s = GameState.NewGame(cfg ?? new GameConfig { MaxPly = 250 }, seed);
             var rnd = new Random((int)seed);

@@ -11,6 +11,8 @@ namespace PowerChess.Core
         public string Reason = "";
         /// <summary>0 = two players, 1 = easy, 2 = normal, 3 = hard.</summary>
         public int AiLevel;
+        /// <summary>1 for a standard game, 0.5 when custom powerup rules were on (see <see cref="Presets.XpScale"/>).</summary>
+        public double XpScale = 1.0;
         public int Captures;
         public int PiecesLost;
         public int PowerupsCollected;
@@ -152,12 +154,13 @@ namespace PowerChess.Core
             new Trophy(6, "Thief", "Steal an enemy piece.", (m, p) => m.Steals > 0),
             new Trophy(7, "Warp Drive", "Jump through a teleporter.", (m, p) => m.Teleports > 0),
             new Trophy(8, "Phantom", "Win a game after collecting a Ghost.", (m, p) => m.Won && m.CollectedGhost),
-            new Trophy(9, "Hard Won", "Beat the Hard opponent.", (m, p) => m.Won && m.AiLevel >= 3),
+            new Trophy(9, "Hard Won", "Beat the Hard opponent or better.", (m, p) => m.Won && m.AiLevel >= 3),
             new Trophy(10, "Regular", "Play 10 games.", (m, p) => p.Games >= 10),
             new Trophy(11, "Daily Dose", "Solve a daily challenge.", (m, p) => p.DailySolved >= 1),
             new Trophy(12, "On a Roll", "Solve the daily challenge 3 days in a row.", (m, p) => p.BestStreak >= 3),
             new Trophy(13, "Week Warrior", "Solve the daily challenge 7 days in a row.", (m, p) => p.BestStreak >= 7),
             new Trophy(14, "Devoted", "Solve the daily challenge 30 days in a row.", (m, p) => p.BestStreak >= 30),
+            new Trophy(15, "Grandmaster Slayer", "Beat the Master opponent.", (m, p) => m.Won && m.AiLevel >= 5),
         };
     }
 
@@ -228,7 +231,7 @@ namespace PowerChess.Core
         public static MatchReward Award(Profile p, MatchSummary m)
         {
             var r = new MatchReward { OldLevel = p.Level };
-            double mult = m.AiLevel == 0 ? 0.5 : m.AiLevel == 1 ? 0.7 : m.AiLevel == 3 ? 1.4 : 1.0;
+            double mult = Ai.XpMultiplier(m.AiLevel);
             int baseXp = m.Won ? 100 : m.Draw ? 40 : 25;
             var parts = r.Breakdown;
             parts.Add(new KeyValuePair<string, int>(m.Won ? "Victory" : m.Draw ? "Draw" : "Played", Round(baseXp * mult)));
@@ -237,6 +240,9 @@ namespace PowerChess.Core
             int pu = Math.Min(m.PowerupsCollected, 6) * 10;
             if (pu > 0) parts.Add(new KeyValuePair<string, int>("Powerups", pu));
             if (m.Won && m.Reason == "Checkmate") parts.Add(new KeyValuePair<string, int>("Checkmate", 50));
+            if (m.XpScale < 1.0)
+                for (int i = 0; i < parts.Count; i++)
+                    parts[i] = new KeyValuePair<string, int>(parts[i].Key, Round(parts[i].Value * m.XpScale));
             int xp = 0;
             foreach (var kv in parts) xp += kv.Value;
 

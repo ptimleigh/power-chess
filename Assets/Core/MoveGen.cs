@@ -10,6 +10,15 @@ namespace PowerChess.Core
         /// <summary>Every legal action for the side to move, including perks, bombs and pickup decisions.</summary>
         public static List<GameAction> LegalActions(GameState s)
         {
+            return LegalActions(s, false);
+        }
+
+        /// <summary>
+        /// With <paramref name="tacticalOnly"/> only captures, promotions, en passant, fireballs, steals and detonations
+        /// are generated (cheaper, for the AI's capture search). Pickup decisions are always returned in full.
+        /// </summary>
+        public static List<GameAction> LegalActions(GameState s, bool tacticalOnly)
+        {
             var result = new List<GameAction>(64);
             Side me = s.ToMove;
 
@@ -38,9 +47,26 @@ namespace PowerChess.Core
 
             foreach (var a in pseudo)
             {
+                if (tacticalOnly && !IsTactical(s, a)) continue;
                 if (IsLegal(s, a)) result.Add(a);
             }
             return result;
+        }
+
+        static bool IsTactical(GameState s, GameAction a)
+        {
+            switch (a.Kind)
+            {
+                case ActionKind.Move:
+                    if (!s.Cells[a.To].IsEmpty || a.Aux != 0) return true;
+                    return s.Cells[a.From].Type == PieceType.Pawn && Sq.File(a.From) != Sq.File(a.To); // en passant
+                case ActionKind.Fireball:
+                case ActionKind.Detonate:
+                case ActionKind.Steal:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>Applies the action to a copy and verifies the mover's king is not left attacked.</summary>

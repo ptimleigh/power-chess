@@ -47,6 +47,10 @@ public sealed class GameOptions
     public bool Rewards;
     /// <summary>Teleporter squares to place now, e.g. <c>portal=c3</c> (its twin is the point mirror, f6).</summary>
     public List<string> PortalAt = new();
+    /// <summary>Custom powerup rules: a preset id ("classic", "bigbombs", "custom", ...), how often squares appear, and the builder string.</summary>
+    public string Preset = Presets.Classic;
+    public Frequency Freq = Frequency.Normal;
+    public string Custom = Presets.DefaultCustom();
 
     public static GameOptions FromQuery(string query)
     {
@@ -59,7 +63,7 @@ public sealed class GameOptions
             switch (key)
             {
                 case "seed": if (ulong.TryParse(val, out var seed)) o.Seed = seed; break;
-                case "ai": if (int.TryParse(val, out var ai)) o.Ai = Math.Clamp(ai, 0, 3); break;
+                case "ai": if (int.TryParse(val, out var ai)) o.Ai = Math.Clamp(ai, 0, 5); break;
                 case "fen": o.Fen = val; break;
                 case "pairs": if (int.TryParse(val, out var pairs)) o.Pairs = pairs; break;
                 case "spawn": if (int.TryParse(val, out var spawn)) o.Spawn = spawn; break;
@@ -90,6 +94,9 @@ public sealed class GameOptions
                 case "day": if (int.TryParse(val, out var dn)) o.Day = dn; break;
                 case "rewards": o.Rewards = val == "1"; break;
                 case "level": if (int.TryParse(val, out var lv)) o.Level = Math.Clamp(lv, 1, Progression.MaxLevel); break;
+                case "preset": o.Preset = val.ToLowerInvariant(); break;
+                case "freq": if (int.TryParse(val, out var fq)) o.Freq = (Frequency)Math.Clamp(fq, 0, 3); break;
+                case "custom": o.Custom = val; break;
                 case "drama": o.Drama = val != "0"; break;
                 case "portals": o.Portals = val != "0"; break;
                 case "portal": o.PortalAt.AddRange(val.Split(',', StringSplitOptions.RemoveEmptyEntries)); break;

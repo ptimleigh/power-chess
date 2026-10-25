@@ -45,6 +45,14 @@ One puzzle a day (Mon-Tue easy, Wed-Fri medium, weekends hard): a fixed position
 
 Finishing a game earns XP (more for harder opponents, wins, captures, powerups and checkmate), levels up to 10, and trophies. Levels unlock powerups in stages: level 1 has Double Move, Poison, Spiked Armor, Stun, Boulder, Reroll, Fireball and Steal; 2 adds Small Bomb, Ghost and the basic Transforms; 3 Big Bomb, Become Queen, Swap and teleporters; 4 Triple Move and Rewind. Level 2 needs 60 XP, level 3 180, level 4 360 (30 x (level-1) x level). The rules live in `Assets/Core/Progression.cs` (tested, pure C#) and the profile is stored in the browser (`powerchess.profile.v1`). Debug games and games started with scenario options pay nothing unless `rewards=1`.
 
+### Opponent levels
+
+Five AI levels: Easy (depth 1, a quarter of its moves random), Normal (depth 2 with check extension and quiescence), Hard (depth 3, full evaluation), Expert (iterative deepening to depth 6 within 1 s) and Master (depth 8 within 2 s). Harder levels pay more XP (x0.7, 1, 1.4, 1.8, 2.2). Normal used to fall to scholar's mate because the search stopped without checking for mate at its horizon; the leaf check extension fixed that. `tools/LadderSim` plays adjacent levels against each other on plain chess; results are in `docs/BALANCE.md`.
+
+### Custom powerup rules
+
+Levelling up unlocks ways to change the powerup experience (all in `Assets/Core/Presets.cs`, chosen in the New game sheet): at level 5 a square frequency setting (Rare, Normal, Frequent, Chaos) plus Chaos Mode and Calm Mode; level 6 "Oops! All Big Bombs"; 7 Ghost Town (ghosts and teleporters); 8 Fireworks (Fireball, Steal, Stun); 9 Royal Court (Armor, Ghost, Triple Move, bombs); 10 a Custom builder with Off/Low/Normal/High per powerup. A preset ignores the player's level-based powerup unlocks because the player chose it. Games with a preset or a non-normal frequency pay half XP; trophies and daily puzzles are unaffected.
+
 ### Debug tools in the UI
 
 Tap the logo five times (or open `?debug=1`) for a panel that gives perks, puts any buff on any piece, drops powerup squares or teleporters, and removes them. Tap a tool, then the board; tap the tool again to stop.
@@ -55,7 +63,7 @@ Handy for reproducing a situation. All optional:
 
 | Param | Example | Meaning |
 |---|---|---|
-| `ai` | `ai=0` | 0 = two players, 1 easy, 2 normal, 3 hard |
+| `ai` | `ai=0` | 0 = two players, 1 easy, 2 normal, 3 hard, 4 expert, 5 master |
 | `seed` | `seed=7` | Deterministic spawns and draws |
 | `fen` | `fen=4k3/8/8/8/8/1N6/8/4K3%20w%20-%20-` | Start from a position |
 | `mystery` | `mystery=d4,e5` | Put mystery squares on these squares |
@@ -71,6 +79,7 @@ Handy for reproducing a situation. All optional:
 | `drama` | `drama=0` | Turn the strike effects (slash, hit-stop, callouts) off |
 | `level` | `level=1` | Act as an account of this level: only the powerups unlocked by then can appear (scenarios default to everything) |
 | `rewards` | `rewards=1` | Pay XP and trophies even in a scenario, so progression can be tested |
+| `preset`, `freq`, `custom` | `preset=bigbombs&freq=3` | Custom powerup rules (see below): a preset id, square frequency 0-3 (rare, normal, frequent, chaos) and the custom builder string. Locked choices are ignored for the `level` in play |
 | `day` | `day=20752` | Pretend it is this day (days since 1970-01-01) for the daily challenge |
 | `training` | `training=1` | Start on the small training board |
 

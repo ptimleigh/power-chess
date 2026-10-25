@@ -123,3 +123,20 @@ The rare ones are drawn far more often (Become Queen 60 to 218, Big Bomb 124 to 
 - Spiked Armor (kings can be uncheckable): 478 times, +4.1.
 - Become Queen +9.3 stays the biggest outlier (239 pickups); if it ever feels too strong, lower its weight from 3 to 2.
 - Swap is never used by the AI, so it has no row.
+
+## Opponent levels (ladder)
+
+`tools/LadderSim` plays adjacent AI levels against each other on plain chess (no powerups), colours swapped, from the same random 4-ply openings. Scores are from the stronger level's side.
+
+| Pair | Games | Result (wins / draws / losses) | Score |
+|---|---|---|---|
+| Normal vs Easy | 16 | 16 / 0 / 0 | 16/16 |
+| Hard vs Normal | 16 | 14 / 2 / 0 | 15/16 |
+| Expert vs Hard (full 1 s budget) | 10 | 6 / 3 / 1 | 7.5/10 |
+| Master vs Expert (time budgets shrunk to 10%) | 16 | 8 / 4 / 4 | 10/16 |
+
+An earlier Expert vs Hard run with budgets shrunk to 10% scored only 6.5/16: at about 100 ms Expert cannot out-search Hard's fixed depth 3, so the shrunken runs understate the upper levels. Each level beats the one below it at its real budget. Native search time per move: Easy 5-9 ms, Normal 15-20 ms, Hard 30-85 ms, Expert 1 s, Master 2 s. The scholar's-mate line (and a horizon mate threat) is defended at Normal and above (`AiLevelTests`).
+
+## Custom powerup presets
+
+Random-game simulations with each preset at level 10 (6 seeds each, Revealed squares, 250-ply cap) all terminate with both kings present and no illegal states (`PresetTests`). Non-standard games pay 50% XP so a strong preset cannot be farmed for unlocks.

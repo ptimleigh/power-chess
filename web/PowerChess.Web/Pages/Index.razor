@@ -10,6 +10,7 @@
         <div class="logo" data-action="logo" @onclick="LogoTap">POWER<span>CHESS</span></div>
         <div class="controls">
             <button class="icon-btn @(muted ? "muted" : "")" @onclick="ToggleMute" title="Sound" aria-label="Toggle sound">SFX</button>
+            <button class="icon-btn lvl" data-action="profile" title="Profile" @onclick="() => showProfile = true">Lv <b>@profile.Level</b></button>
             <button class="icon-btn" @onclick="() => showHelp = true" title="How to play" aria-label="How to play">?</button>
             <button class="icon-btn wide" data-action="new" @onclick="OpenNew">New</button>
         </div>
@@ -182,6 +183,11 @@
                 <button class="dbtn @(S.DebugArmed == DebugTool.Portal ? "on" : "")" data-dsquare="portal" @onclick="() => S.DebugArm(DebugTool.Portal)">Teleporters</button>
                 <button class="dbtn warn @(S.DebugArmed == DebugTool.Clear ? "on" : "")" data-dsquare="clear" @onclick="() => S.DebugArm(DebugTool.Clear)">Remove</button>
             </div>
+            <div class="debug-row"><span>Progress</span>
+                <button class="dbtn" data-dprog="max" @onclick="() => DebugXp(Progression.XpForLevel(Progression.MaxLevel))">Max level</button>
+                <button class="dbtn" data-dprog="plus" @onclick="() => DebugXp(profile.Xp + 100)">+100 XP</button>
+                <button class="dbtn warn" data-dprog="reset" @onclick="() => DebugXp(0, true)">Reset profile</button>
+            </div>
         </section>
     }
 
@@ -326,6 +332,27 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <div class="kicker">@S.Status</div>
             <h1>@ResultTitle</h1>
             <p>@ResultText</p>
+            @if (reward is MatchReward rw)
+            {
+                <div class="reward" data-testid="reward">
+                    <div class="xp-line"><b>+@rw.XpGained XP</b>
+                        <small>@string.Join(" · ", rw.Breakdown.Select(b => $"{b.Key} {b.Value}"))</small></div>
+                    <div class="xpbar"><i style="width:@(XpPercent(profile))%"></i></div>
+                    <div class="lv-line">Level @profile.Level@(profile.Level < Progression.MaxLevel ? $" · {Progression.XpForLevel(profile.Level + 1) - profile.Xp} XP to level {profile.Level + 1}" : " · max")</div>
+                    @if (rw.NewLevel > rw.OldLevel)
+                    {
+                        <div class="levelup" data-testid="levelup">LEVEL UP! You reached level @rw.NewLevel</div>
+                        @if (rw.NewPowerups.Count > 0 || rw.NewTeleporters)
+                        {
+                            <div class="unlocks">Unlocked: @string.Join(", ", rw.NewPowerups.Select(Names.Name).Concat(rw.NewTeleporters ? new[] { "Teleporters" } : Array.Empty<string>()))</div>
+                        }
+                    }
+                    @foreach (var t in rw.NewTrophies)
+                    {
+                        <div class="trophy-new" data-trophy-new="@t.Name"><span>@Icons.Svg("star")</span><b>@t.Name</b><small>@t.Description</small></div>
+                    }
+                </div>
+            }
             <button class="btn primary" data-action="again" @onclick="StartNew">Play again</button>
             @if (S.CanReview)
             {
@@ -373,6 +400,41 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     </div>
 }
 
+@if (showProfile)
+{
+    <div class="modal" data-testid="profile" @onclick="() => showProfile = false">
+        <div class="card help" @onclick:stopPropagation="true">
+            <div class="kicker">Your profile</div>
+            <div class="xp-line"><b>Level @profile.Level</b><small>@profile.Xp XP</small></div>
+            <div class="xpbar"><i style="width:@(XpPercent(profile))%"></i></div>
+            <div class="lv-line">@NextUnlockText</div>
+            <ul class="stats">
+                <li><b>@profile.Games</b><small>Games</small></li>
+                <li><b>@profile.Wins</b><small>Wins</small></li>
+                <li><b>@profile.Losses</b><small>Losses</small></li>
+                <li><b>@profile.Draws</b><small>Draws</small></li>
+                <li><b>@profile.Mates</b><small>Mates</small></li>
+                <li><b>@profile.Captures</b><small>Captures</small></li>
+                <li><b>@profile.Collected</b><small>Powerups</small></li>
+                <li><b>@profile.FireballKills</b><small>Burned</small></li>
+            </ul>
+            <div class="opt-label">Trophies @(Trophies.All.Count(t => profile.Has(t))) / @Trophies.All.Length</div>
+            <div class="trophies">
+                @foreach (var t in Trophies.All)
+                {
+                    bool got = profile.Has(t);
+                    <div class="trophy @(got ? "got" : "locked")" data-trophy="@t.Name" data-got="@(got ? "1" : "0")">
+                        <span class="ti">@Icons.Svg(got ? "star" : "lock")</span>
+                        <b>@t.Name</b>
+                        <small>@t.Description</small>
+                    </div>
+                }
+            </div>
+            <button class="btn primary" @onclick="() => showProfile = false">Close</button>
+        </div>
+    </div>
+}
+
 @if (showHelp)
 {
     <div class="modal" @onclick="() => showHelp = false">
@@ -382,9 +444,9 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <ul class="guide">
                 @foreach (var k in Names.Guide)
                 {
-                    <li>
+                    <li class="@(Progression.Unlocked(k, EffectiveLevel) ? "" : "locked")" data-guide="@k.ToString().ToLowerInvariant()">
                         <span class="gi @(PowerupInfo.IsPerk(k) ? "perk" : "buff")">@Icons.Svg(Names.Icon(k))</span>
-                        <span><b>@Names.Name(k)</b> @Names.Desc(k)</span>
+                        <span><b>@Names.Name(k)</b> @Names.Desc(k)@if (!Progression.Unlocked(k, EffectiveLevel)) { <em class="lockline"> Unlocks at level @Progression.UnlockLevel(k).</em> }</span>
                     </li>
                 }
             </ul>
@@ -404,7 +466,47 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     bool muted;
     bool showHelp;
     bool showNew;
+    bool showProfile;
     bool showDebug;
+    Profile profile = new();
+    MatchReward? reward;
+    int EffectiveLevel => opt.Level < 0 ? Progression.MaxLevel : opt.Level;
+
+    static int XpPercent(Profile p)
+    {
+        if (p.Level >= Progression.MaxLevel) return 100;
+        int lo = Progression.XpForLevel(p.Level), hi = Progression.XpForLevel(p.Level + 1);
+        return Math.Clamp((p.Xp - lo) * 100 / Math.Max(1, hi - lo), 0, 100);
+    }
+
+    string NextUnlockText
+    {
+        get
+        {
+            if (profile.Level >= Progression.MaxLevel) return "Max level. Everything is unlocked.";
+            int next = profile.Level + 1;
+            var names = Names.Guide.Concat(new[] { PowerupKind.TransformPawn })
+                .Where(k => Progression.UnlockLevel(k) == next).Select(Names.Name).Distinct().ToList();
+            if (next == Progression.TeleporterLevel) names.Add("Teleporters");
+            return $"{Progression.XpForLevel(next) - profile.Xp} XP to level {next}" + (names.Count > 0 ? ": unlocks " + string.Join(", ", names) : "");
+        }
+    }
+
+    void OnGameEnded(MatchSummary m)
+    {
+        if ((debugOptions && !opt.Rewards) || !S.Rewardable) { reward = null; return; }
+        reward = Progression.Award(profile, m);
+        opt.Level = profile.Level;
+        _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
+    }
+
+    void DebugXp(int xp, bool reset = false)
+    {
+        if (reset) profile = new Profile(); else profile.Xp = xp;
+        opt.Level = debugOptions && opt.Level >= 0 && !reset ? opt.Level : profile.Level;
+        _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
+    }
+    const string ProfileKey = "powerchess.profile.v1";
     int logoTaps;
     DateTime lastLogoTap;
 
@@ -479,7 +581,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
         showDebug = uri.Query.Contains("debug=1", StringComparison.OrdinalIgnoreCase);
-        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=" }
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game
@@ -487,10 +589,11 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (debugOptions && !opt.TutorialsExplicit) opt.Tutorials = false;
         StartNew(persist: false);
 
-        string? saved = null, played = null, tutText = null, settingsText = null;
+        string? saved = null, played = null, tutText = null, settingsText = null, profileText = null;
         try
         {
             tutText = await JS.InvokeAsync<string?>("localStorage.getItem", TutKey);
+            profileText = await JS.InvokeAsync<string?>("localStorage.getItem", ProfileKey);
             if (!debugOptions)
             {
                 saved = await JS.InvokeAsync<string?>("localStorage.getItem", SaveKey);
@@ -500,6 +603,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         }
         catch { /* storage unavailable: just play */ }
 
+        profile = ProfileCodec.Decode(profileText);
+        if (!debugOptions) opt.Level = profile.Level;
         var stored = TutorialState.Parse(tutText);
         tut.Off = stored.Off;
         tut.Seen.Clear();
@@ -557,10 +662,13 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     {
         if (S != null) { S.Changed = null; S.Sfx = null; S.Persist = null; }
         if (!urlSeed) opt.Seed = (ulong)DateTime.UtcNow.Ticks;
+        if (!debugOptions) opt.Level = profile.Level;
         S = new GameSession(opt, tut);
         S.Changed = () => InvokeAsync(StateHasChanged);
         S.TutorialsChanged = text => { _ = SetItemAsync(TutKey, text); };
         S.Sfx = name => { _ = PlaySfx(name); };
+        S.GameEnded = OnGameEnded;
+        reward = null;
         if (persist && !debugOptions) EnablePersist();
     }
 

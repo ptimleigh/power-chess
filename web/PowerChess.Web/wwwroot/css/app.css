@@ -375,3 +375,33 @@ button:disabled { cursor: default; }
 .dbtn { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: #2a1f5c; font-size: 11px; font-weight: 800; }
 .dbtn.on { background: var(--cyan); color: #04251f; }
 .dbtn.warn { border-color: #ff4b6b; }
+
+/* ---------- progression ---------- */
+.icon-btn.lvl { width: auto; padding: 0 10px; font-size: 12px; }
+.icon-btn.lvl b { color: var(--gold); margin-left: 3px; }
+.reward { margin: 8px 0 10px; text-align: left; display: flex; flex-direction: column; gap: 6px; }
+.xp-line { display: flex; flex-direction: column; gap: 1px; }
+.xp-line b { font-size: 20px; color: var(--gold); }
+.xp-line small, .lv-line { font-size: 11px; color: var(--dim); }
+.xpbar { height: 10px; border-radius: 6px; background: #ffffff18; overflow: hidden; }
+.xpbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--magenta)); transition: width .8s ease-out; }
+.levelup { font-weight: 900; letter-spacing: 1px; color: #fff; text-shadow: 0 0 14px var(--magenta); animation: glow 1s infinite ease-in-out; }
+.unlocks { font-size: 12px; color: var(--cyan); }
+.trophy-new { display: grid; grid-template-columns: 24px 1fr; column-gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--gold); background: #ffd54a14; }
+.trophy-new span { grid-row: span 2; color: var(--gold); width: 22px; height: 22px; }
+.trophy-new b { font-size: 13px; }
+.trophy-new small { grid-column: 2; font-size: 11px; color: var(--dim); }
+.stats { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 0; margin: 8px 0; }
+.stats li { background: #ffffff0f; border-radius: 10px; padding: 6px 4px; text-align: center; }
+.stats b { display: block; font-size: 18px; }
+.stats small { font-size: 10px; color: var(--dim); text-transform: uppercase; }
+.trophies { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.trophy { display: grid; grid-template-columns: 22px 1fr; column-gap: 6px; padding: 6px 8px; border-radius: 10px; background: #ffffff0f; text-align: left; }
+.trophy .ti { grid-row: span 2; width: 20px; height: 20px; color: var(--dim); }
+.trophy.got { border: 1px solid var(--gold); background: #ffd54a14; }
+.trophy.got .ti { color: var(--gold); }
+.trophy b { font-size: 12px; }
+.trophy small { grid-column: 2; font-size: 10px; color: var(--dim); }
+.trophy.locked b { color: var(--dim); }
+.guide li.locked { opacity: .5; }
+.lockline { color: var(--gold); font-style: normal; font-weight: 700; }

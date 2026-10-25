@@ -127,6 +127,24 @@ public sealed class GameSession
     /// <summary>Called with a save string after every completed action, or null when there is nothing to resume (game over).</summary>
     public Action<string?>? Persist;
 
+    // ---------- progression ----------
+    MatchTracker? tracker;
+    bool endReported;
+    bool rewardable = true;
+    public bool DebugUsed { get; private set; }
+    /// <summary>Called once when the game ends, with what happened, so the page can award XP.</summary>
+    public Action<MatchSummary>? GameEnded;
+    /// <summary>Whether finishing this game should pay XP: not a scenario, training board or debug-assisted game.</summary>
+    public bool Rewardable => rewardable && !DebugUsed;
+
+    void ResetTracker(bool eligible)
+    {
+        tracker = new MatchTracker(Side.White, opt.Ai);
+        endReported = false;
+        rewardable = eligible;
+        DebugUsed = false;
+    }
+
     public GameSession(GameOptions options, TutorialState? tutorials = null)
     {
         opt = options;
@@ -222,7 +240,9 @@ public sealed class GameSession
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
         cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
         cfg.SwapAllowed[(int)Side.Black] = !VsAi; // nor Swap
-        cfg.PortalChance = opt.Portals ? 0.12 : 0;
+        bool tele = opt.Level < 0 || opt.Level >= Progression.TeleporterLevel;
+        if (opt.Level > 0 && opt.Only.Count == 0) cfg.Pool = Progression.PoolFor(opt.Level);
+        cfg.PortalChance = opt.Portals && tele ? 0.12 : 0;
         cfg.Squares = opt.Mode;
         cfg.MysteryChance = opt.HiddenChance;
         return cfg;
@@ -283,6 +303,7 @@ public sealed class GameSession
             ai = new Ai(1);
         }
 
+        ResetTracker(!opt.Training && (opt.Fen == null || opt.Rewards));
         Pieces.Clear();
         Effects.Clear();
         Toasts.Clear();
@@ -373,6 +394,7 @@ public sealed class GameSession
             Pieces.Clear();
             Pieces.AddRange(live);
             State = state;
+            ResetTracker(true);
             nextId = Math.Max(savedNextId, 1);
             ai = new Ai(opt.Ai switch { 1 => 1, 3 => 3, _ => 2 });
             Effects.Clear();
@@ -563,6 +585,7 @@ public sealed class GameSession
     public void DebugGivePerk(PowerupKind kind)
     {
         if (Busy) return;
+        DebugUsed = true;
         State.AddPerk(Me, kind, 1);
         Sfx?.Invoke("pickup");
         Refresh();
@@ -611,6 +634,7 @@ public sealed class GameSession
                 if (cell.IsEmpty) return;
                 if (cell.Type == PieceType.King && !PowerupInfo.IsPerk(DebugKind)) { AddToast("Kings are immune", "Pick another piece", "gold", "shield"); break; }
                 var ev = new List<GameEvent>();
+                DebugUsed = true;
                 Rules.ApplyPickup(State, cell.Side, sq, DebugKind, ev);
                 Process(ev);
                 SyncViews();
@@ -618,6 +642,7 @@ public sealed class GameSession
             }
             case DebugTool.Square:
                 if (!free) return;
+                DebugUsed = true;
                 State.Mystery[sq] = true;
                 State.Content[sq] = (byte)DebugKind;
                 if (mirrorFree && mirror != sq)
@@ -629,6 +654,7 @@ public sealed class GameSession
                 break;
             case DebugTool.Portal:
                 if (!free || !mirrorFree || mirror == sq) return;
+                DebugUsed = true;
                 State.Portal[sq] = true;
                 State.Portal[mirror] = true;
                 AddFx("ping", sq, css: "portal");
@@ -800,6 +826,7 @@ public sealed class GameSession
         lastFireMs = 0;
         Rules.Apply(State, a, ev);
         Moves++;
+        tracker?.Observe(ev);
         Process(ev);
         SyncViews();
         Refresh();
@@ -824,6 +851,11 @@ public sealed class GameSession
 
         if (GameOver)
         {
+            if (!endReported && tracker != null)
+            {
+                endReported = true;
+                GameEnded?.Invoke(tracker.Finish(Result, ResultReason));
+            }
             Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == Side.Black ? "lose" : "win"));
         }
         Busy = false;

@@ -37,6 +37,10 @@ public sealed class GameOptions
     public bool Portals = true;
     /// <summary>Strike drama: dash streaks, slashes, hit-stop, callouts and bigger shakes on captures (<c>drama=0</c> turns it off).</summary>
     public bool Drama = true;
+    /// <summary>Account level that decides which powerups can appear. -1 = everything unlocked (scenarios and tests).</summary>
+    public int Level = -1;
+    /// <summary>Pay XP and trophies even in a scenario (<c>rewards=1</c>), so progression can be tested.</summary>
+    public bool Rewards;
     /// <summary>Teleporter squares to place now, e.g. <c>portal=c3</c> (its twin is the point mirror, f6).</summary>
     public List<string> PortalAt = new();
 
@@ -79,6 +83,8 @@ public sealed class GameOptions
                 case "tut": o.Tutorials = val != "0"; o.TutorialsExplicit = val == "1"; break;
                 case "demo": if (Enum.TryParse<PowerupKind>(val, true, out var dk)) o.Demo = dk; break;
                 case "training": o.Training = val != "0"; break;
+                case "rewards": o.Rewards = val == "1"; break;
+                case "level": if (int.TryParse(val, out var lv)) o.Level = Math.Clamp(lv, 1, Progression.MaxLevel); break;
                 case "drama": o.Drama = val != "0"; break;
                 case "portals": o.Portals = val != "0"; break;
                 case "portal": o.PortalAt.AddRange(val.Split(',', StringSplitOptions.RemoveEmptyEntries)); break;

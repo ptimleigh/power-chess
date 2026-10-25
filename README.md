@@ -36,6 +36,10 @@ file server.
 Tap a piece, then a highlighted square. Land on a glowing powerup square to claim it (a purple `?` square is a mystery). Use the buttons under the board for perks,
 and the Detonate button when a bomber is selected.
 
+### Progression
+
+Finishing a game earns XP (more for harder opponents, wins, captures, powerups and checkmate), levels up to 10, and trophies. Levels unlock powerups in stages: level 1 has Double Move, Poison, Spiked Armor, Stun, Boulder and Reroll; 2 adds Fireball and Steal; 3 the small bomb and basic Transforms; 4 Big Bomb, Become Queen, Ghost and Swap; 5 Triple Move, Rewind and teleporters. The rules live in `Assets/Core/Progression.cs` (tested, pure C#) and the profile is stored in the browser (`powerchess.profile.v1`). Debug games and games started with scenario options pay nothing unless `rewards=1`.
+
 ### Debug tools in the UI
 
 Tap the logo five times (or open `?debug=1`) for a panel that gives perks, puts any buff on any piece, drops powerup squares or teleporters, and removes them. Tap a tool, then the board; tap the tool again to stop.
@@ -60,6 +64,8 @@ Handy for reproducing a situation. All optional:
 | `hidden` | `hidden=0.5` | Chance a revealed pair stays hidden |
 | `portal`, `portals` | `portal=c3` | Place a teleporter pair (c3 and its point mirror f6); `portals=0` stops them spawning |
 | `drama` | `drama=0` | Turn the strike effects (slash, hit-stop, callouts) off |
+| `level` | `level=1` | Act as an account of this level: only the powerups unlocked by then can appear (scenarios default to everything) |
+| `rewards` | `rewards=1` | Pay XP and trophies even in a scenario, so progression can be tested |
 | `training` | `training=1` | Start on the small training board |
 
 With no options the game resumes where you left off after a refresh (saved in the browser), and a first-ever game starts on the training board.

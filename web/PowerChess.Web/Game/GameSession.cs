@@ -110,13 +110,13 @@ public sealed class GameSession
     public bool InCheck { get; private set; }
     public int Moves { get; private set; }
 
-    public bool Reviewing => reviewIndex >= 0 && reviewIndex < history.Count;
+    public bool Reviewing => reviewIndex >= 0 && reviewIndex <= history.Count;
     public int HistoryCount => history.Count;
-    /// <summary>Position being shown while reviewing (0 = start). Equals <see cref="HistoryCount"/> when live.</summary>
+    /// <summary>Position being shown while reviewing (0 = start, <see cref="HistoryCount"/> = the final position). Equals <see cref="HistoryCount"/> when live.</summary>
     public int ReviewPosition => Reviewing ? reviewIndex : history.Count;
     /// <summary>What the board shows: the live game, or a past position while reviewing.</summary>
-    public GameState View => Reviewing ? history[reviewIndex].Before : State;
-    public List<PieceView> ViewPieces => Reviewing ? viewHistory[reviewIndex] : Pieces;
+    public GameState View => Reviewing && reviewIndex < history.Count ? history[reviewIndex].Before : State;
+    public List<PieceView> ViewPieces => Reviewing && reviewIndex < history.Count ? viewHistory[reviewIndex] : Pieces;
     public int ViewLastFrom => Reviewing ? LastOf(reviewIndex).from : LastFrom;
     public int ViewLastTo => Reviewing ? LastOf(reviewIndex).to : LastTo;
     public bool CanReview => history.Count > 0 && !Busy && !PickupPending;
@@ -983,11 +983,27 @@ public sealed class GameSession
     {
         if (position <= 0 || position > history.Count) return (-1, -1);
         var a = history[position - 1].Action;
-        return a.Kind == ActionKind.Move ? (a.From, a.To) : (-1, -1);
+        switch (a.Kind)
+        {
+            case ActionKind.Move:
+            case ActionKind.Fireball:
+            case ActionKind.Steal:
+            case ActionKind.Swap:
+                return (a.From, a.To);
+            case ActionKind.Detonate: return (a.From, a.From);
+            case ActionKind.Stun:
+            case ActionKind.PlaceBoulder:
+            case ActionKind.ClearBoulder: return (a.To, a.To);
+            default: return (-1, -1);
+        }
     }
 
     /// <summary>Move the review position by <paramref name="delta"/>. Stepping past the newest position returns to the live game.</summary>
-    public void ReviewStep(int delta) => ReviewTo(ReviewPosition + delta);
+    public void ReviewStep(int delta)
+    {
+        if (Reviewing && ReviewPosition + delta > history.Count) ExitReview();
+        else ReviewTo(ReviewPosition + delta);
+    }
 
     public void ReviewTo(int position)
     {
@@ -995,12 +1011,20 @@ public sealed class GameSession
         ClearSelection();
         Inspect = -1;
         position = Math.Clamp(position, 0, history.Count);
-        reviewIndex = position >= history.Count ? -1 : position;
+        reviewIndex = position;
         Sfx?.Invoke("click");
         Changed?.Invoke();
     }
 
-    public void ExitReview() => ReviewTo(history.Count);
+    public void ExitReview()
+    {
+        if (!Reviewing) return;
+        reviewIndex = -1;
+        ClearSelection();
+        Inspect = -1;
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
 
     /// <summary>Short description of the action that led into the position being shown.</summary>
     public string ReviewLabel

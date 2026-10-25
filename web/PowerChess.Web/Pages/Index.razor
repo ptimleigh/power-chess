@@ -112,7 +112,7 @@
                     <button class="rbtn" data-review="first" disabled="@(S.ReviewPosition <= 0)" aria-label="First" @onclick="() => S.ReviewTo(0)">@Icons.Svg("first")</button>
                     <button class="rbtn" data-review="prev" disabled="@(S.ReviewPosition <= 0)" aria-label="Previous move" @onclick="() => S.ReviewStep(-1)">@Icons.Svg("prev")</button>
                     <button class="rbtn" data-review="next" aria-label="Next move" @onclick="() => S.ReviewStep(1)">@Icons.Svg("next")</button>
-                    <button class="rbtn" data-review="last" aria-label="Latest" @onclick="S.ExitReview">@Icons.Svg("last")</button>
+                    <button class="rbtn" data-review="last" aria-label="Final position" disabled="@(S.ReviewPosition >= S.HistoryCount)" @onclick="() => S.ReviewTo(S.HistoryCount)">@Icons.Svg("last")</button>
                     <button class="btn primary review-exit" data-action="exit-review" @onclick="S.ExitReview">Back to game</button>
                 </div>
             </div>

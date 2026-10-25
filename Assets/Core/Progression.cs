@@ -169,7 +169,7 @@ namespace PowerChess.Core
         public static int XpForLevel(int level)
         {
             if (level <= 1) return 0;
-            return 50 * (level - 1) * level; // 2: 100, 3: 300, 4: 600, 5: 1000 ...
+            return 30 * (level - 1) * level; // 2: 60, 3: 180, 4: 360, 5: 600 ... 10: 2700
         }
 
         public static int LevelForXp(int xp)
@@ -190,27 +190,26 @@ namespace PowerChess.Core
                 case PowerupKind.Stun:
                 case PowerupKind.Boulder:
                 case PowerupKind.Reroll:
-                    return 1;
                 case PowerupKind.Fireball:
                 case PowerupKind.Steal:
-                    return 2;
+                    return 1;
                 case PowerupKind.SmallBomb:
+                case PowerupKind.Ghost:
                 case PowerupKind.TransformPawn:
                 case PowerupKind.TransformKnight:
                 case PowerupKind.TransformBishop:
                 case PowerupKind.TransformRook:
-                    return 3;
+                    return 2;
                 case PowerupKind.BigBomb:
                 case PowerupKind.TransformQueen:
-                case PowerupKind.Ghost:
                 case PowerupKind.Swap:
-                    return 4;
+                    return 3;
                 default: // Triple Move, Rewind
-                    return 5;
+                    return 4;
             }
         }
 
-        public const int TeleporterLevel = 5;
+        public const int TeleporterLevel = 3;
 
         public static bool Unlocked(PowerupKind k, int level) { return UnlockLevel(k) <= level; }
 

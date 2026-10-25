@@ -43,7 +43,7 @@ One puzzle a day (Mon-Tue easy, Wed-Fri medium, weekends hard): a fixed position
 
 ### Progression
 
-Finishing a game earns XP (more for harder opponents, wins, captures, powerups and checkmate), levels up to 10, and trophies. Levels unlock powerups in stages: level 1 has Double Move, Poison, Spiked Armor, Stun, Boulder and Reroll; 2 adds Fireball and Steal; 3 the small bomb and basic Transforms; 4 Big Bomb, Become Queen, Ghost and Swap; 5 Triple Move, Rewind and teleporters. The rules live in `Assets/Core/Progression.cs` (tested, pure C#) and the profile is stored in the browser (`powerchess.profile.v1`). Debug games and games started with scenario options pay nothing unless `rewards=1`.
+Finishing a game earns XP (more for harder opponents, wins, captures, powerups and checkmate), levels up to 10, and trophies. Levels unlock powerups in stages: level 1 has Double Move, Poison, Spiked Armor, Stun, Boulder, Reroll, Fireball and Steal; 2 adds Small Bomb, Ghost and the basic Transforms; 3 Big Bomb, Become Queen, Swap and teleporters; 4 Triple Move and Rewind. Level 2 needs 60 XP, level 3 180, level 4 360 (30 x (level-1) x level). The rules live in `Assets/Core/Progression.cs` (tested, pure C#) and the profile is stored in the browser (`powerchess.profile.v1`). Debug games and games started with scenario options pay nothing unless `rewards=1`.
 
 ### Debug tools in the UI
 

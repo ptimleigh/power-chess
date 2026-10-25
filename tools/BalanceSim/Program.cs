@@ -13,6 +13,8 @@ int depth = args.Length > 1 ? int.Parse(args[1]) : 1;
 string outFile = args.Length > 2 && args[2] != "-" ? args[2] : null;
 int spawn = args.Length > 3 ? int.Parse(args[3]) : 4;
 bool revealed = args.Length > 4 && args[4].Equals("revealed", StringComparison.OrdinalIgnoreCase);
+bool legacyPool = args.Length > 5 && args[5].Equals("old", StringComparison.OrdinalIgnoreCase);
+int maxSquares = args.Length > 6 ? int.Parse(args[6]) : 6;
 
 var kinds = Enum.GetValues(typeof(PowerupKind)).Cast<PowerupKind>().Where(k => k != PowerupKind.None && k != PowerupKind.Rewind).ToList();
 var obtained = kinds.ToDictionary(k => k, _ => new Outcome());
@@ -25,7 +27,8 @@ var rnd = new Random(12345);
 
 for (int g = 0; g < games; g++)
 {
-    var cfg = new GameConfig { MaxPly = 300, SpawnInterval = spawn, Squares = revealed ? SquareMode.Revealed : SquareMode.Mystery };
+    var cfg = new GameConfig { MaxPly = 300, SpawnInterval = spawn, MaxMysterySquares = maxSquares, Squares = revealed ? SquareMode.Revealed : SquareMode.Mystery };
+    if (legacyPool) cfg.Pool = GameConfig.LegacyPool();
     cfg.RewindAllowed[0] = cfg.RewindAllowed[1] = false; // the AI cannot use Rewind
     cfg.SwapAllowed[0] = cfg.SwapAllowed[1] = false; // nor Swap
     var s = GameState.NewGame(cfg, (ulong)(1000 + g));

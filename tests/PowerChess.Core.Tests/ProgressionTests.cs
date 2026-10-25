@@ -11,9 +11,9 @@ namespace PowerChess.Core.Tests
         public void Levels_follow_the_xp_curve_and_cap_out()
         {
             Assert.AreEqual(1, Progression.LevelForXp(0));
-            Assert.AreEqual(1, Progression.LevelForXp(99));
-            Assert.AreEqual(2, Progression.LevelForXp(100));
-            Assert.AreEqual(3, Progression.LevelForXp(300));
+            Assert.AreEqual(1, Progression.LevelForXp(59));
+            Assert.AreEqual(2, Progression.LevelForXp(60));
+            Assert.AreEqual(3, Progression.LevelForXp(180));
             Assert.AreEqual(Progression.MaxLevel, Progression.LevelForXp(int.MaxValue / 2));
             for (int l = 2; l <= Progression.MaxLevel; l++)
                 Assert.AreEqual(l, Progression.LevelForXp(Progression.XpForLevel(l)));
@@ -23,13 +23,17 @@ namespace PowerChess.Core.Tests
         public void The_pool_only_contains_what_a_level_has_unlocked()
         {
             var l1 = Progression.PoolFor(1).Select(w => w.Kind).ToList();
-            CollectionAssert.DoesNotContain(l1, PowerupKind.Fireball);
+            CollectionAssert.DoesNotContain(l1, PowerupKind.SmallBomb);
             CollectionAssert.DoesNotContain(l1, PowerupKind.Ghost);
+            CollectionAssert.DoesNotContain(l1, PowerupKind.TripleMove);
             CollectionAssert.Contains(l1, PowerupKind.Poison);
+            CollectionAssert.Contains(l1, PowerupKind.Fireball, "the big hitters are available from the first game");
+            CollectionAssert.Contains(l1, PowerupKind.Steal);
             Assert.AreEqual(GameConfig.DefaultPool().Count, Progression.PoolFor(Progression.MaxLevel).Count, "everything is unlocked at max level");
             var l2 = Progression.PoolFor(2).Select(w => w.Kind).ToList();
-            CollectionAssert.Contains(l2, PowerupKind.Fireball);
-            CollectionAssert.DoesNotContain(l2, PowerupKind.SmallBomb);
+            CollectionAssert.Contains(l2, PowerupKind.SmallBomb);
+            CollectionAssert.Contains(l2, PowerupKind.Ghost);
+            CollectionAssert.DoesNotContain(l2, PowerupKind.BigBomb);
         }
 
         [Test]
@@ -89,9 +93,11 @@ namespace PowerChess.Core.Tests
             var m = new MatchSummary { Me = Side.White, Result = GameResult.WhiteWins, Reason = "Checkmate", AiLevel = 2, Captures = 3, PowerupsCollected = 2 };
             var r = Progression.Award(p, m);
             Assert.AreEqual(1, r.OldLevel);
-            Assert.AreEqual(2, r.NewLevel);
-            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.Fireball));
-            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.Steal));
+            Assert.AreEqual(3, r.NewLevel, "260 XP skips straight past level 2 (60) to level 3 (180)");
+            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.SmallBomb));
+            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.Ghost));
+            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.BigBomb));
+            Assert.IsTrue(r.NewTeleporters);
             var names = r.NewTrophies.Select(t => t.Name).ToList();
             CollectionAssert.IsSubsetOf(new[] { "First Win", "Checkmate", "Flawless" }, names);
             Assert.AreEqual(100 + 15 + 20 + 50 + 25 * r.NewTrophies.Count, r.XpGained);

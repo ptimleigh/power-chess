@@ -84,3 +84,32 @@ modes, already down-weighted) and tiny samples (Transform to Pawn). Big Bomb loo
 - Ghost: obtained 216 times, win rate 47.7% against a 41.5% baseline (+6.2). The strongest of the new three and the second-biggest outlier after Transform to Queen (+11.8). Watch it; if phone playtests agree, drop its weight from 6 to 4 or shorten it from 4 to 3 turns.
 - Triple Move: 189 times, +1.4. Fine at weight 3 (it has few safe uses, and giving check cancels it).
 - Everything else stayed within about +-4 points of baseline.
+
+## Playtest tuning: more big powerups
+
+Feedback: strong powerups felt too rare. The pool now favours the big hitters (Fireball 11, Steal 9, Small Bomb 8, Ghost 8, Big Bomb 5, Triple Move 5, Become Queen 3) over the mild buffs (Double Move 6, Poison 5, Reroll 5, Boulder 4, Become Pawn 1), spawns come every 3 plies (was 4) and up to 8 squares can exist (was 6). Unlocks are also much faster (see `Progression.UnlockLevel`): Fireball and Steal are available from the first game.
+
+500 games each, depth 2, revealed squares.
+
+| | Before (old weights, every 4 plies, max 6) | After (new weights, every 3 plies, max 8) |
+|---|---|---|
+| Median plies | 59 | 57 |
+| Checkmates | 83.0% | 87.4% |
+| 50-move / ply-cap draws | 12.4% / 4.4% | 10.4% / 2.0% |
+
+Times obtained and win rate vs baseline:
+
+| Powerup | Before | After |
+|---|---|---|
+| TransformQueen | 60 / +11.8% | 218 / +5.4% |
+| TripleMove | 189 / +1.4% | 319 / +5.2% |
+| Ghost | 216 / +6.2% | 343 / +3.8% |
+| BigBomb | 124 / +1.2% | 342 / +2.5% |
+| Fireball | 436 / +0.2% | 586 / +2.0% |
+| Steal | 433 / +0.1% | 596 / +0.3% |
+| SmallBomb | 292 / -0.1% | 459 / +0.3% |
+| Stun | 452 / +1.4% | 547 / -0.4% |
+| Reroll | 472 / -3.4% | 377 / +0.3% |
+| Boulder | 379 / -4.0% | 300 / -6.0% |
+
+The rare ones are drawn far more often (Become Queen 60 to 218, Big Bomb 124 to 342, Triple Move 189 to 319, Ghost 216 to 343) and the common big ones somewhat more (Fireball 436 to 586, Steal 433 to 596). Game length barely moved, and the strongest outlier is now Become Queen at +5.4 (it was +11.8 when rare), so no further trimming was needed. Boulder looks weak (-6.0), which fits it being a setup perk the AI uses poorly.

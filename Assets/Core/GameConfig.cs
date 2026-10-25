@@ -30,9 +30,9 @@ namespace PowerChess.Core
         /// <summary>In Revealed mode, the chance that a spawned pair stays a hidden mystery.</summary>
         public double MysteryChance = 0.2;
         /// <summary>A new mirrored pair of mystery squares appears every this many plies. 0 disables spawning.</summary>
-        public int SpawnInterval = 4;
+        public int SpawnInterval = 3;
         public int InitialPairs = 2;
-        public int MaxMysterySquares = 6;
+        public int MaxMysterySquares = 8;
         public int StartRerolls = 1;
         /// <summary>Cap per perk type per player.</summary>
         public int MaxPerks = 3;
@@ -49,7 +49,8 @@ namespace PowerChess.Core
         public int GhostTurns = 4;
         public List<WeightedKind> Pool = DefaultPool();
 
-        public static List<WeightedKind> DefaultPool()
+        /// <summary>The pool before the playtest tuning, kept so BalanceSim can compare old and new weights.</summary>
+        public static List<WeightedKind> LegacyPool()
         {
             return new List<WeightedKind>
             {
@@ -71,6 +72,36 @@ namespace PowerChess.Core
                 new WeightedKind(PowerupKind.Rewind, 5),
                 new WeightedKind(PowerupKind.Ghost, 6),
                 new WeightedKind(PowerupKind.TripleMove, 3),
+                new WeightedKind(PowerupKind.Swap, 6),
+            };
+        }
+
+        /// <summary>
+        /// Playtest tuning: the big hitters (fireball, steal, bombs, ghost, triple move, become queen) are drawn far more
+        /// often than the mild buffs, so a game has a few real moments instead of mostly small upgrades.
+        /// </summary>
+        public static List<WeightedKind> DefaultPool()
+        {
+            return new List<WeightedKind>
+            {
+                new WeightedKind(PowerupKind.DoubleMove, 6),
+                new WeightedKind(PowerupKind.Poison, 5),
+                new WeightedKind(PowerupKind.SpikedArmor, 7),
+                new WeightedKind(PowerupKind.Stun, 8),
+                new WeightedKind(PowerupKind.SmallBomb, 8),
+                new WeightedKind(PowerupKind.BigBomb, 5),
+                new WeightedKind(PowerupKind.TransformPawn, 1),
+                new WeightedKind(PowerupKind.TransformKnight, 2),
+                new WeightedKind(PowerupKind.TransformBishop, 2),
+                new WeightedKind(PowerupKind.TransformRook, 3),
+                new WeightedKind(PowerupKind.TransformQueen, 3),
+                new WeightedKind(PowerupKind.Fireball, 11),
+                new WeightedKind(PowerupKind.Steal, 9),
+                new WeightedKind(PowerupKind.Boulder, 4),
+                new WeightedKind(PowerupKind.Reroll, 5),
+                new WeightedKind(PowerupKind.Rewind, 5),
+                new WeightedKind(PowerupKind.Ghost, 8),
+                new WeightedKind(PowerupKind.TripleMove, 5),
                 new WeightedKind(PowerupKind.Swap, 6),
             };
         }

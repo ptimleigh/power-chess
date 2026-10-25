@@ -39,6 +39,10 @@ public sealed class GameOptions
     public bool Drama = true;
     /// <summary>Account level that decides which powerups can appear. -1 = everything unlocked (scenarios and tests).</summary>
     public int Level = -1;
+    /// <summary>Override today's day number (<c>day=20000</c>), for testing the daily challenge.</summary>
+    public int? Day;
+    /// <summary>Play this daily puzzle instead of a normal game.</summary>
+    public PuzzleDef? Puzzle;
     /// <summary>Pay XP and trophies even in a scenario (<c>rewards=1</c>), so progression can be tested.</summary>
     public bool Rewards;
     /// <summary>Teleporter squares to place now, e.g. <c>portal=c3</c> (its twin is the point mirror, f6).</summary>
@@ -83,6 +87,7 @@ public sealed class GameOptions
                 case "tut": o.Tutorials = val != "0"; o.TutorialsExplicit = val == "1"; break;
                 case "demo": if (Enum.TryParse<PowerupKind>(val, true, out var dk)) o.Demo = dk; break;
                 case "training": o.Training = val != "0"; break;
+                case "day": if (int.TryParse(val, out var dn)) o.Day = dn; break;
                 case "rewards": o.Rewards = val == "1"; break;
                 case "level": if (int.TryParse(val, out var lv)) o.Level = Math.Clamp(lv, 1, Progression.MaxLevel); break;
                 case "drama": o.Drama = val != "0"; break;

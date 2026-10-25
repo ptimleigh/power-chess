@@ -71,6 +71,8 @@ window.pcfx = (function () {
     };
 
     return {
+        today: function () { const d = new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000); },
+        copy: function (text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return false; } },
         play: function (name) { try { const f = sounds[name]; if (f) f(); } catch (e) { } },
         setMuted: function (m) { muted = !!m; },
     };

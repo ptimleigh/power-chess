@@ -120,6 +120,8 @@ namespace PowerChess.Core
         public int Xp;
         public int Games, Wins, Losses, Draws, Mates;
         public int Captures, Collected, FireballKills, Steals, Teleports;
+        /// <summary>Consecutive days with a solved daily challenge, the best run, the last solved day number and the total solved.</summary>
+        public int DailyStreak, BestStreak, LastDailyDay, DailySolved;
         /// <summary>One bit per <see cref="Trophies.All"/> index.</summary>
         public uint TrophyBits;
 
@@ -152,6 +154,10 @@ namespace PowerChess.Core
             new Trophy(8, "Phantom", "Win a game after collecting a Ghost.", (m, p) => m.Won && m.CollectedGhost),
             new Trophy(9, "Hard Won", "Beat the Hard opponent.", (m, p) => m.Won && m.AiLevel >= 3),
             new Trophy(10, "Regular", "Play 10 games.", (m, p) => p.Games >= 10),
+            new Trophy(11, "Daily Dose", "Solve a daily challenge.", (m, p) => p.DailySolved >= 1),
+            new Trophy(12, "On a Roll", "Solve the daily challenge 3 days in a row.", (m, p) => p.BestStreak >= 3),
+            new Trophy(13, "Week Warrior", "Solve the daily challenge 7 days in a row.", (m, p) => p.BestStreak >= 7),
+            new Trophy(14, "Devoted", "Solve the daily challenge 30 days in a row.", (m, p) => p.BestStreak >= 30),
         };
     }
 
@@ -253,20 +259,26 @@ namespace PowerChess.Core
             }
             if (r.NewTrophies.Count > 0) parts.Add(new KeyValuePair<string, int>("Trophies", 25 * r.NewTrophies.Count));
 
+            Grant(p, r, xp);
+            return r;
+        }
+
+        /// <summary>Adds XP and records the level change and what it unlocked.</summary>
+        public static void Grant(Profile p, MatchReward r, int xp)
+        {
             p.Xp += xp;
             r.XpGained = xp;
             r.NewLevel = p.Level;
             foreach (var w in GameConfig.DefaultPool())
                 if (UnlockLevel(w.Kind) > r.OldLevel && UnlockLevel(w.Kind) <= r.NewLevel) r.NewPowerups.Add(w.Kind);
             r.NewTeleporters = TeleporterLevel > r.OldLevel && TeleporterLevel <= r.NewLevel;
-            return r;
         }
     }
 
     /// <summary>Compact versioned save format for a <see cref="Profile"/>.</summary>
     public static class ProfileCodec
     {
-        const byte Version = 1;
+        const byte Version = 2;
 
         public static string Encode(Profile p)
         {
@@ -278,6 +290,7 @@ namespace PowerChess.Core
                 w.Write(p.Games); w.Write(p.Wins); w.Write(p.Losses); w.Write(p.Draws); w.Write(p.Mates);
                 w.Write(p.Captures); w.Write(p.Collected); w.Write(p.FireballKills); w.Write(p.Steals); w.Write(p.Teleports);
                 w.Write(p.TrophyBits);
+                w.Write(p.DailyStreak); w.Write(p.BestStreak); w.Write(p.LastDailyDay); w.Write(p.DailySolved);
                 w.Flush();
                 return Convert.ToBase64String(ms.ToArray());
             }
@@ -293,13 +306,19 @@ namespace PowerChess.Core
                 using (var ms = new System.IO.MemoryStream(Convert.FromBase64String(text)))
                 using (var r = new System.IO.BinaryReader(ms))
                 {
-                    if (r.ReadByte() != Version) return new Profile();
+                    byte version = r.ReadByte();
+                    if (version != 1 && version != 2) return new Profile();
                     var q = new Profile
                     {
                         Xp = r.ReadInt32(), Games = r.ReadInt32(), Wins = r.ReadInt32(), Losses = r.ReadInt32(),
                         Draws = r.ReadInt32(), Mates = r.ReadInt32(), Captures = r.ReadInt32(), Collected = r.ReadInt32(),
                         FireballKills = r.ReadInt32(), Steals = r.ReadInt32(), Teleports = r.ReadInt32(), TrophyBits = r.ReadUInt32(),
                     };
+                    if (version >= 2)
+                    {
+                        q.DailyStreak = r.ReadInt32(); q.BestStreak = r.ReadInt32(); q.LastDailyDay = r.ReadInt32(); q.DailySolved = r.ReadInt32();
+                        if (q.DailyStreak < 0 || q.BestStreak < 0 || q.DailySolved < 0 || q.LastDailyDay < 0) return new Profile();
+                    }
                     if (ms.Position != ms.Length) return new Profile();
                     if (q.Xp < 0 || q.Games < 0 || q.Wins < 0 || q.Losses < 0 || q.Draws < 0 || q.Mates < 0) return new Profile();
                     if (q.Xp > 10000000) return new Profile();

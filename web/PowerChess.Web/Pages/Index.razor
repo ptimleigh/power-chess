@@ -10,6 +10,7 @@
         <div class="logo" data-action="logo" @onclick="LogoTap">POWER<span>CHESS</span></div>
         <div class="controls">
             <button class="icon-btn @(muted ? "muted" : "")" @onclick="ToggleMute" title="Sound" aria-label="Toggle sound">SFX</button>
+            <button class="icon-btn daily" data-action="daily" title="Daily challenge" @onclick="OpenDaily"><span>Daily</span>@if (!Daily.SolvedToday(profile, today)) { <i class="dot"></i> }</button>
             <button class="icon-btn lvl" data-action="profile" title="Profile" @onclick="() => showProfile = true">Lv <b>@profile.Level</b></button>
             <button class="icon-btn" @onclick="() => showHelp = true" title="How to play" aria-label="How to play">?</button>
             <button class="icon-btn wide" data-action="new" @onclick="OpenNew">New</button>
@@ -21,6 +22,21 @@
         <div class="pname">@(S.VsAi ? "Rival" : "Black")</div>
         <div class="chips">@InvChips(Side.Black)</div>
     </section>
+
+    @if (S.Puzzle is PuzzleDef pz)
+    {
+        <section class="puzzle-hud" data-testid="puzzle-hud">
+            <div class="ph-main">
+                <b>@pz.Title</b>
+                <span class="ph-goal">Checkmate in @pz.MaxMoves @(pz.MaxMoves == 1 ? "move" : "moves") · <span data-testid="puzzle-count">@S.PuzzleMoves/@pz.MaxMoves</span> used</span>
+                <small>@pz.Hint</small>
+            </div>
+            <div class="ph-btns">
+                <button class="btn small" data-action="puzzle-retry" @onclick="RetryPuzzle">Retry</button>
+                <button class="btn small ghost" data-action="puzzle-quit" @onclick="QuitPuzzle">Quit</button>
+            </div>
+        </section>
+    }
 
     <div class="board-frame">
         <div class="board @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">
@@ -186,6 +202,7 @@
             <div class="debug-row"><span>Progress</span>
                 <button class="dbtn" data-dprog="max" @onclick="() => DebugXp(Progression.XpForLevel(Progression.MaxLevel))">Max level</button>
                 <button class="dbtn" data-dprog="plus" @onclick="() => DebugXp(profile.Xp + 100)">+100 XP</button>
+                <button class="dbtn" data-dprog="nextday" @onclick="() => today++">Next day</button>
                 <button class="dbtn warn" data-dprog="reset" @onclick="() => DebugXp(0, true)">Reset profile</button>
             </div>
         </section>
@@ -325,7 +342,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     </div>
 }
 
-@if (S.GameOver && !S.Busy && !S.Reviewing)
+@if (S.GameOver && !S.Busy && !S.Reviewing && S.Puzzle == null)
 {
     <div class="modal" data-testid="gameover">
         <div class="card pop result @ResultClass">
@@ -358,6 +375,70 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             {
                 <button class="btn ghost" data-action="review-game" @onclick="() => S.ReviewStep(-1)">Review the game</button>
             }
+        </div>
+    </div>
+}
+
+@if (S.Puzzle is PuzzleDef rz && S.PuzzleOutcome != PuzzleResult.None && !S.Busy)
+{
+    <div class="modal" data-testid="puzzle-result">
+        <div class="card pop result @(S.PuzzleOutcome == PuzzleResult.Solved ? "win" : "lose")">
+            <div class="kicker">@rz.Title</div>
+            <h1>@(S.PuzzleOutcome == PuzzleResult.Solved ? "SOLVED!" : "NOT QUITE")</h1>
+            @if (S.PuzzleOutcome == PuzzleResult.Solved)
+            {
+                <p>Checkmate in @S.PuzzleMoves of @rz.MaxMoves @(rz.MaxMoves == 1 ? "move" : "moves").</p>
+                @if (puzzleReward is MatchReward pr)
+                {
+                    <div class="reward" data-testid="puzzle-reward">
+                        <div class="xp-line"><b>+@pr.XpGained XP</b>
+                            <small>@string.Join(" · ", pr.Breakdown.Select(b => $"{b.Key} {b.Value}"))</small></div>
+                        <div class="streak-line" data-testid="streak">Daily streak: <b>@profile.DailyStreak</b> @(profile.DailyStreak == 1 ? "day" : "days")</div>
+                        @if (pr.NewLevel > pr.OldLevel) { <div class="levelup">LEVEL UP! You reached level @pr.NewLevel</div> }
+                        @foreach (var t in pr.NewTrophies)
+                        {
+                            <div class="trophy-new" data-trophy-new="@t.Name"><span>@Icons.Svg("star")</span><b>@t.Name</b><small>@t.Description</small></div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="fine">Already counted today. Come back tomorrow for a new puzzle.</p>
+                }
+                <button class="btn" data-action="share" @onclick="SharePuzzle">@(shared ? "Copied!" : "Copy result")</button>
+            }
+            else
+            {
+                <p>@(S.Result == GameResult.Ongoing ? "You ran out of moves." : "The game ended without your checkmate.") Give it another go.</p>
+                <button class="btn primary" data-action="puzzle-retry-result" @onclick="RetryPuzzle">Retry</button>
+            }
+            <button class="btn ghost" data-action="puzzle-quit-result" @onclick="QuitPuzzle">Back to game</button>
+        </div>
+    </div>
+}
+
+@if (showDaily)
+{
+    var dp = Daily.PuzzleFor(today);
+    bool done = Daily.SolvedToday(profile, today);
+    <div class="modal" data-testid="daily" @onclick="() => showDaily = false">
+        <div class="card help" @onclick:stopPropagation="true">
+            <div class="kicker">Daily challenge · @DateTime.UnixEpoch.AddDays(today).ToString("MMM d")</div>
+            <div class="streak-big" data-testid="daily-streak"><span class="flame">@Icons.Svg("fire")</span><b>@Daily.ActiveStreak(profile, today)</b><small>day streak · best @profile.BestStreak</small></div>
+            <h2 class="daily-title">@dp.Title</h2>
+            <p>Checkmate in <b>@dp.MaxMoves</b> @(dp.MaxMoves == 1 ? "move" : "moves"). Difficulty: @(dp.Tier == 1 ? "easy" : dp.Tier == 2 ? "medium" : "hard").</p>
+            <p class="fine">@dp.Hint</p>
+            @if (done)
+            {
+                <p class="solved-today" data-testid="daily-done">Solved today. A new puzzle arrives tomorrow.</p>
+                <button class="btn" data-action="daily-play" @onclick="StartPuzzle">Play again for fun</button>
+            }
+            else
+            {
+                <p class="fine">Solve it for @Daily.XpForStreak(Daily.ActiveStreak(profile, today) + 1) XP (more with a longer streak).</p>
+                <button class="btn primary" data-action="daily-play" @onclick="StartPuzzle">Play</button>
+            }
+            <button class="btn ghost" @onclick="() => showDaily = false">Close</button>
         </div>
     </div>
 }
@@ -408,6 +489,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <div class="xp-line"><b>Level @profile.Level</b><small>@profile.Xp XP</small></div>
             <div class="xpbar"><i style="width:@(XpPercent(profile))%"></i></div>
             <div class="lv-line">@NextUnlockText</div>
+            <div class="lv-line">Daily streak: @Daily.ActiveStreak(profile, today) (best @profile.BestStreak, @profile.DailySolved solved)</div>
             <ul class="stats">
                 <li><b>@profile.Games</b><small>Games</small></li>
                 <li><b>@profile.Wins</b><small>Wins</small></li>
@@ -467,6 +549,10 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     bool showHelp;
     bool showNew;
     bool showProfile;
+    bool showDaily;
+    bool shared;
+    int today;
+    MatchReward? puzzleReward;
     bool showDebug;
     Profile profile = new();
     MatchReward? reward;
@@ -490,6 +576,75 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             if (next == Progression.TeleporterLevel) names.Add("Teleporters");
             return $"{Progression.XpForLevel(next) - profile.Xp} XP to level {next}" + (names.Count > 0 ? ": unlocks " + string.Join(", ", names) : "");
         }
+    }
+
+    async Task RefreshToday()
+    {
+        if (opt.Day is int forced) { if (today < forced) today = forced; return; }
+        try { today = await JS.InvokeAsync<int>("pcfx.today"); }
+        catch { today = Daily.DayNumber(DateTime.Now); }
+    }
+
+    async Task OpenDaily()
+    {
+        await RefreshToday();
+        showDaily = true;
+    }
+
+    void WireSession()
+    {
+        S.Changed = () => InvokeAsync(StateHasChanged);
+        S.TutorialsChanged = text => { _ = SetItemAsync(TutKey, text); };
+        S.Sfx = name => { _ = PlaySfx(name); };
+        S.GameEnded = OnGameEnded;
+        S.PuzzleSolved = OnPuzzleSolved;
+    }
+
+    void StartPuzzle()
+    {
+        showDaily = false;
+        shared = false;
+        puzzleReward = null;
+        var def = Daily.PuzzleFor(today);
+        var popt = new GameOptions { Ai = 2, Puzzle = def, Seed = (ulong)DateTime.UtcNow.Ticks, Tutorials = opt.Tutorials, Drama = opt.Drama, Mode = opt.Mode, Level = -1 };
+        if (S != null) { S.Changed = null; S.Sfx = null; S.Persist = null; }
+        S = new GameSession(popt, tut);
+        WireSession();
+        reward = null;
+    }
+
+    void RetryPuzzle()
+    {
+        if (S.Puzzle != null) StartPuzzle();
+    }
+
+    async Task QuitPuzzle()
+    {
+        puzzleReward = null;
+        StartNew(persist: false);
+        string? saved = null;
+        if (!debugOptions)
+        {
+            try { saved = await JS.InvokeAsync<string?>("localStorage.getItem", SaveKey); } catch { }
+        }
+        bool restored = !string.IsNullOrEmpty(saved) && S.Restore(saved);
+        if (!debugOptions) EnablePersist();
+        if (restored) await S.ResumeAi();
+    }
+
+    void OnPuzzleSolved(PuzzleDef def, int moves)
+    {
+        puzzleReward = Daily.AwardSolve(profile, today);
+        _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
+        puzzleMoves = moves;
+    }
+    int puzzleMoves;
+
+    async Task SharePuzzle()
+    {
+        var def = Daily.PuzzleFor(today);
+        string text = $"Power Chess Daily {DateTime.UnixEpoch.AddDays(today):MMM d}: \"{def.Title}\" solved in {puzzleMoves}/{def.MaxMoves}. Streak {profile.DailyStreak}. https://ptimleigh.github.io/power-chess/";
+        try { shared = await JS.InvokeAsync<bool>("pcfx.copy", text); } catch { shared = false; }
     }
 
     void OnGameEnded(MatchSummary m)
@@ -604,6 +759,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         catch { /* storage unavailable: just play */ }
 
         profile = ProfileCodec.Decode(profileText);
+        await RefreshToday();
         if (!debugOptions) opt.Level = profile.Level;
         var stored = TutorialState.Parse(tutText);
         tut.Off = stored.Off;
@@ -664,10 +820,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (!urlSeed) opt.Seed = (ulong)DateTime.UtcNow.Ticks;
         if (!debugOptions) opt.Level = profile.Level;
         S = new GameSession(opt, tut);
-        S.Changed = () => InvokeAsync(StateHasChanged);
-        S.TutorialsChanged = text => { _ = SetItemAsync(TutKey, text); };
-        S.Sfx = name => { _ = PlaySfx(name); };
-        S.GameEnded = OnGameEnded;
+        WireSession();
         reward = null;
         if (persist && !debugOptions) EnablePersist();
     }

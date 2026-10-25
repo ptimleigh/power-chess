@@ -2,6 +2,8 @@ using PowerChess.Core;
 
 namespace PowerChess.Web.Game;
 
+public enum PuzzleResult { None, Solved, Failed }
+
 public enum InputMode { Normal, Armed, FireAim, BombPreview, Promotion }
 
 /// <summary>What a debug tap does: give a piece a buff, drop a powerup square pair, drop teleporters, or clean up.</summary>
@@ -132,10 +134,18 @@ public sealed class GameSession
     bool endReported;
     bool rewardable = true;
     public bool DebugUsed { get; private set; }
+
+    // ---------- daily puzzle ----------
+    public PuzzleDef? Puzzle { get; private set; }
+    /// <summary>White actions spent so far in the puzzle.</summary>
+    public int PuzzleMoves { get; private set; }
+    public PuzzleResult PuzzleOutcome { get; private set; }
+    /// <summary>Called once when a puzzle is solved.</summary>
+    public Action<PuzzleDef, int>? PuzzleSolved;
     /// <summary>Called once when the game ends, with what happened, so the page can award XP.</summary>
     public Action<MatchSummary>? GameEnded;
     /// <summary>Whether finishing this game should pay XP: not a scenario, training board or debug-assisted game.</summary>
-    public bool Rewardable => rewardable && !DebugUsed;
+    public bool Rewardable => rewardable && !DebugUsed && Puzzle == null;
 
     void ResetTracker(bool eligible)
     {
@@ -226,7 +236,7 @@ public sealed class GameSession
     public bool VsAi => opt.Ai > 0;
     public bool GameOver => Result != GameResult.Ongoing;
     bool AiToMove => VsAi && !GameOver && State.ToMove == Side.Black;
-    public bool HumanTurn => !GameOver && !Busy && !Reviewing && (!VsAi || State.ToMove == Side.White);
+    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.ToMove == Side.White);
     public bool PickupPending => State.PendingSquare >= 0;
     public Side Turn => State.ToMove;
 
@@ -248,10 +258,21 @@ public sealed class GameSession
         return cfg;
     }
 
-    public void NewGame()
+    void SetupPuzzle()
     {
-        var cfg = BuildConfig();
+        var def = opt.Puzzle!;
+        State = def.NewState(PuzzleDef.Config());
+        State.Rng = new Rng(opt.Seed);
+        ai = new Ai(2);
+        Puzzle = def;
+        PuzzleMoves = 0;
+        PuzzleOutcome = PuzzleResult.None;
+    }
 
+    void SetupNormal(GameConfig cfg)
+    {
+        Puzzle = null;
+        PuzzleOutcome = PuzzleResult.None;
         string? fen = opt.Training ? TrainingFen : opt.Fen;
         if (opt.Training)
         {
@@ -302,6 +323,15 @@ public sealed class GameSession
             }
             ai = new Ai(1);
         }
+
+    }
+
+    public void NewGame()
+    {
+        var cfg = BuildConfig();
+
+        if (opt.Puzzle != null) SetupPuzzle();
+        else SetupNormal(cfg);
 
         ResetTracker(!opt.Training && (opt.Fen == null || opt.Rewards));
         Pieces.Clear();
@@ -820,6 +850,7 @@ public sealed class GameSession
         InspectSquare = -1;
         reviewIndex = -1;
         ClearSelection();
+        Side mover = State.ToMove;
         history.Record(State, a);
         viewHistory.Add(SnapshotViews());
         var ev = new List<GameEvent>();
@@ -849,9 +880,23 @@ public sealed class GameSession
         if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn
         await Task.Delay(wait);
 
+        if (Puzzle != null && PuzzleOutcome == PuzzleResult.None)
+        {
+            if (mover == Side.White) PuzzleMoves++;
+            if (GameOver)
+            {
+                PuzzleOutcome = Result == GameResult.WhiteWins && PuzzleMoves <= Puzzle.MaxMoves ? PuzzleResult.Solved : PuzzleResult.Failed;
+                if (PuzzleOutcome == PuzzleResult.Solved) PuzzleSolved?.Invoke(Puzzle, PuzzleMoves);
+            }
+            else if (PuzzleMoves >= Puzzle.MaxMoves)
+            {
+                PuzzleOutcome = PuzzleResult.Failed; // out of moves without a mate
+            }
+        }
+
         if (GameOver)
         {
-            if (!endReported && tracker != null)
+            if (!endReported && tracker != null && Puzzle == null)
             {
                 endReported = true;
                 GameEnded?.Invoke(tracker.Finish(Result, ResultReason));

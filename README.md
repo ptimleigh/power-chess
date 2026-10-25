@@ -16,6 +16,7 @@ as play (short, juicy moments), with ads as the revenue model.
 | `src/PowerChess.Core` | A `.csproj` that compiles `Assets/Core` outside Unity. |
 | `tests/PowerChess.Core.Tests` | NUnit tests: perft counts, every powerup, seeded random-game simulations, AI. |
 | `web/PowerChess.Web` | Playable Blazor WebAssembly prototype that reuses the engine unchanged. |
+| `tools/PuzzleGen` | Generates and verifies the daily puzzles into `Assets/Core/PuzzleData.cs`. |
 | `tools/BalanceSim` | Plays thousands of AI-vs-AI games and writes [docs/BALANCE.md](docs/BALANCE.md). |
 
 ## Run the tests
@@ -35,6 +36,10 @@ file server.
 
 Tap a piece, then a highlighted square. Land on a glowing powerup square to claim it (a purple `?` square is a mystery). Use the buttons under the board for perks,
 and the Detonate button when a bomber is selected.
+
+### Daily challenge
+
+One puzzle a day (Mon-Tue easy, Wed-Fri medium, weekends hard): a fixed position with set powerups and a goal of checkmate in 1-3 of your moves. Solving it pays XP that grows with a day streak, and unlocks streak trophies. Puzzles are generated and verified by `tools/PuzzleGen` (a forced mate within the budget exists, none one move shorter, and none without the powerups) and checked in as `Assets/Core/PuzzleData.cs`. Regenerate with `dotnet run --project tools/PuzzleGen -c Release -- 600 Assets/Core/PuzzleData.cs 14`. The solver and day-selection logic live in `Assets/Core/Daily.cs`.
 
 ### Progression
 
@@ -66,6 +71,7 @@ Handy for reproducing a situation. All optional:
 | `drama` | `drama=0` | Turn the strike effects (slash, hit-stop, callouts) off |
 | `level` | `level=1` | Act as an account of this level: only the powerups unlocked by then can appear (scenarios default to everything) |
 | `rewards` | `rewards=1` | Pay XP and trophies even in a scenario, so progression can be tested |
+| `day` | `day=20752` | Pretend it is this day (days since 1970-01-01) for the daily challenge |
 | `training` | `training=1` | Start on the small training board |
 
 With no options the game resumes where you left off after a refresh (saved in the browser), and a first-ever game starts on the training board.

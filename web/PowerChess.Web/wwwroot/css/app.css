@@ -364,3 +364,14 @@ button:disabled { cursor: default; }
 .fx-callout.check span { color: #ffe27a; font-size: calc(var(--b) / 9); border-bottom-color: #ffd54a; text-shadow: 2px 2px 0 #b3361e, 0 0 18px #ffd54a; }
 .fx-callout.mate { top: 34%; animation-duration: 1.5s; }
 @keyframes callout { 0% { transform: scale(2.4); opacity: 0; } 12% { transform: scale(1); opacity: 1; } 75% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1.1) translateY(-8px); opacity: 0; } }
+
+/* ---------- debug tools ---------- */
+.debug { width: calc(var(--b) + 12px); border: 1px dashed #ff4b6b; border-radius: 12px; padding: 8px; background: #1a0b2acc; display: flex; flex-direction: column; gap: 6px; }
+.debug-head { display: flex; align-items: center; gap: 8px; }
+.debug-head b { color: #ff4b6b; letter-spacing: 2px; }
+.debug-head small { flex: 1; color: var(--dim); font-size: 11px; }
+.debug-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.debug-row > span { font-size: 10px; font-weight: 800; color: var(--dim); text-transform: uppercase; width: 100%; }
+.dbtn { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: #2a1f5c; font-size: 11px; font-weight: 800; }
+.dbtn.on { background: var(--cyan); color: #04251f; }
+.dbtn.warn { border-color: #ff4b6b; }

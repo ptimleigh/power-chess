@@ -7,7 +7,7 @@
 
 <div class="app">
     <header class="topbar">
-        <div class="logo">POWER<span>CHESS</span></div>
+        <div class="logo" data-action="logo" @onclick="LogoTap">POWER<span>CHESS</span></div>
         <div class="controls">
             <button class="icon-btn @(muted ? "muted" : "")" @onclick="ToggleMute" title="Sound" aria-label="Toggle sound">SFX</button>
             <button class="icon-btn" @onclick="() => showHelp = true" title="How to play" aria-label="How to play">?</button>
@@ -152,6 +152,38 @@
         }
         }
     </section>
+
+    @if (showDebug)
+    {
+        <section class="debug" data-testid="debug">
+            <div class="debug-head"><b>DEBUG</b><small>@(S.DebugHint == "" ? "Pick a tool, then tap the board" : S.DebugHint)</small>
+                <button class="x" aria-label="Close debug" @onclick="CloseDebug">x</button></div>
+            <div class="debug-row"><span>Perk +1</span>
+                @foreach (var k in DebugPerks)
+                {
+                    var kk = k;
+                    <button class="dbtn" data-dperk="@kk.ToString().ToLowerInvariant()" @onclick="() => S.DebugGivePerk(kk)">@Names.Name(kk)</button>
+                }
+            </div>
+            <div class="debug-row"><span>Buff a piece</span>
+                @foreach (var k in DebugBuffs)
+                {
+                    var kk = k;
+                    <button class="dbtn @(S.DebugArmed == DebugTool.Buff && S.DebugKind == kk ? "on" : "")" data-dbuff="@kk.ToString().ToLowerInvariant()" @onclick="() => S.DebugArm(DebugTool.Buff, kk)">@Names.Name(kk)</button>
+                }
+            </div>
+            <div class="debug-row"><span>Drop square</span>
+                <button class="dbtn @(S.DebugArmed == DebugTool.Square && S.DebugKind == PowerupKind.None ? "on" : "")" data-dsquare="hidden" @onclick="() => S.DebugArm(DebugTool.Square, PowerupKind.None)">? Mystery</button>
+                @foreach (var k in DebugSquares)
+                {
+                    var kk = k;
+                    <button class="dbtn @(S.DebugArmed == DebugTool.Square && S.DebugKind == kk ? "on" : "")" data-dsquare="@kk.ToString().ToLowerInvariant()" @onclick="() => S.DebugArm(DebugTool.Square, kk)">@Names.Name(kk)</button>
+                }
+                <button class="dbtn @(S.DebugArmed == DebugTool.Portal ? "on" : "")" data-dsquare="portal" @onclick="() => S.DebugArm(DebugTool.Portal)">Teleporters</button>
+                <button class="dbtn warn @(S.DebugArmed == DebugTool.Clear ? "on" : "")" data-dsquare="clear" @onclick="() => S.DebugArm(DebugTool.Clear)">Remove</button>
+            </div>
+        </section>
+    }
 
     <div class="status @(S.InCheck && !S.GameOver ? "warn" : "")" data-testid="status">@S.Status</div>
 
@@ -372,6 +404,38 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     bool muted;
     bool showHelp;
     bool showNew;
+    bool showDebug;
+    int logoTaps;
+    DateTime lastLogoTap;
+
+    static readonly PowerupKind[] DebugPerks = { PowerupKind.Steal, PowerupKind.Stun, PowerupKind.Boulder, PowerupKind.Swap, PowerupKind.Reroll, PowerupKind.Rewind };
+    static readonly PowerupKind[] DebugBuffs =
+    {
+        PowerupKind.DoubleMove, PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.Poison, PowerupKind.SpikedArmor,
+        PowerupKind.Fireball, PowerupKind.SmallBomb, PowerupKind.BigBomb,
+        PowerupKind.TransformKnight, PowerupKind.TransformBishop, PowerupKind.TransformRook, PowerupKind.TransformQueen,
+    };
+    static readonly PowerupKind[] DebugSquares =
+    {
+        PowerupKind.DoubleMove, PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.Poison, PowerupKind.SpikedArmor,
+        PowerupKind.Fireball, PowerupKind.SmallBomb, PowerupKind.BigBomb, PowerupKind.TransformQueen,
+        PowerupKind.Steal, PowerupKind.Stun, PowerupKind.Boulder, PowerupKind.Swap, PowerupKind.Reroll, PowerupKind.Rewind,
+    };
+
+    /// <summary>Tap the logo five times to open the debug tools (or start with ?debug=1).</summary>
+    void LogoTap()
+    {
+        var now = DateTime.UtcNow;
+        logoTaps = (now - lastLogoTap).TotalMilliseconds < 1500 ? logoTaps + 1 : 1;
+        lastLogoTap = now;
+        if (logoTaps >= 5) { logoTaps = 0; showDebug = !showDebug; if (!showDebug) S.DebugDisarm(); }
+    }
+
+    void CloseDebug()
+    {
+        showDebug = false;
+        S.DebugDisarm();
+    }
     SquareMode selMode = SquareMode.Revealed;
     int selAi = 2;
     bool selDrama = true;
@@ -414,6 +478,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         opt = GameOptions.FromQuery(uri.Query);
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
+        showDebug = uri.Query.Contains("debug=1", StringComparison.OrdinalIgnoreCase);
         debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 

@@ -36,6 +36,10 @@ file server.
 Tap a piece, then a highlighted square. Land on a glowing powerup square to claim it (a purple `?` square is a mystery). Use the buttons under the board for perks,
 and the Detonate button when a bomber is selected.
 
+### Debug tools in the UI
+
+Tap the logo five times (or open `?debug=1`) for a panel that gives perks, puts any buff on any piece, drops powerup squares or teleporters, and removes them. Tap a tool, then the board; tap the tool again to stop.
+
 ### Debug URL options
 
 Handy for reproducing a situation. All optional:

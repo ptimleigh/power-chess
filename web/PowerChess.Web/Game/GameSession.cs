@@ -4,6 +4,9 @@ namespace PowerChess.Web.Game;
 
 public enum InputMode { Normal, Armed, FireAim, BombPreview, Promotion }
 
+/// <summary>What a debug tap does: give a piece a buff, drop a powerup square pair, drop teleporters, or clean up.</summary>
+public enum DebugTool { None, Buff, Square, Portal, Clear }
+
 /// <summary>A piece with a stable identity so CSS transitions can animate it as the engine state changes.</summary>
 public sealed class PieceView
 {
@@ -551,8 +554,105 @@ public sealed class GameSession
         }
     }
 
+    // ---------- debug tools (for trying powerups on demand) ----------
+
+    public DebugTool DebugArmed { get; private set; }
+    public PowerupKind DebugKind { get; private set; }
+
+    /// <summary>Give the player (the human, or whoever is to move) one of a perk.</summary>
+    public void DebugGivePerk(PowerupKind kind)
+    {
+        if (Busy) return;
+        State.AddPerk(Me, kind, 1);
+        Sfx?.Invoke("pickup");
+        Refresh();
+        Save();
+        Changed?.Invoke();
+    }
+
+    public void DebugArm(DebugTool tool, PowerupKind kind = PowerupKind.None)
+    {
+        ClearSelection();
+        Inspect = -1;
+        InspectSquare = -1;
+        bool same = DebugArmed == tool && DebugKind == kind;
+        DebugArmed = same ? DebugTool.None : tool;
+        DebugKind = same ? PowerupKind.None : kind;
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    public void DebugDisarm()
+    {
+        DebugArmed = DebugTool.None;
+        DebugKind = PowerupKind.None;
+        Changed?.Invoke();
+    }
+
+    public string DebugHint => DebugArmed switch
+    {
+        DebugTool.Buff => $"Debug: tap a piece to give it {Names.Name(DebugKind)}",
+        DebugTool.Square => DebugKind == PowerupKind.None ? "Debug: tap an empty square for a mystery pair" : $"Debug: tap an empty square for a {Names.Name(DebugKind)} pair",
+        DebugTool.Portal => "Debug: tap an empty square for a teleporter pair",
+        DebugTool.Clear => "Debug: tap a powerup square, teleporter or boulder to remove it",
+        _ => "",
+    };
+
+    void DebugTap(int sq)
+    {
+        var cell = State.Cells[sq];
+        int mirror = Sq.Mirror(sq);
+        bool free = cell.IsEmpty && !State.Boulders[sq] && !State.Mystery[sq] && !State.Portal[sq];
+        bool mirrorFree = State.Cells[mirror].IsEmpty && !State.Boulders[mirror] && !State.Mystery[mirror] && !State.Portal[mirror];
+        switch (DebugArmed)
+        {
+            case DebugTool.Buff:
+            {
+                if (cell.IsEmpty) return;
+                if (cell.Type == PieceType.King && !PowerupInfo.IsPerk(DebugKind)) { AddToast("Kings are immune", "Pick another piece", "gold", "shield"); break; }
+                var ev = new List<GameEvent>();
+                Rules.ApplyPickup(State, cell.Side, sq, DebugKind, ev);
+                Process(ev);
+                SyncViews();
+                break;
+            }
+            case DebugTool.Square:
+                if (!free) return;
+                State.Mystery[sq] = true;
+                State.Content[sq] = (byte)DebugKind;
+                if (mirrorFree && mirror != sq)
+                {
+                    State.Mystery[mirror] = true;
+                    State.Content[mirror] = (byte)DebugKind;
+                }
+                AddFx("ping", sq, css: "gold");
+                break;
+            case DebugTool.Portal:
+                if (!free || !mirrorFree || mirror == sq) return;
+                State.Portal[sq] = true;
+                State.Portal[mirror] = true;
+                AddFx("ping", sq, css: "portal");
+                AddFx("ping", mirror, css: "portal");
+                break;
+            case DebugTool.Clear:
+                if (State.Mystery[sq]) { State.Mystery[sq] = false; State.Content[sq] = 0; }
+                else if (State.Portal[sq]) { State.Portal[sq] = false; State.Portal[mirror] = false; }
+                else if (State.Boulders[sq]) State.Boulders[sq] = false;
+                else return;
+                break;
+        }
+        Refresh();
+        Save();
+        Changed?.Invoke();
+    }
+
     public async Task TapSquare(int sq)
     {
+        if (DebugArmed != DebugTool.None && !Busy && !Reviewing)
+        {
+            DebugTap(sq);
+            return;
+        }
         if (!HumanTurn || PickupPending || Mode == InputMode.Promotion) return;
 
         if (Mode == InputMode.BombPreview)

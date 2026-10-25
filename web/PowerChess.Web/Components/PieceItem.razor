@@ -17,6 +17,10 @@
     {
         <div class="stun-tag" title="Stunned">@Icons.Svg("star")<b>@P.Stun</b></div>
     }
+    @if (P.Buffs.HasFlag(Buff.Ghost) && P.Ghost > 0)
+    {
+        <div class="ghost-tag" title="Ghost turns left">@Icons.Svg("ghost")<b>@P.Ghost</b></div>
+    }
     @if (P.Buffs.HasFlag(Buff.Armor))
     {
         <div class="armor-ring" title="Spiked Armor">

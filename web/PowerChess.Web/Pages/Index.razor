@@ -466,7 +466,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 }
             </div>
             <div class="opt-label">Rules</div>
-            <div class="chips" data-testid="preset-chips">
+            <div class="opt-chips" data-testid="preset-chips">
                 @foreach (var pr in PresetChoices())
                 {
                     var choice = pr;
@@ -486,7 +486,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 <button class="btn ghost small" data-action="customize" @onclick="() => showCustom = true">Customize powerups</button>
             }
             <div class="opt-label">Square frequency</div>
-            <div class="chips" data-testid="freq-chips">
+            <div class="opt-chips" data-testid="freq-chips">
                 @foreach (var fq in new[] { Frequency.Rare, Frequency.Normal, Frequency.Frequent, Frequency.Chaos })
                 {
                     var f = fq;

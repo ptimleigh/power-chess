@@ -662,7 +662,7 @@ public sealed class GameSession
             case DebugTool.Buff:
             {
                 if (cell.IsEmpty) return;
-                if (cell.Type == PieceType.King && !PowerupInfo.IsPerk(DebugKind)) { AddToast("Kings are immune", "Pick another piece", "gold", "shield"); break; }
+                if (Rules.KingIncompatible(cell, DebugKind)) { AddToast("King can't use " + Names.Name(DebugKind), "Kings can't be poisoned or transformed. Pick another piece.", "gold", "crown"); break; }
                 var ev = new List<GameEvent>();
                 DebugUsed = true;
                 Rules.ApplyPickup(State, cell.Side, sq, DebugKind, ev);

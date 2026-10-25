@@ -13,6 +13,8 @@ rm -rf "$APP/www" "$ROOT/out-native"
 dotnet publish "$ROOT/web/PowerChess.Web" -c Release -o "$ROOT/out-native"
 cp -r "$ROOT/out-native/wwwroot" "$APP/www"
 rm -rf "$ROOT/out-native"
+# Android packaging rejects a file and its precompressed twin; the app serves the plain files.
+find "$APP/www" \( -name "*.gz" -o -name "*.br" \) -delete
 
 echo "== inject the ad bridge (base href stays / because the native shell serves from the root)"
 cp "$APP/native/pcads-bridge.js" "$APP/www/js/pcads-bridge.js"

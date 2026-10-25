@@ -28,6 +28,9 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Stamp the build label
+        run: sed -i "s|Label = \"dev\"|Label = \"${GITHUB_SHA::7} $(date -u +%Y-%m-%d)\"|" web/PowerChess.Web/Game/BuildInfo.cs
+
       - name: Test engine
         run: dotnet test tests/PowerChess.Core.Tests
 

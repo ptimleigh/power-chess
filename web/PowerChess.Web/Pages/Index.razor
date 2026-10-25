@@ -12,7 +12,7 @@
         <div class="controls">
             <button class="icon-btn @(muted ? "muted" : "")" @onclick="ToggleMute" title="Sound" aria-label="Toggle sound">SFX</button>
             <button class="icon-btn daily" data-action="daily" title="Daily challenge" @onclick="OpenDaily"><span>Daily</span>@if (!Daily.SolvedToday(profile, today)) { <i class="dot"></i> }</button>
-            <button class="icon-btn lvl" data-action="profile" title="Profile" @onclick="() => showProfile = true">Lv <b>@profile.Level</b></button>
+            <button class="icon-btn lvl" data-action="profile" title="Profile" @onclick="() => { showProfile = true; unseenUnlocks = false; showNextPreview = false; }">Lv <b>@profile.Level</b>@if (unseenUnlocks) { <i class="new-dot" data-testid="new-dot"></i> }</button>
             <button class="icon-btn" @onclick="() => showHelp = true" title="How to play" aria-label="How to play">?</button>
             <button class="icon-btn wide" data-action="new" @onclick="OpenNew">New</button>
         </div>
@@ -361,10 +361,11 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     @if (rw.NewLevel > rw.OldLevel)
                     {
                         <div class="levelup" data-testid="levelup">LEVEL UP! You reached level @rw.NewLevel</div>
-                        @if (rw.NewPowerups.Count > 0 || rw.NewTeleporters)
+                        @if ((rw.NewPowerups.Count > 0 || rw.NewTeleporters) && newUnlocks.Count == 0)
                         {
                             <div class="unlocks">Unlocked: @string.Join(", ", rw.NewPowerups.Select(Names.Name).Concat(rw.NewTeleporters ? new[] { "Teleporters" } : Array.Empty<string>()))</div>
                         }
+                        <UnlockStrip Items="newUnlocks" OnTry="TryPreset" OnSeenAll="() => unseenUnlocks = false" />
                     }
                     @foreach (var t in rw.NewTrophies)
                     {
@@ -576,6 +577,11 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <div class="xp-line"><b>Level @profile.Level</b><small>@profile.Xp XP</small></div>
             <div class="xpbar"><i style="width:@(XpPercent(profile))%"></i></div>
             <div class="lv-line">@NextUnlockText</div>
+            @if (nextUnlocks.Count > 0)
+            {
+                <button class="btn ghost small" data-action="preview-next" @onclick="() => showNextPreview = !showNextPreview">@(showNextPreview ? "Hide preview" : "Preview what's next")</button>
+                @if (showNextPreview) { <UnlockStrip Items="nextUnlocks" Heading="@($"Coming at level {nextUnlockLevel}")" /> }
+            }
             <div class="lv-line">Daily streak: @Daily.ActiveStreak(profile, today) (best @profile.BestStreak, @profile.DailySolved solved)</div>
             <ul class="stats">
                 <li><b>@profile.Games</b><small>Games</small></li>
@@ -606,7 +612,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
 @if (showHelp)
 {
-    <div class="modal" @onclick="() => showHelp = false">
+    <div class="modal" @onclick="CloseHelp">
         <div class="card help" @onclick:stopPropagation="true">
             <div class="kicker">How to play</div>
             <p>Normal chess with checkmate. Gold <b>?</b> squares appear in matching pairs. Land a piece on one to open it. Tap any powered-up piece to see what it has. The Moves button lets you look back at the game without changing it.</p>
@@ -624,6 +630,12 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 <button class="btn" data-action="training" @onclick="StartTraining">Learn the basics</button>
                 <button class="btn" data-action="reset-tutorials" @onclick="ResetTutorials">Reset tutorials</button>
             </div>
+            <div class="row help-row">
+                <button class="btn" data-action="invite" @onclick="InviteFriends">Invite a friend</button>
+                <button class="btn" data-action="feedback" @onclick="SendFeedback">Send feedback</button>
+            </div>
+            @if (shareMsg != "") { <div class="clip-msg" data-testid="share-msg">@shareMsg</div> }
+            <p class="fine" data-testid="build-label">Build @PowerChess.Web.Game.BuildInfo.Label</p>
             <button class="btn primary" @onclick="() => showHelp = false">Got it</button>
         </div>
     </div>
@@ -738,6 +750,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     {
         if ((debugOptions && !opt.Rewards) || !S.Rewardable) { reward = null; return; }
         reward = Progression.Award(profile, m);
+        RefreshUnlocks();
         opt.Level = profile.Level;
         _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
     }
@@ -906,6 +919,62 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         ? "The piece that opens one changes into another piece on the spot. Never a king."
         : Names.Desc(k);
 
+    // ---------- tester sharing ----------
+
+    string shareMsg = "";
+
+    void CloseHelp() { showHelp = false; shareMsg = ""; }
+
+    async Task ShareText(string title, string text, string? url)
+    {
+        string how;
+        try { how = await JS.InvokeAsync<string>("pcfx.shareText", title, text, url); } catch { how = "failed"; }
+        shareMsg = how switch { "shared" => "Thanks!", "copied" => "Copied to your clipboard.", "cancelled" => "", _ => "Could not share from here." };
+    }
+
+    Task InviteFriends() => ShareText("Power Chess",
+        "Chess with powerup squares: fireballs, bombs, ghosts and teleporters. Play it in your browser, or grab the Android app: " + PowerChess.Web.Game.BuildInfo.ApkUrl,
+        PowerChess.Web.Game.BuildInfo.Url);
+
+    /// <summary>A prefilled bug report: which build, how far along, how the last game ended, and what device.</summary>
+    internal string FeedbackText(string userAgent)
+    {
+        string last = S.GameOver ? $"{S.Result} ({S.ResultReason})" : $"in progress, move {S.Moves}";
+        return "Power Chess feedback\n"
+            + $"Build: {PowerChess.Web.Game.BuildInfo.Label}\n"
+            + $"Level: {profile.Level} ({profile.Xp} XP), games played {profile.Games}\n"
+            + $"Opponent: {Ai.LevelName(opt.Ai)}, rules: {(Presets.Label(opt.Preset, opt.Freq, EffectiveLevel) is { Length: > 0 } r ? r : "Standard")}\n"
+            + $"Current game: {last}\n"
+            + $"Device: {userAgent}\n\n"
+            + "What happened:\n";
+    }
+
+    async Task SendFeedback()
+    {
+        string ua = "";
+        try { ua = await JS.InvokeAsync<string>("eval", "navigator.userAgent"); } catch { }
+        await ShareText("Power Chess feedback", FeedbackText(ua), null);
+    }
+
+    // ---------- unlock previews ----------
+
+    List<UnlockItem> newUnlocks = new();
+    bool unseenUnlocks, showNextPreview;
+    int nextUnlockLevel => Unlocks.NextUnlockLevel(profile.Level);
+    List<UnlockItem> nextUnlocks => nextUnlockLevel == 0 ? new() : Unlocks.AtLevel(nextUnlockLevel);
+
+    void RefreshUnlocks()
+    {
+        newUnlocks = reward != null && reward.NewLevel > reward.OldLevel ? Unlocks.Between(reward.OldLevel, reward.NewLevel) : new();
+        if (newUnlocks.Count > 0) unseenUnlocks = true;
+    }
+
+    void TryPreset(string id)
+    {
+        opt.Preset = id;
+        OpenNew();
+    }
+
     // ---------- replay clip ----------
 
     bool showClip, clipBusy;
@@ -1007,6 +1076,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         adBusy = false;
         if (earned && RewardedXp.Double(profile, reward))
         {
+            RefreshUnlocks();
             opt.Level = debugOptions && opt.Level >= 0 ? opt.Level : profile.Level;
             _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
         }

@@ -11,6 +11,7 @@ public sealed class DemoCtx
     public HashSet<int> Boulders { get; } = new();
     public HashSet<int> Mysteries { get; } = new();
     public HashSet<int> Aims { get; } = new();
+    public HashSet<int> Portals { get; } = new();
     public string Caption { get; private set; } = "";
     readonly Dictionary<FxItem, long> expiry = new();
     readonly Dictionary<PieceView, long> dying = new();
@@ -24,6 +25,7 @@ public sealed class DemoCtx
         Boulders.Clear();
         Mysteries.Clear();
         Aims.Clear();
+        Portals.Clear();
         expiry.Clear();
         dying.Clear();
         Caption = "";
@@ -76,6 +78,8 @@ public sealed class DemoCtx
     public DemoCtx Boulder(string sq, bool on) { if (on) Boulders.Add(Sq.Parse(sq)); else Boulders.Remove(Sq.Parse(sq)); return this; }
     public DemoCtx Mystery(string sq, bool on) { if (on) Mysteries.Add(Sq.Parse(sq)); else Mysteries.Remove(Sq.Parse(sq)); return this; }
 
+    public DemoCtx Portal(string sq, bool on) { if (on) Portals.Add(Sq.Parse(sq)); else Portals.Remove(Sq.Parse(sq)); return this; }
+
     public DemoCtx Aim(params string[] squares)
     {
         Aims.Clear();
@@ -125,6 +129,18 @@ public static class Tutorials
     public static bool Has(PowerupKind k) => Scripts.ContainsKey(Normalize(k));
 
     public static DemoScript For(PowerupKind k) => Scripts[Normalize(k)];
+
+    /// <summary>Teleporter squares are not a powerup kind, so their demo is separate.</summary>
+    public static readonly DemoScript TeleporterDemo = new DemoScript
+    {
+        Setup = c => c.Place("b2", PieceType.Knight, W).Place("e5", PieceType.Rook, B).Place("f6", PieceType.King, B)
+            .Portal("c3", true).Portal("d4", true).Say("A pair of linked teleporter squares"),
+    }
+    .Then(900, c => c.Aim("c3").Say("Land a piece on one..."))
+    .Then(700, c => c.Aim().Move("b2", "c3").Fx("ring", "c3", radius: 1, css: "portal"))
+    .Then(700, c => c.Move("c3", "d4").Fx("ring", "d4", radius: 1, css: "portal").Say("...and it pops out of its twin"))
+    .Then(900, c => c.Aim("e5").Say("Now it threatens the rook"))
+    .Then(500, c => c.Portal("c3", false).Portal("d4", false).Say("Both squares vanish after one use"));
 
     static readonly Dictionary<PowerupKind, DemoScript> Scripts = new()
     {

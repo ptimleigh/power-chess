@@ -72,6 +72,23 @@ window.pcfx = (function () {
 
     return {
         today: function () { const d = new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000); },
+        // Share text through the native sheet, the Web Share API, or the clipboard. Resolves to shared | copied | cancelled | failed.
+        shareText: async function (title, text, url) {
+            try {
+                const cap = window.Capacitor;
+                if (cap && cap.isNativePlatform && cap.isNativePlatform() && cap.Plugins && cap.Plugins.Share) {
+                    await cap.Plugins.Share.share({ title, text, url: url || undefined, dialogTitle: title });
+                    return 'shared';
+                }
+                if (navigator.share) {
+                    await navigator.share(url ? { title, text, url } : { title, text });
+                    return 'shared';
+                }
+            } catch (e) {
+                if (e && (e.name === 'AbortError' || /cancel/i.test(String(e.message || e)))) return 'cancelled';
+            }
+            try { await navigator.clipboard.writeText(url ? text + '\n' + url : text); return 'copied'; } catch (e) { return 'failed'; }
+        },
         copy: function (text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return false; } },
         play: function (name) { try { const f = sounds[name]; if (f) f(); } catch (e) { } },
         setMuted: function (m) { muted = !!m; },

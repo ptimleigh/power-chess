@@ -45,6 +45,9 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" || true
 
+      - name: Stamp the build label
+        run: sed -i "s|Label = \"dev\"|Label = \"${GITHUB_SHA::7} $(date -u +%Y-%m-%d)\"|" web/PowerChess.Web/Game/BuildInfo.cs
+
       - name: Test engine
         run: dotnet test tests/PowerChess.Core.Tests
 

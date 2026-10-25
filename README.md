@@ -63,6 +63,17 @@ Ads: `Assets/Core/Ads.cs` holds the rules (`AdPolicy`: interstitial only between
 
 For real ads and a store release you still need: an AdMob account with real app and ad-unit ids (replace the test ids in `build-android.sh` and `pcads-bridge.js`), a release keystore, a Play Console listing with a privacy policy, and review of the consent (UMP) flow. iOS needs a macOS runner (`cap add ios`) and an Apple Developer account.
 
+### Testing with friends
+
+- **Everyone:** send https://ptimleigh.github.io/power-chess/ . It runs in any browser; on a phone use the browser menu's "Add to Home screen" for an app icon and offline play.
+- **Android:** open https://github.com/ptimleigh/power-chess/releases/tag/android-latest , download `power-chess-debug.apk` and allow installs from the browser when asked. It is a debug build with test ads, and each new build must be installed over the old one (same debug key, so it updates in place).
+- **Updates:** the links never change. The web page updates on the next open; Android friends reinstall from the same release page.
+- **Invite and feedback:** the help sheet (?) has **Invite a friend** (share sheet with the web link and the APK page) and **Send feedback** (a prefilled message with the build label, level, opponent, rules, current game and device, ready to send through any app). The build label ("Build abc1234 2026-10-25") is stamped by the workflows, so a report says exactly which version was played.
+
+### Level-up previews
+
+A level-up shows a card for each new unlock on the results card: a looping demo of the powerup (Transforms and Teleporters have their own), a one-line rule, and for rule presets a **Try it** button that opens the New game sheet with that preset selected. The Profile sheet's **Preview what's next** shows what the next level unlocks. The list comes from `Assets/Core/Unlocks.cs` (tested); the cards are `Components/UnlockStrip.razor`.
+
 ### Replay clip
 
 After a game (or from the review bar) **Replay clip** plays the last N moves (1 to 10, step with the arrows) as a 9:16 highlight with extra drama: a title slam, per-move captions, slow-mo and a punch-in on the finishing blow, hit-stop, slashes, fireball and bomb effects, a CHECKMATE flash and an end card with the result and the game's URL. `Save / share video` records it in real time (canvas plus the synth sound) and opens the share sheet: MP4 where the browser records it (Android WebView, Chrome), WebM otherwise, with a download fallback. In the Android app it goes through Capacitor's Filesystem and Share plugins. `Assets/Core/ReplayPlan.cs` picks the plies (tested), `Game/ClipBuilder.cs` turns the history into a timeline of engine events and `wwwroot/js/clip.js` draws and records it, so a clip can never disagree with the real game.

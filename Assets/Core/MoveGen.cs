@@ -53,6 +53,15 @@ namespace PowerChess.Core
             return !Geometry.IsKingAttacked(c, s.ToMove);
         }
 
+        /// <summary>Would a plain move from <paramref name="from"/> to <paramref name="to"/> exist if king safety were ignored? Used to explain blocked moves.</summary>
+        public static bool HasPseudoMove(GameState s, int from, int to)
+        {
+            var list = new List<GameAction>(32);
+            GenPiece(s, from, list, false);
+            foreach (var a in list) if (a.To == to) return true;
+            return false;
+        }
+
         /// <summary>Used to decide whether a Double Move piece has a legal second move.</summary>
         public static bool HasLegalMoveFrom(GameState s, int sq)
         {
@@ -82,6 +91,15 @@ namespace PowerChess.Core
                         int nf = f + Geometry.KnightFile[i], nr = r + Geometry.KnightRank[i];
                         if (Sq.OnBoard(nf, nr)) AddTarget(s, p, from, Sq.Make(nf, nr), o);
                     }
+                    if (p.Has(Buff.Ghost))
+                    {
+                        // A ghost knight can also take a king's step.
+                        for (int d = 0; d < 8; d++)
+                        {
+                            int nf = f + Geometry.DirFile[d], nr = r + Geometry.DirRank[d];
+                            if (Sq.OnBoard(nf, nr)) AddTarget(s, p, from, Sq.Make(nf, nr), o);
+                        }
+                    }
                     break;
                 case PieceType.King:
                     for (int d = 0; d < 8; d++)
@@ -89,7 +107,16 @@ namespace PowerChess.Core
                         int nf = f + Geometry.DirFile[d], nr = r + Geometry.DirRank[d];
                         if (Sq.OnBoard(nf, nr)) AddTarget(s, p, from, Sq.Make(nf, nr), o);
                     }
-                    if (castle) GenCastle(s, p, from, o);
+                    if (p.Has(Buff.Ghost))
+                    {
+                        // A ghost king reaches two squares out in any direction, through whatever is in between.
+                        for (int d = 0; d < 8; d++)
+                        {
+                            int nf = f + 2 * Geometry.DirFile[d], nr = r + 2 * Geometry.DirRank[d];
+                            if (Sq.OnBoard(nf, nr)) AddTarget(s, p, from, Sq.Make(nf, nr), o);
+                        }
+                    }
+                    if (castle && !p.Has(Buff.Ghost)) GenCastle(s, p, from, o);
                     break;
                 default:
                     int first = p.Type == PieceType.Bishop ? 4 : 0;
@@ -142,6 +169,16 @@ namespace PowerChess.Core
             if (r1 < 0 || r1 > 7) return;
 
             int to1 = Sq.Make(f, r1);
+            if (p.Has(Buff.Ghost) && !(s.Cells[to1].IsEmpty && !s.Boulders[to1]))
+            {
+                // A ghost pawn leapfrogs whatever blocks it and lands one square beyond, if that is free.
+                int r2 = r + 2 * dir;
+                if (r2 >= 0 && r2 <= 7)
+                {
+                    int to2 = Sq.Make(f, r2);
+                    if (s.Cells[to2].IsEmpty && !s.Boulders[to2]) AddPawnMove(from, to2, r2 == lastRank, o);
+                }
+            }
             if (s.Cells[to1].IsEmpty && !s.Boulders[to1])
             {
                 AddPawnMove(from, to1, r1 == lastRank, o);
@@ -293,8 +330,9 @@ namespace PowerChess.Core
                         var pb = s.Cells[b];
                         if (pb.IsEmpty || pb.Side != me || pb.Type == PieceType.King) continue;
                         if (pa.Type == pb.Type && pa.Buffs == pb.Buffs) continue;
-                        if (pa.Type == PieceType.Pawn && (Sq.Rank(b) == 0 || Sq.Rank(b) == 7)) continue;
-                        if (pb.Type == PieceType.Pawn && (Sq.Rank(a) == 0 || Sq.Rank(a) == 7)) continue;
+                        // A pawn may land on the far rank (it promotes) but never on its own back rank.
+                        if (pa.Type == PieceType.Pawn && Sq.Rank(b) == (pa.Side == Side.White ? 0 : 7)) continue;
+                        if (pb.Type == PieceType.Pawn && Sq.Rank(a) == (pb.Side == Side.White ? 0 : 7)) continue;
                         o.Add(new GameAction(ActionKind.Swap, a, b, 0));
                     }
                 }

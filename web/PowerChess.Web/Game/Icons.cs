@@ -29,6 +29,7 @@ public static class Icons
             "portal" => "<ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"9\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\"/><ellipse cx=\"12\" cy=\"12\" rx=\"5\" ry=\"5\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/>",
             "x3" => "<text x=\"12\" y=\"17\" font-size=\"14\" font-weight=\"900\" text-anchor=\"middle\" font-family=\"Arial,Helvetica,sans-serif\">x3</text>",
             "lock" => "<rect x=\"5\" y=\"10\" width=\"14\" height=\"11\" rx=\"2\"/><path d=\"M8 10V7a4 4 0 0 1 8 0v3\" stroke=\"currentColor\" stroke-width=\"2.2\" fill=\"none\"/>",
+            "crown" => "<path d=\"M3 19h18v2H3zM3 7l5 5 4-7 4 7 5-5-2 10H5z\"/>",
             "spark" => "<path d=\"M12 2l2.2 6.8L21 12l-6.8 2.2L12 22l-2.2-7.8L3 12l6.8-3.2z\"/>",
             "x2" => "<text x=\"12\" y=\"17\" font-size=\"14\" font-weight=\"900\" text-anchor=\"middle\" font-family=\"Arial,Helvetica,sans-serif\">x2</text>",
             _ => "<text x=\"12\" y=\"18\" font-size=\"18\" font-weight=\"900\" text-anchor=\"middle\" font-family=\"Arial,Helvetica,sans-serif\">?</text>",

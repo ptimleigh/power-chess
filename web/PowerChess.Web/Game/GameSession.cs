@@ -752,6 +752,17 @@ public sealed class GameSession
             return;
         }
 
+        // A king that cannot use a teleporter (its exit would leave it in check) gets an explanation instead of silence.
+        if (Selected >= 0 && State.Portal[sq] && !Targets.Contains(sq) && State.Cells[Selected].Type == PieceType.King
+            && MoveGen.HasPseudoMove(State, Selected, sq))
+        {
+            int exit = Sq.Mirror(sq);
+            AddToast("Teleporter blocked", $"Your king would land on {Sq.Name(exit)} and be in check there.", "portal", "portal");
+            Sfx?.Invoke("click");
+            Changed?.Invoke();
+            return;
+        }
+
         if (Selected >= 0 && Targets.Contains(sq))
         {
             var moves = Legal.Where(a => a.Kind == ActionKind.Move && a.From == Selected && a.To == sq).ToList();
@@ -1245,6 +1256,15 @@ public sealed class GameSession
                     Sfx?.Invoke("steal");
                     break;
                 }
+                case EventKind.PickupRejected:
+                    AddFx("burst", e.To, css: "rock");
+                    AddToast("King can't use " + Names.Name(e.Powerup), PowerupInfo.IsTransform(e.Powerup) ? "A king can never change type. The square is used up." : "A king can't be poisoned. The square is used up.", "gold", "crown");
+                    Sfx?.Invoke("thud");
+                    break;
+                case EventKind.TeleportBlocked:
+                    AddFx("ping", e.From, css: "portal");
+                    AddToast("Exit blocked", "The twin teleporter was occupied, so nothing happened. Both are used up.", "portal", "portal");
+                    break;
                 case EventKind.GhostFaded:
                     AddFx("ping", e.From, css: "steal");
                     break;

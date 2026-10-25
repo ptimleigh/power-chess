@@ -261,13 +261,13 @@ namespace PowerChess.Core.Tests
         }
 
         [Test]
-        public void Fireball_is_a_buff_so_kings_never_earn_it_but_other_pieces_do()
+        public void Fireball_is_a_buff_that_kings_and_other_pieces_can_earn()
         {
             var cfg = Pool(PowerupKind.Fireball);
             var king = T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1", cfg);
             king.Mystery[Sq.Parse("e2")] = true;
             T.Do(king, "e1e2");
-            Assert.AreEqual(Buff.None, T.At(king, "e2").Buffs);
+            Assert.IsTrue(T.At(king, "e2").Has(Buff.Fireball), "kings can fire a fireball too");
 
             var knight = T.Fen("4k3/8/8/8/8/1N6/8/4K3 w - - 0 1", cfg);
             knight.Mystery[Sq.Parse("d4")] = true;
@@ -435,15 +435,16 @@ namespace PowerChess.Core.Tests
         }
 
         [Test]
-        public void Kings_only_ever_collect_perks()
+        public void Kings_never_collect_poison_or_transforms()
         {
             for (ulong seed = 1; seed <= 40; seed++)
             {
-                var s = T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1", Pool(PowerupKind.Poison, PowerupKind.DoubleMove, PowerupKind.Steal));
+                var s = T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1", Pool(PowerupKind.Poison, PowerupKind.TransformQueen, PowerupKind.Steal));
                 s.Rng = new Rng(seed);
                 s.Mystery[Sq.Parse("e2")] = true;
                 T.Do(s, "e1e2");
-                Assert.AreEqual(Buff.None, T.At(s, "e2").Buffs, "kings are immune to buffs");
+                Assert.IsFalse(T.At(s, "e2").Has(Buff.Poison), "kings cannot be poisoned");
+                Assert.AreEqual(PieceType.King, T.At(s, "e2").Type, "and never transform");
                 Assert.AreEqual(1, s.Perks(Side.White, PowerupKind.Steal));
             }
         }

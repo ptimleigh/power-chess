@@ -24,7 +24,9 @@ namespace PowerChess.Core
         public static bool IsKingAttacked(GameState s, Side side)
         {
             int k = FindKing(s, side);
-            return k >= 0 && IsAttacked(s, k, side.Opponent());
+            if (k < 0) return false;
+            if (s.Cells[k].Has(Buff.Armor)) return false; // an armored king cannot be checked
+            return IsAttacked(s, k, side.Opponent());
         }
 
         /// <summary>Is <paramref name="sq"/> attacked by <paramref name="by"/>? Stunned pieces exert no attacks; boulders block lines.</summary>

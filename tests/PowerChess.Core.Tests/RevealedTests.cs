@@ -74,19 +74,23 @@ namespace PowerChess.Core.Tests
         }
 
         [Test]
-        public void A_king_walks_over_a_buff_square_without_using_it_up()
+        public void A_king_stepping_on_a_square_it_cannot_use_consumes_it()
         {
             var s = T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1", Revealed());
             Show(s, "e2", PowerupKind.Poison);
             T.Do(s, "e1e2");
-            Assert.AreEqual(Buff.None, T.At(s, "e2").Buffs, "kings are immune to buffs");
-            Assert.IsTrue(s.Mystery[Sq.Parse("e2")], "the square is still there");
-            Assert.AreEqual((byte)PowerupKind.Poison, s.Content[Sq.Parse("e2")]);
+            Assert.AreEqual(Buff.None, T.At(s, "e2").Buffs, "kings cannot be poisoned");
+            Assert.IsFalse(s.Mystery[Sq.Parse("e2")], "the incompatible powerup is used up");
+        }
 
-            // Once the king steps off, a piece that can use it still can.
-            T.Do(s, "e8d8");
-            T.Do(s, "e2d2");
-            Assert.IsTrue(s.Mystery[Sq.Parse("e2")]);
+        [Test]
+        public void A_king_walking_over_a_capped_perk_square_leaves_it()
+        {
+            var s = T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1", Revealed());
+            T.Perk(s, Side.White, PowerupKind.Steal, 3);
+            Show(s, "e2", PowerupKind.Steal);
+            T.Do(s, "e1e2");
+            Assert.IsTrue(s.Mystery[Sq.Parse("e2")], "a full inventory leaves the square for later");
         }
 
         [Test]

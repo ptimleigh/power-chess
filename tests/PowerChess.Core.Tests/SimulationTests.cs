@@ -23,7 +23,7 @@ namespace PowerChess.Core.Tests
                     // Only a revealed square can have a piece standing on it (a piece that cannot use what it shows).
                     if (s.Mystery[i]) Assert.AreNotEqual((byte)0, s.Content[i], "piece on a hidden mystery square. " + context + "\n" + s);
                     if (p.Type == PieceType.King)
-                        Assert.AreEqual(Buff.None, p.Buffs, "king received a buff. " + context + "\n" + s);
+                        Assert.IsFalse(p.Has(Buff.Poison), "king was poisoned. " + context + "\n" + s);
                 }
                 Assert.IsFalse(s.Boulders[i] && s.Mystery[i], "boulder on a mystery square");
             }
@@ -46,9 +46,12 @@ namespace PowerChess.Core.Tests
                 Assert.IsTrue(legal.Contains(action), "chooser returned an illegal action " + action);
 
                 Side mover = s.ToMove;
+                int kingSq = Geometry.FindKing(s, mover);
+                bool armored = kingSq >= 0 && s.Cells[kingSq].Has(Buff.Armor); // armor may lapse at the end of the turn
                 Rules.Apply(s, action);
                 AssertInvariants(s, "after " + action + " (seed " + seed + ")");
-                Assert.IsFalse(Geometry.IsKingAttacked(s, mover), "mover left own king in check after " + action + "\n" + s);
+                if (!armored)
+                    Assert.IsFalse(Geometry.IsKingAttacked(s, mover), "mover left own king in check after " + action + "\n" + s);
             }
             Assert.Fail("game did not terminate, seed " + seed);
             return GameResult.Ongoing;

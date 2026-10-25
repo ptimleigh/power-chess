@@ -153,7 +153,15 @@ public static class Tutorials
         }
         .Then(1000, c => c.Aim("e1"))
         .Then(700, c => c.Aim().Kill("e1").Move("a1", "e1").Fx("burst", "e1", css: "steal").Say("It captured past its own pawn and a boulder"))
-        .Then(1200, c => c.Say("It stays a ghost for 3 turns")),
+        .Then(1200, c => c.Say("It stays a ghost for 3 turns"))
+        .Then(1500, c => c.Clear().Place("c2", PieceType.Pawn, W, Buff.Ghost, ghost: 3).Place("c3", PieceType.Pawn, B)
+            .Say("A ghost pawn leapfrogs a blocker"))
+        .Then(900, c => c.Aim("c4"))
+        .Then(800, c => c.Aim().Move("c2", "c4").Fx("ring", "c4", css: "steal"))
+        .Then(1300, c => c.Clear().Place("c3", PieceType.Knight, W, Buff.Ghost, ghost: 3).Place("c4", PieceType.Pawn, B)
+            .Say("A ghost knight can also step like a king"))
+        .Then(900, c => c.Aim("c4"))
+        .Then(800, c => c.Aim().Kill("c4").Move("c3", "c4").Fx("burst", "c4", css: "steal")),
 
         [PowerupKind.Swap] = new DemoScript
         {

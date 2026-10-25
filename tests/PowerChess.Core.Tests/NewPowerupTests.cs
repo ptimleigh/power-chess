@@ -85,14 +85,14 @@ namespace PowerChess.Core.Tests
         }
 
         [Test]
-        public void Ghost_cannot_be_given_to_knights_pawns_or_kings()
+        public void Ghost_can_be_given_to_every_piece_including_the_king()
         {
             var s = T.Fen("4k3/8/8/8/8/8/P7/RNB1K3 w - - 0 1");
             Assert.IsTrue(Rules.Eligible(s, T.At(s, "a1"), 0, PowerupKind.Ghost));
             Assert.IsTrue(Rules.Eligible(s, T.At(s, "c1"), 2, PowerupKind.Ghost));
-            Assert.IsFalse(Rules.Eligible(s, T.At(s, "b1"), 1, PowerupKind.Ghost));
-            Assert.IsFalse(Rules.Eligible(s, T.At(s, "a2"), 8, PowerupKind.Ghost));
-            Assert.IsFalse(Rules.Eligible(s, T.At(s, "e1"), 4, PowerupKind.Ghost));
+            Assert.IsTrue(Rules.Eligible(s, T.At(s, "b1"), 1, PowerupKind.Ghost));
+            Assert.IsTrue(Rules.Eligible(s, T.At(s, "a2"), 8, PowerupKind.Ghost));
+            Assert.IsTrue(Rules.Eligible(s, T.At(s, "e1"), 4, PowerupKind.Ghost));
         }
 
         // ---------- Swap ----------

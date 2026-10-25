@@ -113,3 +113,13 @@ Times obtained and win rate vs baseline:
 | Boulder | 379 / -4.0% | 300 / -6.0% |
 
 The rare ones are drawn far more often (Become Queen 60 to 218, Big Bomb 124 to 342, Triple Move 189 to 319, Ghost 216 to 343) and the common big ones somewhat more (Fireball 436 to 586, Steal 433 to 596). Game length barely moved, and the strongest outlier is now Become Queen at +5.4 (it was +11.8 when rare), so no further trimming was needed. Boulder looks weak (-6.0), which fits it being a setup perk the AI uses poorly.
+
+## After kings can take buffs, Ghost works on every piece and Swap promotes
+
+500 games, depth 2, revealed squares, spawn every 3 plies, max 8 squares.
+
+- Median 59 plies, 90.2% checkmates, 6.4% 50-move draws, 3.0% ply-cap draws: games end decisively more often than before (87.4%).
+- Ghost (now on every piece): 472 times, -1.5 points, so it is no longer the outlier it was on sliders alone.
+- Spiked Armor (kings can be uncheckable): 478 times, +4.1.
+- Become Queen +9.3 stays the biggest outlier (239 pickups); if it ever feels too strong, lower its weight from 3 to 2.
+- Swap is never used by the AI, so it has no row.

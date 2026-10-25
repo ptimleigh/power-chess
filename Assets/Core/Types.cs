@@ -213,6 +213,10 @@ namespace PowerChess.Core
         PortalSpawned,
         Teleported,
         Swapped,
+        /// <summary>A king landed on a powerup square it cannot use (Poison, Transform). The square is used up.</summary>
+        PickupRejected,
+        /// <summary>A teleporter was used but its twin was blocked, so the piece stayed put and both squares vanished.</summary>
+        TeleportBlocked,
     }
 
     /// <summary>Describes what happened so the view layer can animate it. The engine itself never reads these.</summary>

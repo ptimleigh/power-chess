@@ -64,6 +64,8 @@ namespace PowerChess.Core
                     Place(s, a.From, pb);
                     Place(s, a.To, pa);
                     Emit(ev, EventKind.Swapped, a.From, a.To, pa.Type, me, PowerupKind.Swap);
+                    PromoteIfAtEnd(s, a.To, ev, me);
+                    PromoteIfAtEnd(s, a.From, ev, me);
                     Finish(s, ev);
                     return;
                 }
@@ -133,6 +135,18 @@ namespace PowerChess.Core
             }
         }
 
+        /// <summary>A pawn swapped onto the far rank becomes a Queen.</summary>
+        static void PromoteIfAtEnd(GameState s, int sq, List<GameEvent> ev, Side me)
+        {
+            var p = s.Cells[sq];
+            if (p.Type != PieceType.Pawn) return;
+            int last = p.Side == Side.White ? 7 : 0;
+            if (Sq.Rank(sq) != last) return;
+            p.Type = PieceType.Queen;
+            Place(s, sq, p);
+            Emit(ev, EventKind.Promoted, sq, sq, PieceType.Queen, me, PowerupKind.None);
+        }
+
         static void ApplyMove(GameState s, GameAction a, List<GameEvent> ev)
         {
             Side me = s.ToMove;
@@ -147,7 +161,7 @@ namespace PowerChess.Core
             int dFile = Sq.File(a.To) - Sq.File(a.From);
             Emit(ev, EventKind.Moved, a.From, a.To, origType, me, PowerupKind.None);
 
-            if (origType == PieceType.King && Math.Abs(dFile) == 2)
+            if (origType == PieceType.King && Math.Abs(dFile) == 2 && !mover.Has(Buff.Ghost)) // a ghost king's two-square step is a move, not a castle
             {
                 int rookFrom = dFile > 0 ? a.From + 3 : a.From - 4;
                 int rookTo = dFile > 0 ? a.From + 1 : a.From - 1;
@@ -191,8 +205,9 @@ namespace PowerChess.Core
             Place(s, a.To, mover);
 
             if (didCapture || origType == PieceType.Pawn) s.ClockReset = true;
-            if (origType == PieceType.Pawn && Math.Abs(Sq.Rank(a.To) - Sq.Rank(a.From)) == 2)
-                s.EnPassant = (a.From + a.To) / 2;
+            if (origType == PieceType.Pawn && Math.Abs(Sq.Rank(a.To) - Sq.Rank(a.From)) == 2
+                && s.Cells[(a.From + a.To) / 2].IsEmpty && !s.Boulders[(a.From + a.To) / 2])
+                s.EnPassant = (a.From + a.To) / 2; // a ghost pawn's leap over a blocker sets none
 
             bool alive = true;
             if (didCapture && captured.Has(Buff.Poison) && mover.Type != PieceType.King && !mover.Has(Buff.Armor))
@@ -216,6 +231,7 @@ namespace PowerChess.Core
                     land = dest;
                     Emit(ev, EventKind.Teleported, a.To, dest, moved.Type, me, PowerupKind.None);
                 }
+                else Emit(ev, EventKind.TeleportBlocked, a.To, dest, s.Cells[a.To].Type, me, PowerupKind.None);
             }
 
             if (alive && owed > 0)
@@ -259,7 +275,10 @@ namespace PowerChess.Core
                     else
                     {
                         Emit(ev, EventKind.PickupFound, a.To, a.To, s.Cells[a.To].Type, me, shown);
-                        if (s.Perks(me, PowerupKind.Reroll) > 0)
+                        // A king that is only legal on this square because the armor here shields it must take it.
+                        bool armorSavesKing = shown == PowerupKind.SpikedArmor && s.Cells[a.To].Type == PieceType.King
+                            && Geometry.IsAttacked(s, a.To, me.Opponent());
+                        if (s.Perks(me, PowerupKind.Reroll) > 0 && !armorSavesKing)
                         {
                             s.PendingSquare = a.To;
                             s.PendingKind = shown;
@@ -268,7 +287,14 @@ namespace PowerChess.Core
                         ApplyPickup(s, me, a.To, shown, ev);
                     }
                 }
-                // Otherwise the piece cannot use what the square holds (a king and a buff, a capped perk, ...):
+                else if (KingIncompatible(s.Cells[a.To], shown))
+                {
+                    // A king stepped on Poison or a Transform: it cannot use it, and the square is used up.
+                    s.Mystery[a.To] = false;
+                    s.Content[a.To] = 0;
+                    Emit(ev, EventKind.PickupRejected, a.To, a.To, PieceType.King, me, shown);
+                }
+                // Otherwise the piece cannot use what the square holds (a capped perk, a duplicate buff, ...):
                 // the square is left untouched, so it is still there when something that can use it arrives.
             }
 
@@ -288,8 +314,7 @@ namespace PowerChess.Core
                     var p = s.Cells[sq];
                     if (!p.IsEmpty && p.Side == me && !p.IsStunned)
                     {
-                        int enemyKing = Geometry.FindKing(s, me.Opponent());
-                        bool check = enemyKing >= 0 && Geometry.IsAttacked(s, enemyKing, me);
+                        bool check = Geometry.IsKingAttacked(s, me.Opponent());
                         if (check)
                         {
                             Emit(ev, EventKind.DoubleMoveForfeited, sq, sq, p.Type, me, PowerupKind.DoubleMove);
@@ -408,12 +433,17 @@ namespace PowerChess.Core
             return PowerupKind.None;
         }
 
+        /// <summary>Kings take every powerup except Poison and Transform, which make no sense for them.</summary>
+        public static bool KingIncompatible(Piece p, PowerupKind kind)
+        {
+            return p.Type == PieceType.King && (kind == PowerupKind.Poison || PowerupInfo.IsTransform(kind));
+        }
+
         /// <summary>Can this piece receive this powerup right now? Kings only take perks, caps and duplicates apply.</summary>
         public static bool Eligible(GameState s, Piece p, int sq, PowerupKind kind)
         {
             bool perk = PowerupInfo.IsPerk(kind);
-            // Kings are immune to buffs, so they only ever pick up player perks.
-            if (p.Type == PieceType.King && !perk) return false;
+            if (KingIncompatible(p, kind)) return false;
             if (perk && s.Perks(p.Side, kind) >= s.Config.MaxPerks) return false;
             if (PowerupInfo.IsTransform(kind))
             {
@@ -423,7 +453,8 @@ namespace PowerChess.Core
             }
             if (kind == PowerupKind.DoubleMove && (p.Has(Buff.DoubleMove) || p.Has(Buff.TripleMove))) return false;
             if (kind == PowerupKind.TripleMove && (p.Has(Buff.DoubleMove) || p.Has(Buff.TripleMove))) return false;
-            if (kind == PowerupKind.Ghost && (p.Has(Buff.Ghost) || !(p.Type == PieceType.Bishop || p.Type == PieceType.Rook || p.Type == PieceType.Queen))) return false;
+            if (kind == PowerupKind.Ghost && p.Has(Buff.Ghost)) return false;
+            if (kind == PowerupKind.SpikedArmor && p.Has(Buff.Armor)) return false;
             if (kind == PowerupKind.Swap && !s.Config.SwapAllowed[(int)p.Side]) return false;
             if (kind == PowerupKind.Fireball && p.Has(Buff.Fireball)) return false;
             if (kind == PowerupKind.Rewind && !s.Config.RewindAllowed[(int)p.Side]) return false;

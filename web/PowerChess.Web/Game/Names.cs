@@ -32,7 +32,7 @@ public static class Names
     {
         PowerupKind.DoubleMove => "This piece must move twice next time it moves. Giving check cancels the second move.",
         PowerupKind.Poison => "If this piece is captured, the capturer dies too.",
-        PowerupKind.SpikedArmor => "Uncapturable and immune to effects for 3 turns.",
+        PowerupKind.SpikedArmor => "Uncapturable and immune to effects for 3 turns. An armored king can't be checked.",
         PowerupKind.Stun => "Pick any enemy piece. It can't move for 3 turns (kings and armored pieces are immune).",
         PowerupKind.SmallBomb => "Detonate instead of moving: destroys everything in the 3x3 around it (not kings).",
         PowerupKind.BigBomb => "Detonate instead of moving: destroys everything in the 5x5 around it (not kings).",
@@ -41,9 +41,9 @@ public static class Names
         PowerupKind.Boulder => "Place a boulder on an empty square. Nothing can enter or cross it.",
         PowerupKind.Reroll => "Re-draw a powerup you just found, or smash a boulder.",
         PowerupKind.Rewind => "Take back your last turn and your opponent's reply. Use it on your turn.",
-        PowerupKind.Ghost => "For 3 turns this rook, bishop or queen slides through pieces and boulders. It still can't land on its own side or give check through a blocker.",
+        PowerupKind.Ghost => "For 3 turns this piece passes through pieces and boulders. Sliders slide through, pawns leapfrog a blocker, knights also step like a king, and a king reaches two squares. It never lands on its own side or gives check through a blocker.",
         PowerupKind.TripleMove => "This piece must move three times in a row next time it moves. Giving check cancels the rest.",
-        PowerupKind.Swap => "Trade places between two of your own pieces (not kings). Buffs travel with the pieces. Costs your turn.",
+        PowerupKind.Swap => "Trade places between two of your own pieces (not kings). Buffs travel with the pieces. A pawn swapped onto the far rank becomes a Queen. Costs your turn.",
         _ => PowerupInfo.IsTransform(k) ? "This piece changes type on the spot." : "",
     };
 

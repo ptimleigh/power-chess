@@ -9,7 +9,7 @@ namespace PowerChess.Core
     /// </summary>
     public static class GameStateCodec
     {
-        const byte Version = 2;
+        const byte Version = 3;
         const int MaxHistory = 5000;
 
         public static string EncodeGame(GameState current, GameHistory history)
@@ -46,7 +46,7 @@ namespace PowerChess.Core
                 using (var r = new BinaryReader(ms))
                 {
                     byte version = r.ReadByte();
-                    if (version != 1 && version != 2) return false; // version 1 saves predate revealed squares
+                    if (version < 1 || version > 3) return false; // version 1 saves predate revealed squares
                     var state = ReadState(r, config, version);
                     int count = r.ReadInt32();
                     if (count < 0 || count > MaxHistory) return false;
@@ -55,7 +55,7 @@ namespace PowerChess.Core
                     {
                         var before = ReadState(r, config, version);
                         var action = new GameAction((ActionKind)r.ReadByte(), r.ReadInt16(), r.ReadInt16(), r.ReadInt16());
-                        if (action.Kind > ActionKind.RerollPickup) return false;
+                        if (action.Kind > ActionKind.Swap) return false;
                         h.Record(before, action);
                     }
                     if (ms.Position != ms.Length) return false;
@@ -80,9 +80,12 @@ namespace PowerChess.Core
                 w.Write((byte)p.Buffs);
                 w.Write(p.ArmorTurns);
                 w.Write(p.StunTurns);
+                w.Write(p.GhostTurns);
             }
             w.Write(Pack(s.Boulders));
             w.Write(Pack(s.Mystery));
+            w.Write(Pack(s.Portal));
+            w.Write((byte)s.MultiLeft);
             w.Write(s.Content);
             w.Write(s.Inventory);
             w.Write((byte)s.ToMove);
@@ -106,23 +109,30 @@ namespace PowerChess.Core
                 var type = r.ReadByte();
                 var side = r.ReadByte();
                 var buffs = r.ReadByte();
-                if (type > (byte)PieceType.King || side > 1 || buffs > 63) throw new InvalidDataException("bad piece");
+                if (type > (byte)PieceType.King || side > 1 || false) throw new InvalidDataException("bad piece");
                 s.Cells[i] = new Piece((PieceType)type, (Side)side)
                 {
                     Buffs = (Buff)buffs,
                     ArmorTurns = r.ReadByte(),
                     StunTurns = r.ReadByte(),
+                    GhostTurns = version >= 3 ? r.ReadByte() : (byte)0,
                 };
             }
             Unpack(r.ReadUInt64(), s.Boulders);
             Unpack(r.ReadUInt64(), s.Mystery);
+            if (version >= 3)
+            {
+                Unpack(r.ReadUInt64(), s.Portal);
+                s.MultiLeft = r.ReadByte();
+                if (s.MultiLeft > 2) throw new InvalidDataException("bad multi");
+            }
             if (version >= 2)
             {
                 var content = r.ReadBytes(64);
                 if (content.Length != 64) throw new InvalidDataException("bad content");
                 for (int i = 0; i < 64; i++)
                 {
-                    if (content[i] > (byte)PowerupKind.Rewind) throw new InvalidDataException("bad content kind");
+                    if (content[i] > (byte)PowerupKind.Swap) throw new InvalidDataException("bad content kind");
                     s.Content[i] = content[i];
                 }
             }

@@ -97,18 +97,19 @@ namespace PowerChess.Core.Tests
             var cfg = T.Cfg();
             var s = GameState.NewGame(cfg, 1);
             s.Mystery[Sq.Parse("d4")] = true; // a hidden mystery has no content, which is all version 1 could express
-            var v2 = Convert.FromBase64String(GameStateCodec.EncodeGame(s, new GameHistory()));
+            var cur = Convert.FromBase64String(GameStateCodec.EncodeGame(s, new GameHistory()));
 
-            // Rewrite as version 1: drop the 64 content bytes (after the version byte, 64 cells x 5 bytes and two 8-byte bitsets).
-            int contentAt = 1 + 64 * 5 + 8 + 8;
-            var v1 = new byte[v2.Length - 64];
-            Array.Copy(v2, 0, v1, 0, contentAt);
-            Array.Copy(v2, contentAt + 64, v1, contentAt, v2.Length - contentAt - 64);
-            v1[0] = 1;
+            // Rewrite as version 1: per cell drop the ghost byte, then drop the portal bitset, multi-move byte and 64 content bytes.
+            var v1 = new System.Collections.Generic.List<byte> { 1 };
+            int pos = 1;
+            for (int i = 0; i < 64; i++) { for (int k = 0; k < 5; k++) v1.Add(cur[pos + k]); pos += 6; }
+            for (int k = 0; k < 16; k++) v1.Add(cur[pos + k]); // boulders + mystery
+            pos += 16 + 8 + 1 + 64;
+            for (; pos < cur.Length; pos++) v1.Add(cur[pos]);
 
             GameState s2;
             GameHistory h2;
-            Assert.IsTrue(GameStateCodec.TryDecodeGame(Convert.ToBase64String(v1), cfg, out s2, out h2));
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(Convert.ToBase64String(v1.ToArray()), cfg, out s2, out h2));
             AssertSame(s, s2, "v1 save");
         }
 

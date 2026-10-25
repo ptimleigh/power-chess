@@ -75,3 +75,12 @@ Revealed play is about 50% more active (the AI now chases squares it can see) wi
 checkmate rate. Spread across powerups stays within about +-4 points except Transform to Queen (+12.5 to +15.6 in both
 modes, already down-weighted) and tiny samples (Transform to Pawn). Big Bomb looks strong in Mystery (+8.3) but falls to
 -0.8 in Revealed, which is within noise at this sample size. No pool changes made for Revealed.
+
+## After adding Ghost, Triple Move and Swap
+
+500 games, depth 2, revealed squares, spawn every 4 plies (same settings as above). Teleporters are off in the simulator, and Swap is off because the AI never uses it.
+
+- Median 59 plies, checkmates 83.0%, 50-move draws 12.4%, ply-cap draws 4.4%: no change in game shape.
+- Ghost: obtained 216 times, win rate 47.7% against a 41.5% baseline (+6.2). The strongest of the new three and the second-biggest outlier after Transform to Queen (+11.8). Watch it; if phone playtests agree, drop its weight from 6 to 4 or shorten it from 4 to 3 turns.
+- Triple Move: 189 times, +1.4. Fine at weight 3 (it has few safe uses, and giving check cancels it).
+- Everything else stayed within about +-4 points of baseline.

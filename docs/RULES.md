@@ -23,10 +23,16 @@ stalemate are real. Stalemate and the 50-move rule are draws; a ply cap ends end
   piece can stand on it and a king can walk over it.
 - `Mystery` mode keeps every square hidden, as above.
 
+## Teleporters
+- Occasionally (`PortalChance`, 12% of spawns in the web game, never in the opening) a spawn is a pair of **teleporter** squares instead of powerup squares. They are always visible, mirrored like other pairs, and at most one pair exists at a time.
+- A piece that lands on one is sent to its twin if that square is empty; then both squares vanish (a blocked exit still uses them up). A Double/Triple Move piece carries on from the twin.
+
 ## Piece buffs (lost if the piece is destroyed)
 | Buff | Rule |
 |---|---|
 | Double Move | First time the piece moves it must move twice in a row. The second move is forfeited if the first gives check or no legal second move exists. One-shot. |
+| Triple Move | Like Double Move, but three moves in a row. Check on any of the moves forfeits the rest. Rare. A piece never holds Double and Triple at once. |
+| Ghost | For 3 of its owner's turns a rook, bishop or queen slides through pieces and boulders (it still captures only enemies, never lands on its own side or a boulder). It does not give check through a blocker. Kings, knights and pawns cannot take it. |
 | Fireball | The piece that picks it up can fire it **once**, instead of moving. Choose one of 8 directions (horizontal, vertical or diagonal, unlimited range); any piece type can fire any direction. It destroys the **first** piece on the line if that is a vulnerable enemy (your own piece, a king or an armored piece first means that direction does nothing). A **Queen's** fireball destroys **every** vulnerable enemy on the whole line, flying over its own pieces, kings and armored pieces. Boulders stop any fireball. A shot is only offered if it would hit something. Lost if the piece is destroyed or stolen; kings cannot earn it. |
 | Poison | If a piece captures it by a normal move, the capturer is destroyed too. Kings and armored pieces are immune. Fireball/bomb/steal do not trigger it. |
 | Spiked Armor | Immune to every hostile effect for the next 3 opponent turns. |
@@ -40,6 +46,7 @@ stalemate are real. Stalemate and the 50-move rule are draws; a ply cap ends end
 | Steal | A piece of yours converts an enemy piece it could capture. The thief does not move. |
 | Boulder | Place on an empty square; nothing can move onto or through it. Cleared by spending a Reroll or by a bomb. |
 | Reroll | Everyone starts with 1. Re-draws a just-found powerup, or clears a boulder. |
+| Swap | Trade places between two of your own pieces (not kings; a pawn may not be swapped onto a back rank). Buffs travel with the pieces. Costs your turn, must leave your king safe. The AI opponent never draws or uses it. |
 | Rewind | Take back your last turn and the opponent's reply, returning to the position before you last moved. Anything gained since then (including other perks) is undone and any mystery square you opened is back, but the Rewind itself is spent. Not available on your first turn or mid-turn. The AI opponent never draws it. |
 
 ## Cross-cutting rules

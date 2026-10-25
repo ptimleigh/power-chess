@@ -33,6 +33,12 @@ public sealed class GameOptions
     public double HiddenChance = 0.2;
     /// <summary>Squares to show as revealed, e.g. <c>reveal=d4:fireball,e5:steal</c>.</summary>
     public List<(string sq, PowerupKind kind)> Reveal = new();
+    /// <summary>Teleporter pairs can spawn (<c>portals=0</c> turns them off).</summary>
+    public bool Portals = true;
+    /// <summary>Strike drama: dash streaks, slashes, hit-stop, callouts and bigger shakes on captures (<c>drama=0</c> turns it off).</summary>
+    public bool Drama = true;
+    /// <summary>Teleporter squares to place now, e.g. <c>portal=c3</c> (its twin is the point mirror, f6).</summary>
+    public List<string> PortalAt = new();
 
     public static GameOptions FromQuery(string query)
     {
@@ -73,6 +79,9 @@ public sealed class GameOptions
                 case "tut": o.Tutorials = val != "0"; o.TutorialsExplicit = val == "1"; break;
                 case "demo": if (Enum.TryParse<PowerupKind>(val, true, out var dk)) o.Demo = dk; break;
                 case "training": o.Training = val != "0"; break;
+                case "drama": o.Drama = val != "0"; break;
+                case "portals": o.Portals = val != "0"; break;
+                case "portal": o.PortalAt.AddRange(val.Split(',', StringSplitOptions.RemoveEmptyEntries)); break;
                 case "mode": o.Mode = val.Equals("mystery", StringComparison.OrdinalIgnoreCase) ? SquareMode.Mystery : SquareMode.Revealed; break;
                 case "hidden": if (double.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var hc)) o.HiddenChance = Math.Clamp(hc, 0, 1); break;
                 case "reveal":

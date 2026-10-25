@@ -22,7 +22,7 @@
     </section>
 
     <div class="board-frame">
-        <div class="board @(S.Shaking ? "shaking" : "")" data-testid="board">
+        <div class="board @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">
             @for (int rank = 7; rank >= 0; rank--)
             {
                 for (int file = 0; file < 8; file++)
@@ -32,6 +32,11 @@
                         @if (S.View.Mystery[sq])
                         {
                             <PowerupMark Kind="(PowerupKind)S.View.Content[sq]" />
+                        }
+                        else if (S.View.Portal[sq])
+                        {
+                            <span class="pu-edge"></span>
+                            <span class="pu-glyph">@Icons.Svg("portal")</span>
                         }
                         @if (S.View.Boulders[sq])
                         {
@@ -101,6 +106,7 @@
         {
             var k = perk;
             if (k.Action == ActionKind.ClearBoulder && S.State.BoulderCount() == 0) { continue; }
+            if (k.Kind == PowerupKind.Swap && S.Perk(ActiveSide, PowerupKind.Swap) == 0) { continue; }
             <button class="perk @(S.Mode == InputMode.Armed && S.ArmedKind == k.Action ? "on" : "")" disabled="@(!S.CanUse(k.Action))"
                     data-perk="@k.Kind.ToString().ToLowerInvariant()" @onclick="() => S.Arm(k.Action)">
                 <span class="pi">@Icons.Svg(Names.Icon(k.Kind))</span>
@@ -157,7 +163,7 @@
                 <b>@InspectTitle(ip)</b>
                 <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
             </div>
-            @foreach (var flag in new[] { Buff.DoubleMove, Buff.Poison, Buff.Armor, Buff.Fireball, Buff.SmallBomb, Buff.BigBomb })
+            @foreach (var flag in new[] { Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.Fireball, Buff.SmallBomb, Buff.BigBomb })
             {
                 if (!ip.Has(flag)) { continue; }
                 var kind = Names.ForBuff(flag);
@@ -167,6 +173,8 @@
                         <b>@Names.Name(kind)</b>
                         @(flag == Buff.Armor
                             ? $"Immune to capture and effects for {ip.ArmorTurns} more opponent {(ip.ArmorTurns == 1 ? "turn" : "turns")}."
+                            : flag == Buff.Ghost
+                            ? $"Slides through pieces and boulders for {ip.GhostTurns} more of its owner's {(ip.GhostTurns == 1 ? "turn" : "turns")}."
                             : Names.Desc(kind))
                     </span>
                     <button class="demo-btn" data-demo="@kind.ToString().ToLowerInvariant()" @onclick="() => S.ShowTutorial(kind)">Demo</button>
@@ -187,7 +195,20 @@
     }
 </div>
 
-@if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.Mystery[S.InspectSquare])
+@if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.Portal[S.InspectSquare] && !S.State.Mystery[S.InspectSquare])
+{
+    <div class="inspect sqinfo" data-testid="inspect-square" data-content="portal">
+        <div class="inspect-head">
+            <b>Teleporter</b>
+            <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
+        </div>
+        <div class="inspect-row">
+            <span class="gi perk">@Icons.Svg("portal")</span>
+            <span>@Names.PortalDesc</span>
+        </div>
+    </div>
+}
+else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.Mystery[S.InspectSquare])
 {
     var sk = (PowerupKind)S.State.Content[S.InspectSquare];
     <div class="inspect sqinfo" data-testid="inspect-square" data-content="@ContentName(S.InspectSquare)">
@@ -303,6 +324,15 @@
                 <button class="@Seg(selAi == 3)" data-ai="3" @onclick="() => selAi = 3">Hard</button>
                 <button class="@Seg(selAi == 0)" data-ai="0" @onclick="() => selAi = 0">2 players</button>
             </div>
+            <div class="opt-label">Effects</div>
+            <div class="seg">
+                <button class="@Seg(selDrama)" data-drama="on" @onclick="() => selDrama = true">
+                    <b>Dramatic</b><small>Slashes, hit-stop and big callouts on captures.</small>
+                </button>
+                <button class="@Seg(!selDrama)" data-drama="off" @onclick="() => selDrama = false">
+                    <b>Calm</b><small>Quick and quiet. Faster to play.</small>
+                </button>
+            </div>
             <div class="row newgame-row">
                 <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">Start game</button>
                 <button class="btn ghost" data-action="cancel-new" @onclick="() => showNew = false">Cancel</button>
@@ -344,6 +374,7 @@
     bool showNew;
     SquareMode selMode = SquareMode.Revealed;
     int selAi = 2;
+    bool selDrama = true;
     const string SettingsKey = "powerchess.settings.v1";
     GameSession S = null!;
 
@@ -354,6 +385,7 @@
         new(PowerupKind.Steal, ActionKind.Steal, "Steal", "Steals"),
         new(PowerupKind.Stun, ActionKind.Stun, "Stun", "Stuns"),
         new(PowerupKind.Boulder, ActionKind.PlaceBoulder, "Boulder", "Boulders"),
+        new(PowerupKind.Swap, ActionKind.Swap, "Swap", "Swaps: trade two of your pieces"),
         new(PowerupKind.Reroll, ActionKind.ClearBoulder, "Smash boulder", "Rerolls: re-draw a powerup you find, or smash a boulder"),
         new(PowerupKind.Rewind, ActionKind.Move, "Rewind", "Rewinds: take back your last turn"),
     };
@@ -363,6 +395,7 @@
         new(PowerupKind.Steal, ActionKind.Steal, "Steal", "Steals"),
         new(PowerupKind.Stun, ActionKind.Stun, "Stun", "Stuns"),
         new(PowerupKind.Boulder, ActionKind.PlaceBoulder, "Boulder", "Boulders"),
+        new(PowerupKind.Swap, ActionKind.Swap, "Swap", "Swaps: trade two of your pieces"),
         new(PowerupKind.Reroll, ActionKind.ClearBoulder, "Smash boulder", "Rerolls: re-draw a powerup you find, or smash a boulder"),
     };
 
@@ -381,7 +414,7 @@
         opt = GameOptions.FromQuery(uri.Query);
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
-        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=" }
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game
@@ -413,8 +446,9 @@
         // Remembered choices from the New game sheet (mode and opponent).
         bool haveSettings = false;
         var sp = (settingsText ?? "").Split(':');
-        if (sp.Length == 2 && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 3)
+        if ((sp.Length == 2 || sp.Length == 3) && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 3)
         {
+            if (sp.Length == 3) opt.Drama = sp[2] != "0";
             opt.Mode = sp[0] == "mystery" ? SquareMode.Mystery : SquareMode.Revealed;
             opt.Ai = savedAi;
             haveSettings = true;
@@ -501,6 +535,7 @@
     {
         selMode = opt.Mode;
         selAi = opt.Ai;
+        selDrama = opt.Drama;
         showNew = true;
     }
 
@@ -508,8 +543,9 @@
     {
         opt.Mode = selMode;
         opt.Ai = selAi;
+        opt.Drama = selDrama;
         showNew = false;
-        _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi);
+        _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi + ":" + (selDrama ? "1" : "0"));
         StartNew();
     }
 
@@ -518,7 +554,7 @@
     /// <summary>"fireball", "hidden" or "" for what a powerup square shows, for styling and tests.</summary>
     string ContentName(int sq)
     {
-        if (!S.View.Mystery[sq]) return "";
+        if (!S.View.Mystery[sq]) return S.View.Portal[sq] ? "portal" : "";
         var k = (PowerupKind)S.View.Content[sq];
         return k == PowerupKind.None ? "hidden" : k.ToString().ToLowerInvariant();
     }
@@ -536,6 +572,7 @@
         var c = "sq " + (light ? "light" : "dark");
         var cell = S.View.Cells[sq];
         if (S.View.Mystery[sq]) c += " mystery powerup " + Names.SquareClass((PowerupKind)S.View.Content[sq]);
+        else if (S.View.Portal[sq]) c += " portal powerup pu-portal";
         if (S.View.Boulders[sq]) c += " rock";
         if (sq == S.ViewLastFrom || sq == S.ViewLastTo) c += " last";
         if (sq == S.Selected) c += " selected";

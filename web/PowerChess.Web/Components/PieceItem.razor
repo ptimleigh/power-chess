@@ -6,6 +6,8 @@
     </div>
     <div class="badges">
         @if (P.Buffs.HasFlag(Buff.DoubleMove)) { <span class="badge dm" title="Double Move">@Icons.Svg("x2")</span> }
+        @if (P.Buffs.HasFlag(Buff.TripleMove)) { <span class="badge dm" title="Triple Move">@Icons.Svg("x3")</span> }
+        @if (P.Buffs.HasFlag(Buff.Ghost)) { <span class="badge gh" title="Ghost">@Icons.Svg("ghost")</span> }
         @if (P.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
         @if (P.Buffs.HasFlag(Buff.Fireball)) { <span class="badge fb" title="Fireball">@Icons.Svg("fire")</span> }
         @if (P.Buffs.HasFlag(Buff.SmallBomb)) { <span class="badge bm" title="Small Bomb">@Icons.Svg("bomb")</span> }
@@ -62,6 +64,8 @@
             if (P.Stun > 0) c += " stunned";
             if (P.Buffs.HasFlag(Buff.Armor)) c += " armored";
             if (P.Buffs.HasFlag(Buff.Poison)) c += " poisoned";
+            if (P.Buffs.HasFlag(Buff.Ghost)) c += " ghosted";
+            if (P.Warping) c += " warping";
             if (Lifted) c += " lifted";
             return c;
         }

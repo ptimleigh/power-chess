@@ -22,6 +22,9 @@ public static class Names
         PowerupKind.Boulder => "Boulder",
         PowerupKind.Reroll => "Reroll",
         PowerupKind.Rewind => "Rewind",
+        PowerupKind.Ghost => "Ghost",
+        PowerupKind.TripleMove => "Triple Move",
+        PowerupKind.Swap => "Swap",
         _ => "",
     };
 
@@ -38,6 +41,9 @@ public static class Names
         PowerupKind.Boulder => "Place a boulder on an empty square. Nothing can enter or cross it.",
         PowerupKind.Reroll => "Re-draw a powerup you just found, or smash a boulder.",
         PowerupKind.Rewind => "Take back your last turn and your opponent's reply. Use it on your turn.",
+        PowerupKind.Ghost => "For 3 turns this rook, bishop or queen slides through pieces and boulders. It still can't land on its own side or give check through a blocker.",
+        PowerupKind.TripleMove => "This piece must move three times in a row next time it moves. Giving check cancels the rest.",
+        PowerupKind.Swap => "Trade places between two of your own pieces (not kings). Buffs travel with the pieces. Costs your turn.",
         _ => PowerupInfo.IsTransform(k) ? "This piece changes type on the spot." : "",
     };
 
@@ -54,6 +60,9 @@ public static class Names
         PowerupKind.Boulder => "rock",
         PowerupKind.Reroll => "dice",
         PowerupKind.Rewind => "rewind",
+        PowerupKind.Ghost => "ghost",
+        PowerupKind.TripleMove => "x3",
+        PowerupKind.Swap => "swap",
         _ => PowerupInfo.IsTransform(k) ? "spark" : "question",
     };
 
@@ -63,6 +72,8 @@ public static class Names
     public static PowerupKind ForBuff(Buff b) => b switch
     {
         Buff.DoubleMove => PowerupKind.DoubleMove,
+        Buff.TripleMove => PowerupKind.TripleMove,
+        Buff.Ghost => PowerupKind.Ghost,
         Buff.Poison => PowerupKind.Poison,
         Buff.Fireball => PowerupKind.Fireball,
         Buff.Armor => PowerupKind.SpikedArmor,
@@ -76,5 +87,8 @@ public static class Names
         PowerupKind.DoubleMove, PowerupKind.Poison, PowerupKind.SpikedArmor,
         PowerupKind.SmallBomb, PowerupKind.BigBomb, PowerupKind.TransformQueen, PowerupKind.Fireball,
         PowerupKind.Stun, PowerupKind.Steal, PowerupKind.Boulder, PowerupKind.Reroll, PowerupKind.Rewind,
+        PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.Swap,
     };
+
+    public const string PortalDesc = "Teleporters come in matching pairs. Land on one and you are sent to its twin (if it is free); then both vanish.";
 }

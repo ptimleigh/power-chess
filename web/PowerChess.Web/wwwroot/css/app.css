@@ -84,9 +84,9 @@ button:disabled { cursor: default; }
 .coord.rank { top: 2px; left: 3px; }
 .coord.file { bottom: 1px; right: 3px; }
 
-.sq.target::before { content: ""; width: 28%; height: 28%; border-radius: 50%; background: #38f9d7; box-shadow: 0 0 12px #38f9d7; animation: dot 1s infinite ease-in-out; z-index: 3; }
+.sq.target::before { content: ""; position: absolute; inset: 0; margin: auto; width: 28%; height: 28%; border-radius: 50%; background: #38f9d7; box-shadow: 0 0 12px #38f9d7; animation: dot 1s infinite ease-in-out; z-index: 3; }
 .sq.target.cap::before { width: 82%; height: 82%; background: transparent; border: 3px solid var(--red); box-shadow: 0 0 14px var(--red), inset 0 0 12px #ff4b6b88; animation: ringpulse .8s infinite ease-in-out; }
-.sq.aim::before { content: ""; width: 86%; height: 86%; border-radius: 12px; border: 3px dashed var(--gold); box-shadow: 0 0 14px var(--gold); animation: ringpulse .8s infinite ease-in-out; z-index: 3; }
+.sq.aim::before { content: ""; position: absolute; inset: 0; margin: auto; width: 86%; height: 86%; border-radius: 12px; border: 3px dashed var(--gold); box-shadow: 0 0 14px var(--gold); animation: ringpulse .8s infinite ease-in-out; z-index: 3; }
 @keyframes dot { 50% { transform: scale(1.25); } }
 @keyframes ringpulse { 50% { transform: scale(.92); opacity: .75; } }
 
@@ -329,3 +329,38 @@ button:disabled { cursor: default; }
 .piece.burning::after { content: ""; position: absolute; left: 12%; right: 12%; top: -8%; bottom: 22%; border-radius: 50% 50% 40% 40%; background: radial-gradient(ellipse at 50% 90%, #fff3b0 0 18%, #ffb347 40%, #ff4b2b 62%, transparent 72%); mix-blend-mode: screen; animation: flame .22s ease-in-out infinite alternate; pointer-events: none; }
 @keyframes flame { from { transform: scaleY(.85); opacity: .85; } to { transform: scaleY(1.2) translateY(-6%); opacity: 1; } }
 @keyframes burn { 0% { filter: brightness(1.5) sepia(1) saturate(4) hue-rotate(-30deg); } 100% { transform: scale(.7) translateY(-14%); opacity: 0; filter: brightness(.35) sepia(1) saturate(5) hue-rotate(-30deg) blur(2px); } }
+
+/* ---------- Milestone 2g: ghost, teleporters ---------- */
+.badge.gh { background: #c9d4ff; color: #1a1f4a; }
+.piece.ghosted .piece-body { opacity: .62; filter: drop-shadow(0 0 9px #b7c4ff) drop-shadow(0 0 3px #fff); animation: ghostfloat 1.6s infinite ease-in-out; }
+.piece.ghosted.lifted .piece-body { opacity: .85; }
+@keyframes ghostfloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5%); } }
+.piece.warping .piece-body { animation: warp .7s ease-in-out; }
+@keyframes warp { 0% { opacity: 0; transform: scale(.2) rotate(-200deg); filter: hue-rotate(0deg); } 60% { opacity: 1; transform: scale(1.2) rotate(15deg); } 100% { transform: none; } }
+.sq.powerup.pu-portal { --pu-edge: #b36bff; --pu-glyph: #f3e4ff; --pu-a: #7a2ff0cc; --pu-b: #2fb7ff88; }
+.sq.pu-portal .pu-glyph { animation: portalspin 3.2s linear infinite; }
+@keyframes portalspin { to { transform: rotate(360deg); } }
+.fx-ring.portal { --c: #b36bff; }
+.fx-ping.portal { border-color: #b36bff; }
+.toast.portal { border-color: #b36bff; box-shadow: 0 0 22px #b36bff88; } .toast.portal .ticon { color: #b36bff; }
+
+/* ---------- strike drama ---------- */
+.board.shaking.sk2 { animation: shake2 .5s cubic-bezier(.36, .07, .19, .97); }
+@keyframes shake2 { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(7px, 2px, 0); } 30%, 50%, 70% { transform: translate3d(-11px, -3px, 0); } 40%, 60% { transform: translate3d(11px, 3px, 0); } }
+.board.freeze .piece-body, .board.freeze .fx-burst i, .board.freeze .fx-ring, .board.freeze .fx-flash, .board.freeze .pu-edge, .board.freeze .pu-glyph, .board.freeze .fx-ping { animation-play-state: paused; }
+.board.freeze { filter: contrast(1.25) saturate(1.2); }
+.board.punch { animation: punch .55s ease-out; }
+@keyframes punch { 0% { transform: scale(1); } 22% { transform: scale(1.045); } 100% { transform: scale(1); } }
+.fx-slash { position: absolute; height: 0; z-index: 12; pointer-events: none; transform: translate(-50%, -50%) rotate(-38deg); }
+.fx-slash.b { transform: translate(-50%, -50%) rotate(38deg); }
+.fx-slash i { position: absolute; left: 0; right: 0; top: -2px; height: 4px; border-radius: 4px; background: linear-gradient(90deg, #fff0, #fff 22%, #fff 78%, #fff0); box-shadow: 0 0 10px #fff, 0 0 22px #ff4b6b; transform-origin: 0 50%; animation: slash .34s ease-out forwards; }
+.fx-slash i + i { top: 3px; height: 2px; background: linear-gradient(90deg, #ff4b6b00, #ff4b6b 25%, #ff4b6b 75%, #ff4b6b00); animation-delay: .04s; }
+@keyframes slash { 0% { transform: scaleX(0); opacity: 1; } 28% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1.06); opacity: 0; } }
+.fx-streak { position: absolute; height: 8px; margin-top: -4px; z-index: 6; transform-origin: 0 50%; pointer-events: none; border-radius: 8px; background: linear-gradient(90deg, #fff0, #ffffffcc 70%, #fff); filter: blur(1px); animation: streak .42s ease-out forwards; }
+@keyframes streak { 0% { transform: rotate(var(--r)) scaleX(.1); opacity: .9; } 40% { transform: rotate(var(--r)) scaleX(1); opacity: .9; } 100% { transform: rotate(var(--r)) scaleX(1); opacity: 0; } }
+.fx-callout { position: absolute; left: 0; right: 0; top: 38%; z-index: 15; text-align: center; pointer-events: none; animation: callout 1s ease-out forwards; }
+.fx-callout span { display: inline-block; font-size: calc(var(--b) / 8); font-weight: 900; font-style: italic; letter-spacing: 3px; color: #fff; padding: 0 .35em; transform: skewX(-9deg); text-shadow: 3px 3px 0 #ff2e63, -2px -2px 0 #1b0b3a, 0 0 22px #ff2e63; border-bottom: 5px solid #ff2e63; background: linear-gradient(90deg, #0000, #14083a99 18%, #14083a99 82%, #0000); }
+.fx-callout.heavy span { font-size: calc(var(--b) / 6.2); text-shadow: 3px 3px 0 #ff7a2b, -2px -2px 0 #1b0b3a, 0 0 26px #ff4b2b; border-bottom-color: #ff7a2b; }
+.fx-callout.check span { color: #ffe27a; font-size: calc(var(--b) / 9); border-bottom-color: #ffd54a; text-shadow: 2px 2px 0 #b3361e, 0 0 18px #ffd54a; }
+.fx-callout.mate { top: 34%; animation-duration: 1.5s; }
+@keyframes callout { 0% { transform: scale(2.4); opacity: 0; } 12% { transform: scale(1); opacity: 1; } 75% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1.1) translateY(-8px); opacity: 0; } }

@@ -14,6 +14,8 @@ namespace PowerChess.Core
         public readonly bool[] Mystery = new bool[64];
         /// <summary>The powerup shown on a revealed square (0 = a hidden mystery). Only meaningful where <see cref="Mystery"/> is set.</summary>
         public readonly byte[] Content = new byte[64];
+        /// <summary>Teleporter squares. Partners are point-mirrors of each other; using one removes both.</summary>
+        public readonly bool[] Portal = new bool[64];
         /// <summary>Perk counts, indexed side * 32 + (int)PowerupKind.</summary>
         public readonly byte[] Inventory = new byte[64];
 
@@ -34,6 +36,8 @@ namespace PowerChess.Core
 
         // Transient flags used while an action is being resolved.
         public int DoubleSquare = -1;
+        /// <summary>Forced follow-up moves still owed by the ForcedMover (Double Move: 1, Triple Move: 2 after the first).</summary>
+        public int MultiLeft;
         public bool ClockReset;
 
         /// <summary>AI lookahead: no random draws and no spawns, so search never peeks at hidden information.</summary>
@@ -61,6 +65,13 @@ namespace PowerChess.Core
             return n;
         }
 
+        public int PortalPairs()
+        {
+            int n = 0;
+            for (int i = 0; i < 64; i++) if (Portal[i]) n++;
+            return n / 2;
+        }
+
         public int MysteryCount()
         {
             int n = 0;
@@ -75,6 +86,8 @@ namespace PowerChess.Core
             Array.Copy(Boulders, c.Boulders, 64);
             Array.Copy(Mystery, c.Mystery, 64);
             Array.Copy(Content, c.Content, 64);
+            Array.Copy(Portal, c.Portal, 64);
+            c.MultiLeft = MultiLeft;
             Array.Copy(Inventory, c.Inventory, 64);
             c.ToMove = ToMove;
             c.Castling = Castling;
@@ -98,7 +111,7 @@ namespace PowerChess.Core
             s.Rng = new Rng(seed);
             s.AddPerk(Side.White, PowerupKind.Reroll, s.Config.StartRerolls);
             s.AddPerk(Side.Black, PowerupKind.Reroll, s.Config.StartRerolls);
-            for (int i = 0; i < s.Config.InitialPairs; i++) Rules.TrySpawnPair(s, null);
+            for (int i = 0; i < s.Config.InitialPairs; i++) Rules.TrySpawnPair(s, null, false); // teleporters only appear once play is under way
             return s;
         }
 
@@ -162,6 +175,7 @@ namespace PowerChess.Core
                         if (p.Side == Side.White) c = char.ToUpperInvariant(c);
                     }
                     else if (Boulders[sq]) c = '#';
+                    else if (Portal[sq]) c = '@';
                     else if (Mystery[sq]) c = Content[sq] != 0 ? '*' : '?';
                     sb.Append(c);
                 }

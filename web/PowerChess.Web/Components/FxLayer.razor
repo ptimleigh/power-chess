@@ -31,6 +31,18 @@
                 <div class="ball"><i></i><i></i><i></i></div>
             </div>
             break;
+        case "slash":
+            <div class="fx-slash @fx.Css" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;width:@(N(Size * 2.6))%"><i></i><i></i></div>
+            break;
+        case "streak":
+            double sdx = Cx(fx.To) - Cx(fx.Sq), sdy = Cy(fx.To) - Cy(fx.Sq);
+            double slen = Math.Sqrt(sdx * sdx + sdy * sdy);
+            double sang = Math.Atan2(sdy, sdx) * 180 / Math.PI;
+            <div class="fx-streak" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;width:@(N(slen))%;--r:@(N(sang))deg"></div>
+            break;
+        case "callout":
+            <div class="fx-callout @fx.Css"><span>@fx.Text</span></div>
+            break;
         case "beam":
             double dx = Cx(fx.To) - Cx(fx.Sq), dy = Cy(fx.To) - Cy(fx.Sq);
             double len = Math.Sqrt(dx * dx + dy * dy);

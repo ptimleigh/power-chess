@@ -36,9 +36,22 @@ public sealed class DemoCtx
         return Pieces.FirstOrDefault(p => !p.Dying && p.Square == s);
     }
 
-    public DemoCtx Place(string sq, PieceType type, Side side, Buff buffs = Buff.None, int stun = 0, int armor = 0)
+    public DemoCtx Place(string sq, PieceType type, Side side, Buff buffs = Buff.None, int stun = 0, int armor = 0, int ghost = 0)
     {
-        Pieces.Add(new PieceView { Id = nextId++, Type = type, Side = side, Square = Sq.Parse(sq), Buffs = buffs, Stun = stun, Armor = armor });
+        Pieces.Add(new PieceView { Id = nextId++, Type = type, Side = side, Square = Sq.Parse(sq), Buffs = buffs, Stun = stun, Armor = armor, Ghost = ghost });
+        return this;
+    }
+
+    public DemoCtx Swap(string a, string b)
+    {
+        var pa = At(a);
+        var pb = At(b);
+        if (pa != null && pb != null)
+        {
+            (pa.Square, pb.Square) = (pb.Square, pa.Square);
+            pa.AnimSeq++;
+            pb.AnimSeq++;
+        }
         return this;
     }
 
@@ -123,6 +136,32 @@ public static class Tutorials
         .Then(900, c => c.Aim().Move("b1", "c3").Strip("c3", Buff.DoubleMove).Say("...it must move twice in a row"))
         .Then(900, c => c.Aim("d5"))
         .Then(800, c => c.Aim().Move("c3", "d5").Fx("ring", "d5", css: "gold").Say("Giving check cancels the second move")),
+
+        [PowerupKind.TripleMove] = new DemoScript
+        {
+            Setup = c => c.Place("b1", PieceType.Knight, W, Buff.TripleMove).Say("This knight has Triple Move"),
+        }
+        .Then(900, c => c.Aim("c3").Say("Next time it moves..."))
+        .Then(800, c => c.Aim().Move("b1", "c3").Strip("c3", Buff.TripleMove).Say("...it must move three times in a row"))
+        .Then(800, c => c.Move("c3", "d5").Fx("ring", "d5", css: "gold"))
+        .Then(800, c => c.Move("d5", "f6").Fx("ring", "f6", css: "gold").Say("Giving check on any move cancels the rest")),
+
+        [PowerupKind.Ghost] = new DemoScript
+        {
+            Setup = c => c.Place("a1", PieceType.Rook, W, Buff.Ghost, ghost: 3).Place("c1", PieceType.Pawn, W).Place("e1", PieceType.Pawn, B)
+                .Boulder("d1", true).Say("A ghost slides through pieces and boulders"),
+        }
+        .Then(1000, c => c.Aim("e1"))
+        .Then(700, c => c.Aim().Kill("e1").Move("a1", "e1").Fx("burst", "e1", css: "steal").Say("It captured past its own pawn and a boulder"))
+        .Then(1200, c => c.Say("It stays a ghost for 3 turns")),
+
+        [PowerupKind.Swap] = new DemoScript
+        {
+            Setup = c => c.Place("a1", PieceType.Rook, W).Place("d3", PieceType.Knight, W).Place("d6", PieceType.King, B).Say("Pick two of your pieces"),
+        }
+        .Then(900, c => c.Aim("a1"))
+        .Then(900, c => c.Aim("d3"))
+        .Then(800, c => c.Aim().Swap("a1", "d3").Fx("ring", "a1", css: "steal").Fx("ring", "d3", css: "steal").Say("They trade places. It costs your turn")),
 
         [PowerupKind.Poison] = new DemoScript
         {

@@ -14,6 +14,9 @@ public sealed class PieceView
     public Buff Buffs;
     public int Stun;
     public int Armor;
+    public int Ghost;
+    /// <summary>Briefly true after a teleport so the piece blinks across.</summary>
+    public bool Warping;
     public bool Dying;
     /// <summary>Destroyed by the engine but kept on the board until a fireball reaches it.</summary>
     public bool PendingDeath;
@@ -32,6 +35,8 @@ public sealed class FxItem
     /// <summary>Flight time for projectile effects (fireball), in milliseconds.</summary>
     public int DurMs;
     public string Css = "";
+    /// <summary>Words for a callout effect.</summary>
+    public string Text = "";
 }
 
 public sealed class Toast
@@ -72,6 +77,12 @@ public sealed class GameSession
     public bool Busy { get; private set; }
     public bool Thinking { get; private set; }
     public bool Shaking { get; private set; }
+    /// <summary>1 = light, 2 = heavy. Scales with the value of what was just destroyed.</summary>
+    public int ShakeLevel { get; private set; } = 1;
+    /// <summary>Hit-stop: animations hold for a beat on a heavy strike.</summary>
+    public bool Frozen { get; private set; }
+    /// <summary>A brief zoom punch on the biggest strikes.</summary>
+    public bool Punch { get; private set; }
     public InputMode Mode { get; private set; }
     public ActionKind ArmedKind { get; private set; }
     public int Selected { get; private set; } = -1;
@@ -207,6 +218,8 @@ public sealed class GameSession
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
         cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
+        cfg.SwapAllowed[(int)Side.Black] = !VsAi; // nor Swap
+        cfg.PortalChance = opt.Portals ? 0.12 : 0;
         cfg.Squares = opt.Mode;
         cfg.MysteryChance = opt.HiddenChance;
         return cfg;
@@ -221,6 +234,7 @@ public sealed class GameSession
         {
             // A small first game: a rook and pawns each, and two mystery squares in the middle holding friendly powerups.
             cfg.InitialPairs = 0;
+            cfg.PortalChance = 0;
             cfg.Pool = new[] { PowerupKind.Fireball, PowerupKind.SpikedArmor, PowerupKind.Poison, PowerupKind.Steal, PowerupKind.SmallBomb }
                 .Select(k => new WeightedKind(k, 1)).ToList();
         }
@@ -235,7 +249,7 @@ public sealed class GameSession
             State.Rng = new Rng(opt.Seed);
             State.AddPerk(Side.White, PowerupKind.Reroll, cfg.StartRerolls);
             State.AddPerk(Side.Black, PowerupKind.Reroll, cfg.StartRerolls);
-            for (int i = 0; i < cfg.InitialPairs; i++) Rules.TrySpawnPair(State, null);
+            for (int i = 0; i < cfg.InitialPairs; i++) Rules.TrySpawnPair(State, null, false);
         }
 
         foreach (var (side, kind, n) in opt.Perks) State.AddPerk(side, kind, n);
@@ -245,6 +259,11 @@ public sealed class GameSession
             if (!State.Cells[i].IsEmpty) Rules.ApplyPickup(State, State.Cells[i].Side, i, kind, null);
         }
         foreach (var sq in opt.Mystery) State.Mystery[Sq.Parse(sq)] = true;
+        foreach (var sq in opt.PortalAt)
+        {
+            State.Portal[Sq.Parse(sq)] = true;
+            State.Portal[Sq.Mirror(Sq.Parse(sq))] = true;
+        }
         foreach (var (sq, kind) in opt.Reveal)
         {
             State.Mystery[Sq.Parse(sq)] = true;
@@ -335,7 +354,7 @@ public sealed class GameSession
                     var c = at.Cells[sq];
                     if (c.IsEmpty) continue;
                     if (id == 0) throw new InvalidOperationException("missing piece id");
-                    list.Add(new PieceView { Id = id, Type = c.Type, Side = c.Side, Square = sq, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns });
+                    list.Add(new PieceView { Id = id, Type = c.Type, Side = c.Side, Square = sq, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns });
                 }
                 return list;
             }
@@ -486,7 +505,7 @@ public sealed class GameSession
 
     public void Arm(ActionKind kind)
     {
-        if (!CanUse(kind)) return;
+        if (!CanUse(kind) && !(Mode == InputMode.Armed && ArmedKind == kind)) return;
         if (Mode == InputMode.Armed && ArmedKind == kind)
         {
             Cancel();
@@ -500,10 +519,14 @@ public sealed class GameSession
             ActionKind.Steal => PowerupKind.Steal,
             ActionKind.Stun => PowerupKind.Stun,
             ActionKind.PlaceBoulder => PowerupKind.Boulder,
+            ActionKind.Swap => PowerupKind.Swap,
             _ => PowerupKind.Reroll,
         });
         foreach (var a in Legal.Where(a => a.Kind == kind))
+        {
             Targets.Add(a.To);
+            if (kind == ActionKind.Swap) Targets.Add(a.From); // swap is two taps: any piece with a partner first
+        }
         Sfx?.Invoke("click");
         Changed?.Invoke();
     }
@@ -520,7 +543,7 @@ public sealed class GameSession
         foreach (var a in acts) Targets.Add(a.To);
         Sfx?.Invoke("click");
         var held = State.Cells[sq];
-        foreach (var flag in new[] { Buff.Fireball, Buff.DoubleMove, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
+        foreach (var flag in new[] { Buff.Fireball, Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
         {
             if (!held.Has(flag)) continue;
             var kind = flag == Buff.Armor ? PowerupKind.SpikedArmor : Names.ForBuff(flag);
@@ -541,6 +564,26 @@ public sealed class GameSession
         if (Mode == InputMode.Armed)
         {
             if (!Targets.Contains(sq)) { Cancel(); return; }
+            if (ArmedKind == ActionKind.Swap)
+            {
+                if (Selected == sq) { Arm(ActionKind.Swap); return; } // tapping the first piece again backs out
+                if (Selected < 0)
+                {
+                    Selected = sq;
+                    Targets.Clear();
+                    foreach (var a in Legal.Where(a => a.Kind == ActionKind.Swap))
+                    {
+                        if (a.From == sq) Targets.Add(a.To);
+                        else if (a.To == sq) Targets.Add(a.From);
+                    }
+                    Sfx?.Invoke("click");
+                    Changed?.Invoke();
+                    return;
+                }
+                var pair = Legal.First(a => a.Kind == ActionKind.Swap && ((a.From == Selected && a.To == sq) || (a.From == sq && a.To == Selected)));
+                await Human(pair);
+                return;
+            }
             var cands = Legal.Where(a => a.Kind == ArmedKind && a.To == sq).ToList();
             await Human(cands[0]);
             return;
@@ -581,7 +624,7 @@ public sealed class GameSession
             if (State.ForcedMover < 0) SelectPiece(sq);
             if (IsPowered(sq) && !wasInspected) Inspect = sq;
             // An empty powerup square: tap it to read what it is (and what it holds, when revealed).
-            if (State.Mystery[sq] && State.Cells[sq].IsEmpty && !wasSquareInspected && Selected < 0) InspectSquare = sq;
+            if ((State.Mystery[sq] || State.Portal[sq]) && State.Cells[sq].IsEmpty && !wasSquareInspected && Selected < 0) InspectSquare = sq;
         }
         Changed?.Invoke();
     }
@@ -665,6 +708,17 @@ public sealed class GameSession
         bool big = ev.Any(e => e.Kind == EventKind.Detonated || e.Kind == EventKind.FireballFired);
         bool hit = ev.Any(e => e.Kind == EventKind.Captured || e.Kind == EventKind.Destroyed || e.Kind == EventKind.Converted);
         int wait = big ? 1000 : hit ? 700 : 450;
+        if (opt.Drama && ev.Any(e => e.Kind == EventKind.Captured)) wait += 330; // room for the strike beat
+        if (opt.Drama && !GameOver && InCheck && !Reviewing)
+        {
+            bool struck = ev.Any(e => e.Kind == EventKind.Captured);
+            Later(struck ? 700 : 150, () => AddFx("callout", State.ToMove == Side.White ? 3 : 59, css: "check", text: "CHECK!"));
+        }
+        if (opt.Drama && GameOver && Result != GameResult.Draw)
+        {
+            Later(ev.Any(e => e.Kind == EventKind.Captured) ? 650 : 150, () => { Freeze(420, true); AddFx("callout", 28, css: "heavy mate", text: "FINAL BLOW"); Shake(2); });
+            wait += 500;
+        }
         if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn
         await Task.Delay(wait);
 
@@ -716,7 +770,7 @@ public sealed class GameSession
             if (Mode == InputMode.BombPreview)
                 return $"Bomb: destroys {BombOwnLosses} of your pieces and {BombEnemyLosses} of theirs. Confirm or cancel.";
             if (Mode == InputMode.Promotion) return "Promote to...";
-            if (State.ForcedMover >= 0) return "Double Move! Move that piece again";
+            if (State.ForcedMover >= 0) return (State.MultiLeft >= 2 ? "Triple Move! " : "Double Move! ") + "Move that piece again";
             string who = VsAi ? "Your move" : (State.ToMove == Side.White ? "White to move" : "Black to move");
             return InCheck ? who + " - you are in check!" : who;
         }
@@ -729,7 +783,7 @@ public sealed class GameSession
     static PieceView Copy(PieceView p) => new()
     {
         Id = p.Id, Type = p.Type, Side = p.Side, Square = p.Square, Buffs = p.Buffs,
-        Stun = p.Stun, Armor = p.Armor, AnimSeq = 0,
+        Stun = p.Stun, Armor = p.Armor, Ghost = p.Ghost, AnimSeq = 0,
     };
 
     (int from, int to) LastOf(int position)
@@ -837,6 +891,8 @@ public sealed class GameSession
                     }
                     LastFrom = e.From;
                     LastTo = e.To;
+                    if (opt.Drama && ei + 1 < events.Count && events[ei + 1].Kind == EventKind.Captured)
+                        AddFx("streak", e.From, e.To);
                     Sfx?.Invoke("move");
                     break;
                 }
@@ -849,6 +905,11 @@ public sealed class GameSession
                 case EventKind.Captured:
                 {
                     var victim = Pieces.FirstOrDefault(p => !p.Dying && p.Square == e.To && p.Id != movedId);
+                    if (opt.Drama && victim != null && movedId >= 0)
+                    {
+                        Strike(victim, e);
+                        break;
+                    }
                     if (victim != null) Kill(victim);
                     AddFx("burst", e.To, css: Heat(e.Side));
                     Shake();
@@ -973,6 +1034,43 @@ public sealed class GameSession
                     AddFx("ping", e.To, css: "gold");
                     Sfx?.Invoke("spawn");
                     break;
+                case EventKind.PortalSpawned:
+                    AddFx("ping", e.From, css: "portal");
+                    AddFx("ping", e.To, css: "portal");
+                    AddToast("Teleporters!", "Land on one to jump to its twin", "portal", "portal");
+                    Sfx?.Invoke("spawn");
+                    break;
+                case EventKind.Teleported:
+                {
+                    var v = Pieces.FirstOrDefault(p => p.Id == movedId);
+                    if (v != null)
+                    {
+                        v.Square = e.To;
+                        v.Warping = true;
+                        v.AnimSeq++;
+                        Later(700, () => v.Warping = false);
+                    }
+                    AddFx("ring", e.From, radius: 1, css: "portal");
+                    AddFx("ring", e.To, radius: 1, css: "portal");
+                    AddToast("WARP!", "", "portal", "portal");
+                    Sfx?.Invoke("warp");
+                    break;
+                }
+                case EventKind.Swapped:
+                {
+                    var a = At(e.From);
+                    var b = At(e.To);
+                    if (a != null) { a.Square = e.To; a.AnimSeq++; }
+                    if (b != null) { b.Square = e.From; b.AnimSeq++; }
+                    AddFx("ring", e.From, radius: 1, css: "steal");
+                    AddFx("ring", e.To, radius: 1, css: "steal");
+                    AddToast("SWAP!", "", "steal", "swap");
+                    Sfx?.Invoke("steal");
+                    break;
+                }
+                case EventKind.GhostFaded:
+                    AddFx("ping", e.From, css: "steal");
+                    break;
                 case EventKind.DoubleMoveForfeited:
                     AddToast("Check!", "Second move forfeited", "gold", "x2");
                     break;
@@ -997,13 +1095,14 @@ public sealed class GameSession
             v.Buffs = c.Buffs;
             v.Stun = c.StunTurns;
             v.Armor = c.ArmorTurns;
+            v.Ghost = c.GhostTurns;
         }
         for (int sq = 0; sq < 64; sq++)
         {
             if (!State.Cells[sq].IsEmpty && At(sq) == null)
             {
                 var c = State.Cells[sq];
-                Pieces.Add(new PieceView { Id = nextId++, Square = sq, Type = c.Type, Side = c.Side, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns });
+                Pieces.Add(new PieceView { Id = nextId++, Square = sq, Type = c.Type, Side = c.Side, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns });
             }
         }
     }
@@ -1027,9 +1126,9 @@ public sealed class GameSession
 
     static int Distance(int a, int b) => Math.Max(Math.Abs(Sq.File(a) - Sq.File(b)), Math.Abs(Sq.Rank(a) - Sq.Rank(b)));
 
-    void AddFx(string kind, int sq, int to = -1, int radius = 0, string css = "", int durMs = 0)
+    void AddFx(string kind, int sq, int to = -1, int radius = 0, string css = "", int durMs = 0, string text = "")
     {
-        var fx = new FxItem { Id = nextId++, Kind = kind, Sq = sq, To = to, Radius = radius, Css = css, DurMs = durMs };
+        var fx = new FxItem { Id = nextId++, Kind = kind, Sq = sq, To = to, Radius = radius, Css = css, DurMs = durMs, Text = text };
         Effects.Add(fx);
         Later(Math.Max(1100, durMs + 500), () => Effects.Remove(fx));
     }
@@ -1042,10 +1141,58 @@ public sealed class GameSession
         Later(2200, () => Toasts.Remove(t));
     }
 
-    void Shake()
+    void Shake(int level = 1)
     {
+        ShakeLevel = level;
         Shaking = true;
-        Later(380, () => Shaking = false);
+        Later(level > 1 ? 520 : 380, () => Shaking = false);
+    }
+
+    void Freeze(int ms, bool punch)
+    {
+        Frozen = true;
+        Punch = punch;
+        Later(ms, () => { Frozen = false; });
+        if (punch) Later(ms + 350, () => Punch = false);
+    }
+
+    /// <summary>A capture with drama: the attacker lands, the world holds for a beat under a slash, then the victim goes.</summary>
+    void Strike(PieceView victim, GameEvent e)
+    {
+        const int travel = 230;
+        int hit = victim.Type switch
+        {
+            PieceType.Pawn => 60,
+            PieceType.Knight or PieceType.Bishop => 120,
+            PieceType.Rook => 150,
+            PieceType.Queen => 240,
+            _ => 100,
+        };
+        string word = victim.Type switch
+        {
+            PieceType.Knight or PieceType.Bishop => "STRIKE!",
+            PieceType.Rook => "CRUSHED!",
+            PieceType.Queen => "SLAIN!",
+            _ => "",
+        };
+        bool heavy = victim.Type is PieceType.Queen or PieceType.Rook;
+        victim.PendingDeath = true;
+        int sq = e.To;
+        Later(travel, () =>
+        {
+            Freeze(hit, victim.Type == PieceType.Queen || GameOver);
+            AddFx("slash", sq, css: sq % 2 == 0 ? "a" : "b");
+            if (word != "" && !GameOver) AddFx("callout", sq, css: heavy ? "heavy" : "", text: word);
+            Sfx?.Invoke("slash");
+        });
+        Later(travel + hit, () =>
+        {
+            victim.PendingDeath = false;
+            Kill(victim);
+            AddFx("burst", sq, css: Heat(e.Side));
+            Shake(heavy ? 2 : 1);
+            Sfx?.Invoke("capture");
+        });
     }
 
     async void Later(int ms, Action act)

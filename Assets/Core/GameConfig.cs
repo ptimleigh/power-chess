@@ -41,6 +41,12 @@ namespace PowerChess.Core
         public int MaxPly = 400;
         /// <summary>Which sides can draw the Rewind perk (an AI opponent cannot use it, so switch it off for them).</summary>
         public bool[] RewindAllowed = { true, true };
+        /// <summary>Which sides can draw Swap (the AI does not use it).</summary>
+        public bool[] SwapAllowed = { true, true };
+        /// <summary>Chance a spawn is a pair of teleporter squares instead of powerup squares. 0 = never.</summary>
+        public double PortalChance = 0;
+        public int MaxPortalPairs = 1;
+        public int GhostTurns = 4;
         public List<WeightedKind> Pool = DefaultPool();
 
         public static List<WeightedKind> DefaultPool()
@@ -63,6 +69,9 @@ namespace PowerChess.Core
                 new WeightedKind(PowerupKind.Boulder, 6),
                 new WeightedKind(PowerupKind.Reroll, 8),
                 new WeightedKind(PowerupKind.Rewind, 5),
+                new WeightedKind(PowerupKind.Ghost, 6),
+                new WeightedKind(PowerupKind.TripleMove, 3),
+                new WeightedKind(PowerupKind.Swap, 6),
             };
         }
 

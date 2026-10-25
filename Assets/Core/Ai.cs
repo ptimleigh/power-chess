@@ -113,6 +113,7 @@ namespace PowerChess.Core
                 case ActionKind.Fireball: return 500;
                 case ActionKind.Steal: return 450;
                 case ActionKind.Stun: return 300;
+                case ActionKind.Swap: return -50;
                 case ActionKind.Detonate: return 200;
                 default: return 0;
             }
@@ -156,6 +157,8 @@ namespace PowerChess.Core
                 else if (p.Type == PieceType.Pawn) v += 6 * (p.Side == Side.White ? r : 7 - r) + 2 * centre;
 
                 if (p.Has(Buff.DoubleMove)) v += 35;
+                if (p.Has(Buff.TripleMove)) v += 55;
+                if (p.Has(Buff.Ghost)) v += 8 * p.GhostTurns;
                 if (p.Has(Buff.Fireball)) v += 90;
                 if (p.Has(Buff.Poison)) v += 30;
                 if (p.Has(Buff.Armor)) v += 15 * p.ArmorTurns;

@@ -56,6 +56,18 @@ namespace PowerChess.Core
                     return;
                 }
 
+                case ActionKind.Swap:
+                {
+                    s.AddPerk(me, PowerupKind.Swap, -1);
+                    var pa = s.Cells[a.From];
+                    var pb = s.Cells[a.To];
+                    Place(s, a.From, pb);
+                    Place(s, a.To, pa);
+                    Emit(ev, EventKind.Swapped, a.From, a.To, pa.Type, me, PowerupKind.Swap);
+                    Finish(s, ev);
+                    return;
+                }
+
                 case ActionKind.Fireball:
                 {
                     var shooter = s.Cells[a.From];
@@ -169,8 +181,13 @@ namespace PowerChess.Core
                 Emit(ev, EventKind.Promoted, a.To, a.To, mover.Type, me, PowerupKind.None);
             }
 
-            bool consumesDouble = !wasForced && mover.Has(Buff.DoubleMove);
-            if (consumesDouble) mover.Buffs &= ~Buff.DoubleMove;
+            // Double Move owes one more move, Triple Move two. A forced follow-up counts the debt down.
+            int owed = 0;
+            if (wasForced) owed = s.MultiLeft - 1;
+            else if (mover.Has(Buff.TripleMove)) owed = 2;
+            else if (mover.Has(Buff.DoubleMove)) owed = 1;
+            s.MultiLeft = 0;
+            if (!wasForced) mover.Buffs &= ~(Buff.DoubleMove | Buff.TripleMove);
             Place(s, a.To, mover);
 
             if (didCapture || origType == PieceType.Pawn) s.ClockReset = true;
@@ -185,7 +202,27 @@ namespace PowerChess.Core
                 Emit(ev, EventKind.PoisonTriggered, a.To, a.To, mover.Type, me, PowerupKind.Poison);
             }
 
-            if (alive && consumesDouble) s.DoubleSquare = a.To;
+            int land = a.To;
+            if (alive && s.Portal[a.To])
+            {
+                int dest = Sq.Mirror(a.To);
+                s.Portal[a.To] = false;
+                s.Portal[dest] = false;
+                if (s.Cells[dest].IsEmpty && !s.Boulders[dest] && !s.Mystery[dest])
+                {
+                    Piece moved = s.Cells[a.To];
+                    Remove(s, a.To);
+                    Place(s, dest, moved);
+                    land = dest;
+                    Emit(ev, EventKind.Teleported, a.To, dest, moved.Type, me, PowerupKind.None);
+                }
+            }
+
+            if (alive && owed > 0)
+            {
+                s.DoubleSquare = land;
+                s.MultiLeft = owed;
+            }
 
             if (alive && s.Mystery[a.To])
             {
@@ -271,12 +308,23 @@ namespace PowerChess.Core
         static void EndTurn(GameState s, List<GameEvent> ev)
         {
             Side me = s.ToMove;
+            s.MultiLeft = 0;
             for (int sq = 0; sq < 64; sq++)
             {
                 var p = s.Cells[sq];
                 if (p.IsEmpty || p.Side != me) continue;
                 bool changed = false;
                 if (p.StunTurns > 0) { p.StunTurns--; changed = true; }
+                if (p.Has(Buff.Ghost))
+                {
+                    p.GhostTurns--;
+                    changed = true;
+                    if (p.GhostTurns == 0)
+                    {
+                        p.Buffs &= ~Buff.Ghost;
+                        Emit(ev, EventKind.GhostFaded, sq, sq, p.Type, me, PowerupKind.Ghost);
+                    }
+                }
                 if (p.Has(Buff.Armor))
                 {
                     p.ArmorTurns--;
@@ -373,7 +421,10 @@ namespace PowerChess.Core
                 if (target == p.Type) return false;
                 if (target == PieceType.Pawn && (Sq.Rank(sq) == 0 || Sq.Rank(sq) == 7)) return false;
             }
-            if (kind == PowerupKind.DoubleMove && p.Has(Buff.DoubleMove)) return false;
+            if (kind == PowerupKind.DoubleMove && (p.Has(Buff.DoubleMove) || p.Has(Buff.TripleMove))) return false;
+            if (kind == PowerupKind.TripleMove && (p.Has(Buff.DoubleMove) || p.Has(Buff.TripleMove))) return false;
+            if (kind == PowerupKind.Ghost && (p.Has(Buff.Ghost) || !(p.Type == PieceType.Bishop || p.Type == PieceType.Rook || p.Type == PieceType.Queen))) return false;
+            if (kind == PowerupKind.Swap && !s.Config.SwapAllowed[(int)p.Side]) return false;
             if (kind == PowerupKind.Fireball && p.Has(Buff.Fireball)) return false;
             if (kind == PowerupKind.Rewind && !s.Config.RewindAllowed[(int)p.Side]) return false;
             return true;
@@ -385,6 +436,11 @@ namespace PowerChess.Core
             switch (kind)
             {
                 case PowerupKind.DoubleMove: p.Buffs |= Buff.DoubleMove; break;
+                case PowerupKind.TripleMove: p.Buffs |= Buff.TripleMove; break;
+                case PowerupKind.Ghost:
+                    p.Buffs |= Buff.Ghost;
+                    p.GhostTurns = (byte)s.Config.GhostTurns;
+                    break;
                 case PowerupKind.Poison: p.Buffs |= Buff.Poison; break;
                 case PowerupKind.Fireball: p.Buffs |= Buff.Fireball; break;
                 case PowerupKind.SpikedArmor:
@@ -399,6 +455,7 @@ namespace PowerChess.Core
                     p.Buffs |= Buff.BigBomb;
                     break;
                 case PowerupKind.Rewind:
+                case PowerupKind.Swap:
                 case PowerupKind.Steal:
                 case PowerupKind.Stun:
                 case PowerupKind.Boulder:
@@ -421,8 +478,13 @@ namespace PowerChess.Core
         }
 
         /// <summary>Adds one mirrored pair of mystery squares on the middle ranks. Returns false if there is no room.</summary>
-        public static bool TrySpawnPair(GameState s, List<GameEvent> ev)
+        public static bool TrySpawnPair(GameState s, List<GameEvent> ev, bool allowPortals = true)
         {
+            if (allowPortals && s.Config.PortalChance > 0 && s.PortalPairs() < s.Config.MaxPortalPairs
+                && s.Rng.Range(1000) < (int)(s.Config.PortalChance * 1000))
+            {
+                if (TrySpawnPortals(s, ev)) return true;
+            }
             if (s.MysteryCount() + 2 > s.Config.MaxMysterySquares) return false;
             var candidates = new List<int>(32);
             for (int sq = 0; sq < 64; sq++)
@@ -449,15 +511,36 @@ namespace PowerChess.Core
             return true;
         }
 
+        static bool TrySpawnPortals(GameState s, List<GameEvent> ev)
+        {
+            var candidates = new List<int>(32);
+            for (int sq = 0; sq < 64; sq++)
+            {
+                int rank = Sq.Rank(sq);
+                if (rank < 2 || rank > 5) continue;
+                int mirror = Sq.Mirror(sq);
+                if (sq > mirror) continue;
+                if (IsSpawnable(s, sq) && IsSpawnable(s, mirror)) candidates.Add(sq);
+            }
+            if (candidates.Count == 0) return false;
+            int pick = candidates[s.Rng.Range(candidates.Count)];
+            s.Portal[pick] = true;
+            s.Portal[Sq.Mirror(pick)] = true;
+            Emit(ev, EventKind.PortalSpawned, pick, Sq.Mirror(pick), PieceType.None, s.ToMove, PowerupKind.None);
+            return true;
+        }
+
         /// <summary>Weighted draw from the pool for a revealed square (no particular piece in mind).</summary>
         public static PowerupKind DrawForSquare(GameState s)
         {
             var pool = s.Config.Pool;
             bool rewind = s.Config.RewindAllowed[0] || s.Config.RewindAllowed[1];
+            bool swap = s.Config.SwapAllowed[0] || s.Config.SwapAllowed[1];
             int total = 0;
             for (int i = 0; i < pool.Count; i++)
             {
                 if (pool[i].Kind == PowerupKind.Rewind && !rewind) continue;
+                if (pool[i].Kind == PowerupKind.Swap && !swap) continue;
                 total += pool[i].Weight;
             }
             if (total <= 0) return PowerupKind.None;
@@ -465,6 +548,7 @@ namespace PowerChess.Core
             for (int i = 0; i < pool.Count; i++)
             {
                 if (pool[i].Kind == PowerupKind.Rewind && !rewind) continue;
+                if (pool[i].Kind == PowerupKind.Swap && !swap) continue;
                 roll -= pool[i].Weight;
                 if (roll < 0) return pool[i].Kind;
             }
@@ -473,7 +557,7 @@ namespace PowerChess.Core
 
         static bool IsSpawnable(GameState s, int sq)
         {
-            return s.Cells[sq].IsEmpty && !s.Boulders[sq] && !s.Mystery[sq];
+            return s.Cells[sq].IsEmpty && !s.Boulders[sq] && !s.Mystery[sq] && !s.Portal[sq];
         }
 
         // ---- game end ----

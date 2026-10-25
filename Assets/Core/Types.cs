@@ -23,6 +23,10 @@ namespace PowerChess.Core
         BigBomb = 16,
         /// <summary>One-shot: this piece can fire a Fireball instead of moving. Lost if the piece is destroyed.</summary>
         Fireball = 32,
+        /// <summary>The piece slides through pieces and boulders for a few turns (it still cannot capture its own side).</summary>
+        Ghost = 64,
+        /// <summary>Like Double Move, but three moves in a row.</summary>
+        TripleMove = 128,
     }
 
     /// <summary>What a mystery square can contain. Perks go to the player's inventory, the rest apply to the piece.</summary>
@@ -45,6 +49,9 @@ namespace PowerChess.Core
         Boulder,
         Reroll,
         Rewind,
+        Ghost,
+        TripleMove,
+        Swap,
     }
 
     public static class PowerupInfo
@@ -52,7 +59,7 @@ namespace PowerChess.Core
         public static bool IsPerk(PowerupKind k)
         {
             return k == PowerupKind.Steal || k == PowerupKind.Stun || k == PowerupKind.Boulder
-                || k == PowerupKind.Reroll || k == PowerupKind.Rewind;
+                || k == PowerupKind.Reroll || k == PowerupKind.Rewind || k == PowerupKind.Swap;
         }
 
         public static bool IsTransform(PowerupKind k)
@@ -83,6 +90,8 @@ namespace PowerChess.Core
         public byte ArmorTurns;
         /// <summary>Owner turns this piece still cannot move.</summary>
         public byte StunTurns;
+        /// <summary>Owner turns of ghosting left.</summary>
+        public byte GhostTurns;
 
         public Piece(PieceType type, Side side)
         {
@@ -91,6 +100,7 @@ namespace PowerChess.Core
             Buffs = Buff.None;
             ArmorTurns = 0;
             StunTurns = 0;
+            GhostTurns = 0;
         }
 
         public bool IsEmpty { get { return Type == PieceType.None; } }
@@ -122,6 +132,8 @@ namespace PowerChess.Core
         Detonate,
         KeepPickup,
         RerollPickup,
+        /// <summary>Swap two of your own pieces (From, To). Costs the turn.</summary>
+        Swap,
     }
 
     public struct GameAction : IEquatable<GameAction>
@@ -197,6 +209,10 @@ namespace PowerChess.Core
         SquareSpawned,
         DoubleMoveForfeited,
         ArmorExpired,
+        GhostFaded,
+        PortalSpawned,
+        Teleported,
+        Swapped,
     }
 
     /// <summary>Describes what happened so the view layer can animate it. The engine itself never reads these.</summary>

@@ -77,6 +77,16 @@ namespace PowerChess.Core.Tests
         }
 
         [Test]
+        public void Random_games_with_teleporters_and_fast_spawns_keep_invariants_and_terminate()
+        {
+            for (ulong seed = 1; seed <= 40; seed++)
+            {
+                var cfg = new GameConfig { MaxPly = 250, Squares = SquareMode.Revealed, PortalChance = 0.5, MaxPortalPairs = 2, SpawnInterval = 2 };
+                PlayRandomGame(seed, null, 1500, cfg);
+            }
+        }
+
+        [Test]
         public void Ai_finds_mate_in_one()
         {
             var s = T.Fen("6k1/5ppp/8/8/8/8/8/R3K3 w - - 0 1");

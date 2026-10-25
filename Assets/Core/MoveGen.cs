@@ -94,16 +94,23 @@ namespace PowerChess.Core
                 default:
                     int first = p.Type == PieceType.Bishop ? 4 : 0;
                     int last = p.Type == PieceType.Rook ? 3 : 7;
+                    bool ghost = p.Has(Buff.Ghost);
                     for (int d = first; d <= last; d++)
                     {
                         int cf = f + Geometry.DirFile[d], cr = r + Geometry.DirRank[d];
                         while (Sq.OnBoard(cf, cr))
                         {
                             int to = Sq.Make(cf, cr);
-                            if (s.Boulders[to]) break;
+                            if (s.Boulders[to])
+                            {
+                                if (!ghost) break;
+                                cf += Geometry.DirFile[d];
+                                cr += Geometry.DirRank[d];
+                                continue;
+                            }
                             bool empty = s.Cells[to].IsEmpty;
                             AddTarget(s, p, from, to, o);
-                            if (!empty) break;
+                            if (!empty && !ghost) break;
                             cf += Geometry.DirFile[d];
                             cr += Geometry.DirRank[d];
                         }
@@ -270,8 +277,26 @@ namespace PowerChess.Core
             {
                 for (int sq = 0; sq < 64; sq++)
                 {
-                    if (s.Cells[sq].IsEmpty && !s.Boulders[sq] && !s.Mystery[sq])
+                    if (s.Cells[sq].IsEmpty && !s.Boulders[sq] && !s.Mystery[sq] && !s.Portal[sq])
                         o.Add(new GameAction(ActionKind.PlaceBoulder, sq, sq, 0));
+                }
+            }
+
+            if (s.Perks(me, PowerupKind.Swap) > 0)
+            {
+                for (int a = 0; a < 64; a++)
+                {
+                    var pa = s.Cells[a];
+                    if (pa.IsEmpty || pa.Side != me || pa.Type == PieceType.King) continue;
+                    for (int b = a + 1; b < 64; b++)
+                    {
+                        var pb = s.Cells[b];
+                        if (pb.IsEmpty || pb.Side != me || pb.Type == PieceType.King) continue;
+                        if (pa.Type == pb.Type && pa.Buffs == pb.Buffs) continue;
+                        if (pa.Type == PieceType.Pawn && (Sq.Rank(b) == 0 || Sq.Rank(b) == 7)) continue;
+                        if (pb.Type == PieceType.Pawn && (Sq.Rank(a) == 0 || Sq.Rank(a) == 7)) continue;
+                        o.Add(new GameAction(ActionKind.Swap, a, b, 0));
+                    }
                 }
             }
 

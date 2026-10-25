@@ -27,6 +27,7 @@ for (int g = 0; g < games; g++)
 {
     var cfg = new GameConfig { MaxPly = 300, SpawnInterval = spawn, Squares = revealed ? SquareMode.Revealed : SquareMode.Mystery };
     cfg.RewindAllowed[0] = cfg.RewindAllowed[1] = false; // the AI cannot use Rewind
+    cfg.SwapAllowed[0] = cfg.SwapAllowed[1] = false; // nor Swap
     var s = GameState.NewGame(cfg, (ulong)(1000 + g));
     var ai = new Ai(depth);
     var got = new HashSet<(Side, PowerupKind)>();

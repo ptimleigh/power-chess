@@ -61,6 +61,8 @@ window.pcfx = (function () {
         steal: () => { tone(400, 0.12, 'square', 0.1, 900); tone(900, 0.12, 'square', 0.1, 400, 0.12); },
         stun: () => { tone(1000, 0.08, 'square', 0.1); tone(700, 0.08, 'square', 0.1, null, 0.08); tone(1000, 0.08, 'square', 0.1, null, 0.16); },
         poison: () => { tone(300, 0.4, 'sawtooth', 0.1, 80); noise(0.2, 0.1); buzz(40); },
+        slash: () => { noise(0.1, 0.28); tone(1600, 0.12, 'sawtooth', 0.09, 260); buzz(18); },
+        warp: () => { tone(300, 0.35, 'sine', 0.12, 1400); tone(1400, 0.25, 'triangle', 0.08, 300, 0.15); },
         thud: () => { tone(90, 0.2, 'sine', 0.3, 50); },
         rewind: () => { tone(900, 0.4, 'triangle', 0.12, 220); tone(600, 0.4, 'sine', 0.08, 150, 0.05); },
         win: () => { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.22, 'triangle', 0.14, null, i * 0.12)); },

@@ -1,0 +1,9 @@
+{
+  "appId": "app.powerchess.game",
+  "appName": "Power Chess",
+  "webDir": "www",
+  "backgroundColor": "#0d0b1e",
+  "android": {
+    "allowMixedContent": false
+  }
+}

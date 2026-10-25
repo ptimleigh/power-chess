@@ -7,6 +7,13 @@
     <meta name="theme-color" content="#0d0b1e" />
     <title>Power Chess</title>
     <base href="/" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Power Chess" />
     <link rel="stylesheet" href="css/app.css" />
 </head>
 
@@ -39,8 +46,15 @@
         <a href="" class="reload">Reload</a>
         <a class="dismiss">x</a>
     </div>
+    <script src="js/ads.js"></script>
     <script src="js/fx.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        // Installable and offline-capable in the browser; the native shell serves the files itself.
+        if ('serviceWorker' in navigator && !window.Capacitor && !/[?&]nosw=1/.test(location.search)) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => { }));
+        }
+    </script>
 </body>
 
 </html>

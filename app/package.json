@@ -1,0 +1,12 @@
+{
+  "name": "power-chess-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor shell that wraps the Power Chess web build as an Android app.",
+  "dependencies": {
+    "@capacitor-community/admob": "6.2.0",
+    "@capacitor/android": "6.2.1",
+    "@capacitor/cli": "6.2.1",
+    "@capacitor/core": "6.2.1"
+  }
+}

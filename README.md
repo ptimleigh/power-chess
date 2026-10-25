@@ -53,6 +53,16 @@ Five AI levels: Easy (depth 1, a quarter of its moves random), Normal (depth 2 w
 
 Levelling up unlocks ways to change the powerup experience (all in `Assets/Core/Presets.cs`, chosen in the New game sheet): at level 5 a square frequency setting (Rare, Normal, Frequent, Chaos) plus Chaos Mode and Calm Mode; level 6 "Oops! All Big Bombs"; 7 Ghost Town (ghosts and teleporters); 8 Fireworks (Fireball, Steal, Stun); 9 Royal Court (Armor, Ghost, Triple Move, bombs); 10 a Custom builder with Off/Low/Normal/High per powerup. A preset ignores the player's level-based powerup unlocks because the player chose it. Games with a preset or a non-normal frequency pay half XP; trophies and daily puzzles are unaffected.
 
+### Installable app and Android build
+
+The web build is a PWA (`manifest.webmanifest`, `service-worker.js`, icons rendered by `tools/make-icons.js`): open the Pages URL on a phone and use "Add to Home screen" / Install. The service worker is network-first, so a new deploy shows up on the next open, and once loaded the game works offline.
+
+`app/` wraps the same web build with Capacitor as an Android app. `app/scripts/build-android.sh` publishes the web app, injects `app/native/pcads-bridge.js` (AdMob through `window.pcads`), generates the Android project, patches the manifest and icons and runs `gradlew assembleDebug`. The `Build Android debug APK` workflow runs it on every push that touches `app/`, `web/` or `Assets/Core/` and attaches `power-chess-debug.apk` to the rolling prerelease `android-latest`: open the repository's Releases page on your phone, download it and allow installs from your browser. It uses Google's public **test** ad units and a debug signing key.
+
+Ads: `Assets/Core/Ads.cs` holds the rules (`AdPolicy`: interstitial only between games, not in the first 2 games, at most one per 3 games and 4 minutes, never before a daily puzzle; `RewardedXp.Double`: a rewarded ad doubles the XP of the game just finished, once). The browser build has no ads, so the "Watch an ad: double XP" button only appears in the app.
+
+For real ads and a store release you still need: an AdMob account with real app and ad-unit ids (replace the test ids in `build-android.sh` and `pcads-bridge.js`), a release keystore, a Play Console listing with a privacy policy, and review of the consent (UMP) flow. iOS needs a macOS runner (`cap add ios`) and an Apple Developer account.
+
 ### Debug tools in the UI
 
 Tap the logo five times (or open `?debug=1`) for a panel that gives perks, puts any buff on any piece, drops powerup squares or teleporters, and removes them. Tap a tool, then the board; tap the tool again to stop.

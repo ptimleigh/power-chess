@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject PowerChess.Web.Game.Platform.IAdService Ads
 
 <PageTitle>Power Chess</PageTitle>
 
@@ -370,7 +371,11 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     }
                 </div>
             }
-            <button class="btn primary" data-action="again" @onclick="StartNew">Play again</button>
+            @if (reward is MatchReward adrw && adsAvailable && !adrw.Doubled && adrw.XpGained > 0)
+            {
+                <button class="btn ghost" data-action="double-xp" disabled="@adBusy" @onclick="DoubleXp">@(adBusy ? "Loading ad..." : "Watch an ad: double XP")</button>
+            }
+            <button class="btn primary" data-action="again" disabled="@adBusy" @onclick="StartNewAsync">Play again</button>
             @if (S.CanReview)
             {
                 <button class="btn ghost" data-action="review-game" @onclick="() => S.ReviewStep(-1)">Review the game</button>
@@ -825,6 +830,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         tut.Seen.Clear();
         foreach (var k in stored.Seen) tut.Seen.Add(k);
 
+        adsAvailable = await Ads.IsAvailableAsync();
         if (opt.Demo is PowerupKind demo) S.ShowTutorial(demo);
         if (debugOptions) return;
 
@@ -876,6 +882,44 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     static string TutorialText(PowerupKind k) => PowerupInfo.IsTransform(k)
         ? "The piece that opens one changes into another piece on the spot. Never a king."
         : Names.Desc(k);
+
+    // ---------- ads (native shell only; the browser build has none) ----------
+
+    readonly AdPolicy adPolicy = new();
+    bool adsAvailable, adBusy;
+
+    /// <summary>Starts a game, first showing an interstitial if the policy allows one. If the ad fails the game just starts.</summary>
+    async Task StartNewAsync()
+    {
+        if (adsAvailable && !debugOptions && !adBusy && adPolicy.ShouldShowInterstitial(profile.Games, Environment.TickCount64, puzzle: false))
+        {
+            adBusy = true;
+            StateHasChanged();
+            try
+            {
+                adPolicy.RecordShown(profile.Games, Environment.TickCount64);
+                await Ads.ShowInterstitialAsync();
+            }
+            catch { }
+            adBusy = false;
+        }
+        StartNew();
+    }
+
+    async Task DoubleXp()
+    {
+        if (adBusy || reward == null) return;
+        adBusy = true;
+        StateHasChanged();
+        bool earned = false;
+        try { earned = await Ads.ShowRewardedAsync(); } catch { }
+        adBusy = false;
+        if (earned && RewardedXp.Double(profile, reward))
+        {
+            opt.Level = debugOptions && opt.Level >= 0 ? opt.Level : profile.Level;
+            _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
+        }
+    }
 
     void StartNew() => StartNew(persist: true);
 
@@ -943,7 +987,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         opt.Custom = selCustom;
         showNew = false;
         _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi + ":" + (selDrama ? "1" : "0") + ":" + selPreset + ":" + (int)selFreq + ":" + selCustom);
-        StartNew();
+        _ = StartNewAsync();
     }
 
     string RulesLabel => S.Puzzle != null ? "" : Presets.Label(opt.Preset, opt.Freq, EffectiveLevel);

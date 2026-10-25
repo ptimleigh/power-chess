@@ -134,6 +134,8 @@ namespace PowerChess.Core
     public sealed class MatchReward
     {
         public int XpGained;
+        /// <summary>True once a rewarded ad has doubled this match's XP.</summary>
+        public bool Doubled;
         public int OldLevel, NewLevel;
         public List<PowerupKind> NewPowerups = new List<PowerupKind>();
         public bool NewTeleporters;

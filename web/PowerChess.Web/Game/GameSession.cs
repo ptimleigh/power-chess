@@ -112,6 +112,7 @@ public sealed class GameSession
 
     public bool Reviewing => reviewIndex >= 0 && reviewIndex <= history.Count;
     public int HistoryCount => history.Count;
+    public GameHistory History => history;
     /// <summary>Position being shown while reviewing (0 = start, <see cref="HistoryCount"/> = the final position). Equals <see cref="HistoryCount"/> when live.</summary>
     public int ReviewPosition => Reviewing ? reviewIndex : history.Count;
     /// <summary>What the board shows: the live game, or a past position while reviewing.</summary>

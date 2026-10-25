@@ -63,6 +63,10 @@ Ads: `Assets/Core/Ads.cs` holds the rules (`AdPolicy`: interstitial only between
 
 For real ads and a store release you still need: an AdMob account with real app and ad-unit ids (replace the test ids in `build-android.sh` and `pcads-bridge.js`), a release keystore, a Play Console listing with a privacy policy, and review of the consent (UMP) flow. iOS needs a macOS runner (`cap add ios`) and an Apple Developer account.
 
+### Replay clip
+
+After a game (or from the review bar) **Replay clip** plays the last N moves (1 to 10, step with the arrows) as a 9:16 highlight with extra drama: a title slam, per-move captions, slow-mo and a punch-in on the finishing blow, hit-stop, slashes, fireball and bomb effects, a CHECKMATE flash and an end card with the result and the game's URL. `Save / share video` records it in real time (canvas plus the synth sound) and opens the share sheet: MP4 where the browser records it (Android WebView, Chrome), WebM otherwise, with a download fallback. In the Android app it goes through Capacitor's Filesystem and Share plugins. `Assets/Core/ReplayPlan.cs` picks the plies (tested), `Game/ClipBuilder.cs` turns the history into a timeline of engine events and `wwwroot/js/clip.js` draws and records it, so a clip can never disagree with the real game.
+
 ### Debug tools in the UI
 
 Tap the logo five times (or open `?debug=1`) for a panel that gives perks, puts any buff on any piece, drops powerup squares or teleporters, and removes them. Tap a tool, then the board; tap the tool again to stop.

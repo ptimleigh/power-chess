@@ -115,6 +115,7 @@
                     <button class="rbtn" data-review="next" aria-label="Next move" @onclick="() => S.ReviewStep(1)">@Icons.Svg("next")</button>
                     <button class="rbtn" data-review="last" aria-label="Final position" disabled="@(S.ReviewPosition >= S.HistoryCount)" @onclick="() => S.ReviewTo(S.HistoryCount)">@Icons.Svg("last")</button>
                     <button class="btn primary review-exit" data-action="exit-review" @onclick="S.ExitReview">Back to game</button>
+                    <button class="btn ghost small" data-action="open-clip" @onclick="OpenClip">Replay clip</button>
                 </div>
             </div>
         }
@@ -379,6 +380,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             @if (S.CanReview)
             {
                 <button class="btn ghost" data-action="review-game" @onclick="() => S.ReviewStep(-1)">Review the game</button>
+                <button class="btn ghost" data-action="open-clip" @onclick="OpenClip">Replay clip</button>
             }
         </div>
     </div>
@@ -514,6 +516,27 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <div class="row newgame-row">
                 <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">Start game</button>
                 <button class="btn ghost" data-action="cancel-new" @onclick="() => showNew = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showClip)
+{
+    <div class="modal" data-testid="clip-sheet">
+        <div class="card clip-sheet" @onclick:stopPropagation="true">
+            <div class="kicker">Replay clip</div>
+            <canvas id="clipCanvas" class="clip-canvas" width="720" height="1280"></canvas>
+            <div class="clip-len">
+                <button class="rbtn" data-action="clip-longer" disabled="@(clipPlies >= clipAvail || clipBusy)" @onclick="() => SetClipPlies(clipPlies + 1)" aria-label="Start earlier">@Icons.Svg("prev")</button>
+                <span data-testid="clip-len">Last <b>@clipPlies</b> @(clipPlies == 1 ? "move" : "moves") <small>of @clipAvail</small></span>
+                <button class="rbtn" data-action="clip-shorter" disabled="@(clipPlies <= 1 || clipBusy)" @onclick="() => SetClipPlies(clipPlies - 1)" aria-label="Start later">@Icons.Svg("next")</button>
+            </div>
+            @if (clipMsg != "") { <div class="clip-msg" data-testid="clip-msg">@clipMsg</div> }
+            <div class="row newgame-row">
+                <button class="btn ghost" data-action="clip-replay" disabled="@clipBusy" @onclick="PlayClip">Replay</button>
+                <button class="btn primary" data-action="clip-share" disabled="@clipBusy" @onclick="ShareClip">@(clipBusy ? "Rendering..." : "Save / share video")</button>
+                <button class="btn ghost" data-action="clip-close" disabled="@clipBusy" @onclick="CloseClip">Close</button>
             </div>
         </div>
     </div>
@@ -882,6 +905,74 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     static string TutorialText(PowerupKind k) => PowerupInfo.IsTransform(k)
         ? "The piece that opens one changes into another piece on the spot. Never a king."
         : Names.Desc(k);
+
+    // ---------- replay clip ----------
+
+    bool showClip, clipBusy;
+    int clipPlies, clipAvail;
+    string clipMsg = "";
+
+    async Task OpenClip()
+    {
+        clipAvail = ClipBuilder.Available(S.History);
+        if (clipAvail == 0) return;
+        clipPlies = Math.Min(6, clipAvail);
+        clipMsg = "";
+        showClip = true;
+        StateHasChanged();
+        await Task.Delay(80);
+        await PlayClip();
+    }
+
+    string BuildClipJson() => ClipBuilder.Build(S.History, S.State, clipPlies, S.ResultReason, S.Result, S.VsAi,
+        clipPlies == 1 ? "THE LAST MOVE" : $"THE LAST {clipPlies} MOVES");
+
+    async Task PlayClip()
+    {
+        clipMsg = "";
+        try { await JS.InvokeVoidAsync("pcclip.start", "clipCanvas", BuildClipJson(), !muted); }
+        catch (Exception ex) { clipMsg = "Could not play the clip: " + ex.Message; }
+    }
+
+    async Task SetClipPlies(int n)
+    {
+        clipPlies = Math.Clamp(n, 1, clipAvail);
+        await PlayClip();
+    }
+
+    async Task ShareClip()
+    {
+        clipBusy = true;
+        clipMsg = "Rendering your clip in real time...";
+        StateHasChanged();
+        try { await JS.InvokeVoidAsync("pcclip.stop"); } catch { }
+        try
+        {
+            var res = await JS.InvokeAsync<ClipResult>("pcclip.record", BuildClipJson());
+            if (!res.Ok) clipMsg = res.Error ?? "Recording failed.";
+            else
+            {
+                string how = await JS.InvokeAsync<string>("pcclip.share");
+                clipMsg = how switch { "shared" => "Shared!", "downloaded" => "Saved to your downloads.", "cancelled" => "Share cancelled.", _ => "" };
+            }
+        }
+        catch (Exception ex) { clipMsg = "Recording failed: " + ex.Message; }
+        clipBusy = false;
+    }
+
+    async Task CloseClip()
+    {
+        try { await JS.InvokeVoidAsync("pcclip.stop"); } catch { }
+        showClip = false;
+    }
+
+    public sealed class ClipResult
+    {
+        public bool Ok { get; set; }
+        public string? Error { get; set; }
+        public string? Mime { get; set; }
+        public long Size { get; set; }
+    }
 
     // ---------- ads (native shell only; the browser build has none) ----------
 

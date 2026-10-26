@@ -132,10 +132,12 @@ The rare ones are drawn far more often (Become Queen 60 to 218, Big Bomb 124 to 
 |---|---|---|---|
 | Normal vs Easy | 16 | 16 / 0 / 0 | 16/16 |
 | Hard vs Normal | 16 | 14 / 2 / 0 | 15/16 |
+| Normal (with slips) vs Easy | 16 | 16 / 0 / 0 | 16/16 |
+| Hard vs Normal (with slips) | 16 | 15 / 1 / 0 | 15.5/16 |
 | Expert vs Hard (full 1 s budget) | 10 | 6 / 3 / 1 | 7.5/10 |
 | Master vs Expert (time budgets shrunk to 10%) | 16 | 8 / 4 / 4 | 10/16 |
 
-An earlier Expert vs Hard run with budgets shrunk to 10% scored only 6.5/16: at about 100 ms Expert cannot out-search Hard's fixed depth 3, so the shrunken runs understate the upper levels. Each level beats the one below it at its real budget. Native search time per move: Easy 5-9 ms, Normal 15-20 ms, Hard 30-85 ms, Expert 1 s, Master 2 s. The scholar's-mate line (and a horizon mate threat) is defended at Normal and above (`AiLevelTests`).
+An earlier Expert vs Hard run with budgets shrunk to 10% scored only 6.5/16: at about 100 ms Expert cannot out-search Hard's fixed depth 3, so the shrunken runs understate the upper levels. Each level beats the one below it at its real budget. Native search time per move: Easy 5-9 ms, Normal 15-20 ms, Hard 30-85 ms, Expert 1 s, Master 2 s. Normal plays a plausible second-best move on 20% of quiet turns (within 80 centipawns of its best by a one-reply search, never when in check or when a mate is available); the two rows marked "with slips" are measured with that on. The scholar's-mate line (and a horizon mate threat) is defended at Normal and above (`AiLevelTests`).
 
 ## Custom powerup presets
 

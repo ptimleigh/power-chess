@@ -25,6 +25,10 @@ namespace PowerChess.Core
         public int TimeMs;
         /// <summary>Chance of playing a random legal action instead (beginner levels).</summary>
         public double RandomChance;
+        /// <summary>Chance, on a quiet move, of playing a plausible near-best move instead of the best one (Normal).</summary>
+        public double SlipChance;
+        /// <summary>A slip never costs more than this many centipawns against the best move by a one-reply search.</summary>
+        public int SlipMarginCp;
 
         readonly Random rng = new Random();
         System.Diagnostics.Stopwatch clock;
@@ -42,7 +46,7 @@ namespace PowerChess.Core
                 case 3: return new Ai(3) { QuiescenceDepth = 4, CheckExtension = true, FullEval = true };
                 case 4: return new Ai(6) { QuiescenceDepth = 4, CheckExtension = true, FullEval = true, TimeMs = 1000 };
                 case 5: return new Ai(8) { QuiescenceDepth = 6, CheckExtension = true, FullEval = true, TimeMs = 2000 };
-                default: return new Ai(2) { QuiescenceDepth = 2, CheckExtension = true };
+                default: return new Ai(2) { QuiescenceDepth = 2, CheckExtension = true, SlipChance = 0.20, SlipMarginCp = 80 };
             }
         }
 
@@ -83,6 +87,12 @@ namespace PowerChess.Core
             root.SearchMode = true;
             Order(root, actions);
 
+            if (SlipChance > 0 && SlipMarginCp > 0 && rng.NextDouble() < SlipChance)
+            {
+                var slip = TrySlip(root, actions);
+                if (slip.HasValue) return slip.Value;
+            }
+
             clock = System.Diagnostics.Stopwatch.StartNew();
             nodes = 0;
             aborted = false;
@@ -117,6 +127,47 @@ namespace PowerChess.Core
                 if (TimeMs > 0 && clock.ElapsedMilliseconds * 3 > TimeMs) break; // the next iteration would not finish
             }
             return best;
+        }
+
+        /// <summary>
+        /// A human-style slip: score every move by its best reply (so mates in one and hung pieces show up), then pick at
+        /// random among those within <see cref="SlipMarginCp"/> of the best, favouring the better ones. Returns null when the
+        /// position is not quiet (in check, or a mate is on offer), so slips never throw away a win or ignore a threat.
+        /// </summary>
+        GameAction? TrySlip(GameState root, List<GameAction> actions)
+        {
+            if (Geometry.IsKingAttacked(root, root.ToMove)) return null;
+            canAbort = false;
+            aborted = false;
+            var scores = new int[actions.Count];
+            int best = -Inf;
+            for (int i = 0; i < actions.Count; i++)
+            {
+                var child = root.Clone();
+                Rules.Apply(child, actions[i]);
+                GameResult ended = child.ToMove != root.ToMove ? Rules.GetResult(child) : GameResult.Ongoing;
+                scores[i] = ended == GameResult.Ongoing ? ScoreChild(root, child, 1, -Inf, Inf, 0)
+                    : ended == GameResult.Draw ? 0 : Mate;
+                if (scores[i] > best) best = scores[i];
+            }
+            if (best >= Mate - 100) return null;
+            int total = 0;
+            var weights = new int[actions.Count];
+            for (int i = 0; i < actions.Count; i++)
+            {
+                int loss = best - scores[i];
+                if (loss > SlipMarginCp) continue;
+                weights[i] = SlipMarginCp + 1 - loss;
+                total += weights[i];
+            }
+            int roll = rng.Next(total);
+            for (int i = 0; i < actions.Count; i++)
+            {
+                if (weights[i] == 0) continue;
+                if (roll < weights[i]) return actions[i];
+                roll -= weights[i];
+            }
+            return null;
         }
 
         /// <summary>Keep the drawn powerup unless it is a downgrade Transform and a Reroll is available.</summary>

@@ -89,5 +89,47 @@ namespace PowerChess.Core.Tests
                 Assert.IsTrue(MoveGen.LegalActions(s).Contains(a));
             }
         }
+
+        [Test]
+        public void Normal_slips_never_hang_a_queen_walk_into_mate_or_miss_a_mate()
+        {
+            var scholar = Classic("r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 1");
+            var free = Classic("4k3/8/8/3q4/8/8/8/3RK3 w - - 0 1");
+            var ai = new Ai(2) { QuiescenceDepth = 2, CheckExtension = true, SlipChance = 1.0, SlipMarginCp = 80 };
+            for (int i = 0; i < 40; i++)
+            {
+                var a = ai.Choose(scholar);
+                var after = scholar.Clone();
+                Rules.Apply(after, a);
+                GameAction mate;
+                Assert.IsFalse(PuzzleSolver.FindSolution(after, 1, out mate), "slip " + a + " allowed " + mate);
+                Assert.AreEqual("d1d5", ai.Choose(free).ToString());
+            }
+            // A mate in one is always taken.
+            var m1 = Classic("k7/8/1K6/8/8/8/8/7R w - - 0 1");
+            for (int i = 0; i < 20; i++) Assert.AreEqual("h1h8", ai.Choose(m1).ToString());
+        }
+
+        [Test]
+        public void Normal_slips_stay_within_the_margin_and_do_vary()
+        {
+            var start = GameState.FromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", GameConfig.Classic());
+            var ai = new Ai(2) { QuiescenceDepth = 2, CheckExtension = true, SlipChance = 1.0, SlipMarginCp = 80 };
+            var seen = new System.Collections.Generic.HashSet<string>();
+            for (int i = 0; i < 30; i++)
+            {
+                var a = ai.Choose(start);
+                Assert.IsTrue(MoveGen.LegalActions(start).Contains(a));
+                seen.Add(a.ToString());
+            }
+            Assert.Greater(seen.Count, 1, "a slipping AI should not always play the same move");
+        }
+
+        [Test]
+        public void Levels_other_than_normal_never_slip()
+        {
+            foreach (int level in new[] { 1, 3, 4, 5 }) Assert.AreEqual(0, Ai.ForLevel(level).SlipChance);
+            Assert.Greater(Ai.ForLevel(2).SlipChance, 0);
+        }
     }
 }

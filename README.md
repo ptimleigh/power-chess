@@ -47,7 +47,7 @@ Finishing a game earns XP (more for harder opponents, wins, captures, powerups a
 
 ### Opponent levels
 
-Five AI levels: Easy (depth 1, a quarter of its moves random), Normal (depth 2 with check extension and quiescence), Hard (depth 3, full evaluation), Expert (iterative deepening to depth 6 within 1 s) and Master (depth 8 within 2 s). Harder levels pay more XP (x0.7, 1, 1.4, 1.8, 2.2). Normal used to fall to scholar's mate because the search stopped without checking for mate at its horizon; the leaf check extension fixed that. `tools/LadderSim` plays adjacent levels against each other on plain chess; results are in `docs/BALANCE.md`.
+Five AI levels: Easy (depth 1, a quarter of its moves random), Normal (depth 2 with check extension and quiescence; on 20% of quiet turns it plays a plausible near-best move instead, so it is beatable but never hangs a queen or falls for scholar's mate), Hard (depth 3, full evaluation), Expert (iterative deepening to depth 6 within 1 s) and Master (depth 8 within 2 s). Harder levels pay more XP (x0.7, 1, 1.4, 1.8, 2.2). Normal used to fall to scholar's mate because the search stopped without checking for mate at its horizon; the leaf check extension fixed that. `tools/LadderSim` plays adjacent levels against each other on plain chess; results are in `docs/BALANCE.md`.
 
 ### Custom powerup rules
 

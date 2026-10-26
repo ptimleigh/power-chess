@@ -446,8 +446,8 @@ window.pcclip = (function () {
                 ctx.fillRect(p.x, p.y, SQ, SQ);
                 ctx.strokeStyle = `rgba(${col},.9)`; ctx.lineWidth = 3; ctx.strokeRect(p.x + 3, p.y + 3, SQ - 6, SQ - 6);
                 ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.font = `900 ${content ? 17 : 44}px system-ui, sans-serif`;
-                ctx.fillText(content ? kind.replace('Become ', '').slice(0, 7).toUpperCase() : '?', p.x + SQ / 2, p.y + SQ / 2 + 2);
+                ctx.font = `900 ${content ? 15 : 44}px system-ui, sans-serif`;
+                ctx.fillText(content ? kind.replace('Become ', '').toUpperCase() : '?', p.x + SQ / 2, p.y + SQ / 2 + 2, SQ - 8);
             }
             for (const sq of deco.g) {
                 const c = sqC(sq);

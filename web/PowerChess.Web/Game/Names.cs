@@ -32,7 +32,7 @@ public static class Names
     {
         PowerupKind.DoubleMove => "This piece must move twice next time it moves. Giving check cancels the second move.",
         PowerupKind.Poison => "If this piece is captured, the capturer dies too.",
-        PowerupKind.SpikedArmor => "Uncapturable and immune to effects for 3 turns. An armored king can't be checked.",
+        PowerupKind.SpikedArmor => "Uncapturable and immune to effects for 3 turns. An armored king can't be checked, and may even stand next to the enemy king and check it.",
         PowerupKind.Stun => "Pick any enemy piece. It can't move for 3 turns (kings and armored pieces are immune).",
         PowerupKind.SmallBomb => "Detonate instead of moving: destroys everything in the 3x3 around it (not kings).",
         PowerupKind.BigBomb => "Detonate instead of moving: destroys everything in the 5x5 around it (not kings).",

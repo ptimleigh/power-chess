@@ -52,6 +52,7 @@ stalemate are real. Stalemate and the 50-move rule are draws; a ply cap ends end
 ## Cross-cutting rules
 - **Kings are immune** to every buff and effect (fireball, bombs, steal, stun, poison, transform).
 - **Armored pieces are immune** to capture, fireball, steal, stun and bombs.
+- **An armored king may stand next to the enemy king and gives check (and mate) like any attacker.** An unarmored king may never step next to the other king. This is deliberate: armor plus a multi-move buff (Double or Triple Move) lets a king walk up to the enemy king and checkmate it.
 - **Stunned pieces exert no attacks**, so they cannot give check or pin. A stun can therefore set up checkmate.
 - An action that leaves your own king attacked is illegal, including perks and bombs. Checkmate means no action at all
   (moves, perks, boulders, bombs) escapes the check.

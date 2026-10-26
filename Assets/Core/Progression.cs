@@ -13,6 +13,8 @@ namespace PowerChess.Core
         public int AiLevel;
         /// <summary>1 for a standard game, 0.5 when custom powerup rules were on (see <see cref="Presets.XpScale"/>).</summary>
         public double XpScale = 1.0;
+        /// <summary>Hints the player used this game.</summary>
+        public int HintsUsed;
         public int Captures;
         public int PiecesLost;
         public int PowerupsCollected;
@@ -234,6 +236,7 @@ namespace PowerChess.Core
         {
             var r = new MatchReward { OldLevel = p.Level };
             double mult = Ai.XpMultiplier(m.AiLevel);
+            double scale = m.XpScale * HintPolicy.XpScale(m.HintsUsed);
             int baseXp = m.Won ? 100 : m.Draw ? 40 : 25;
             var parts = r.Breakdown;
             parts.Add(new KeyValuePair<string, int>(m.Won ? "Victory" : m.Draw ? "Draw" : "Played", Round(baseXp * mult)));
@@ -242,9 +245,9 @@ namespace PowerChess.Core
             int pu = Math.Min(m.PowerupsCollected, 6) * 10;
             if (pu > 0) parts.Add(new KeyValuePair<string, int>("Powerups", pu));
             if (m.Won && m.Reason == "Checkmate") parts.Add(new KeyValuePair<string, int>("Checkmate", 50));
-            if (m.XpScale < 1.0)
+            if (scale < 1.0)
                 for (int i = 0; i < parts.Count; i++)
-                    parts[i] = new KeyValuePair<string, int>(parts[i].Key, Round(parts[i].Value * m.XpScale));
+                    parts[i] = new KeyValuePair<string, int>(parts[i].Key, Round(parts[i].Value * scale));
             int xp = 0;
             foreach (var kv in parts) xp += kv.Value;
 

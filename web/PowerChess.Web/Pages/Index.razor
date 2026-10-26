@@ -163,6 +163,27 @@
         {
             <button class="perk ghost" @onclick="S.Cancel"><span class="pl">Cancel</span></button>
         }
+        @if (S.HintAvailable)
+        {
+            @if (S.HintsLeft > 0)
+            {
+                <button class="perk hint-btn" data-action="hint" @onclick="S.Hint">
+                    <span class="pi">@Icons.Svg("spark")</span><span class="pl">Hint</span><span class="pn" data-testid="hints-left">@S.HintsLeft</span>
+                </button>
+            }
+            else if (adsAvailable)
+            {
+                <button class="perk hint-btn" data-action="hint-ad" disabled="@adBusy" @onclick="BuyHint">
+                    <span class="pi">@Icons.Svg("spark")</span><span class="pl">@(adBusy ? "Loading ad..." : "Watch an ad for a hint")</span>
+                </button>
+            }
+            else
+            {
+                <button class="perk hint-btn" data-action="hint" disabled title="No hints left this game">
+                    <span class="pi">@Icons.Svg("spark")</span><span class="pl">No hints left</span>
+                </button>
+            }
+        }
         @if (S.CanReview)
         {
             <button class="perk ghost" data-action="review" @onclick="() => S.ReviewStep(-1)">
@@ -211,6 +232,10 @@
     }
 
     <div class="status @(S.InCheck && !S.GameOver ? "warn" : "")" data-testid="status">@S.Status</div>
+    @if (S.HintText != "")
+    {
+        <div class="hint-line" data-testid="hint-text">@S.HintText</div>
+    }
 
     @if (S.Inspect >= 0 && !S.Reviewing && S.Tutorial == null && !S.State.Cells[S.Inspect].IsEmpty)
     {
@@ -357,6 +382,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     <div class="xp-line"><b>+@rw.XpGained XP</b>
                         <small>@string.Join(" · ", rw.Breakdown.Select(b => $"{b.Key} {b.Value}"))</small></div>
                     <div class="xpbar"><i style="width:@(XpPercent(profile))%"></i></div>
+                    @if (S.HintsUsed > 0) { <div class="lv-line" data-testid="hint-note">Hints used: @S.HintsUsed (XP x@(HintPolicy.XpScale(S.HintsUsed).ToString("0.0")))</div> }
                     <div class="lv-line">Level @profile.Level@(profile.Level < Progression.MaxLevel ? $" · {Progression.XpForLevel(profile.Level + 1) - profile.Xp} XP to level {profile.Level + 1}" : " · max")</div>
                     @if (rw.NewLevel > rw.OldLevel)
                     {
@@ -1066,6 +1092,17 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         StartNew();
     }
 
+    async Task BuyHint()
+    {
+        if (adBusy) return;
+        adBusy = true;
+        StateHasChanged();
+        bool earned = false;
+        try { earned = await Ads.ShowRewardedAsync(); } catch { }
+        adBusy = false;
+        if (earned) S.AddHintBonus();
+    }
+
     async Task DoubleXp()
     {
         if (adBusy || reward == null) return;
@@ -1194,6 +1231,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (S.View.Boulders[sq]) c += " rock";
         if (sq == S.ViewLastFrom || sq == S.ViewLastTo) c += " last";
         if (sq == S.Selected) c += " selected";
+        if (sq == S.HintFrom || sq == S.HintTo) c += " hint";
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;

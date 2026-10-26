@@ -63,6 +63,10 @@ Ads: `Assets/Core/Ads.cs` holds the rules (`AdPolicy`: interstitial only between
 
 For real ads and a store release you still need: an AdMob account with real app and ad-unit ids (replace the test ids in `build-android.sh` and `pcads-bridge.js`), a release keystore, a Play Console listing with a privacy policy, and review of the consent (UMP) flow. iOS needs a macOS runner (`cap add ios`) and an Apple Developer account.
 
+### Hints
+
+The **Hint** button (against the AI, on your turn) runs the Hard search for you and highlights the suggested move with a caption such as "Try Rook a1 to a8", or names the perk, bomb or fireball to use. Three free hints per game; a game with any hint pays 80% of its XP (stacking with a preset's 50%). In the Android app, when the free hints run out the button becomes "Watch an ad for a hint" (a rewarded ad adds one); in the browser there are no ads, so it just says "No hints left". Hints are off in two-player games, puzzles and review. Rules live in `Assets/Core/Hints.cs` (`HintPolicy`, `Hints.Suggest/Describe`, tested).
+
 ### Testing with friends
 
 - **Everyone:** send https://ptimleigh.github.io/power-chess/ . It runs in any browser; on a phone use the browser menu's "Add to Home screen" for an app icon and offline play.

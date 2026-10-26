@@ -148,8 +148,64 @@ public sealed class GameSession
     /// <summary>Whether finishing this game should pay XP: not a scenario, training board or debug-assisted game.</summary>
     public bool Rewardable => rewardable && !DebugUsed && Puzzle == null;
 
+    // ---------- hints ----------
+
+    public int HintsUsed { get; private set; }
+    /// <summary>Extra hints earned this game (a rewarded ad in the native app).</summary>
+    public int HintBonus { get; private set; }
+    public int HintFrom { get; private set; } = -1;
+    public int HintTo { get; private set; } = -1;
+    public string HintText { get; private set; } = "";
+    public bool HintThinking { get; private set; }
+    public int HintsLeft => HintPolicy.Remaining(HintsUsed, HintBonus);
+    /// <summary>A hint is offered on your turn against the AI, never in a puzzle or while reviewing.</summary>
+    public bool HintAvailable => HumanTurn && VsAi && Puzzle == null && !HintThinking && !Thinking;
+
+    public void ClearHint()
+    {
+        HintFrom = HintTo = -1;
+        HintText = "";
+    }
+
+    public void AddHintBonus() { HintBonus++; }
+
+    /// <summary>Finds the best move for you and highlights it. Costs one of the free hints.</summary>
+    public async Task Hint()
+    {
+        if (!HintAvailable || HintsLeft == 0) return;
+        HintThinking = true;
+        ClearSelection();
+        Changed?.Invoke();
+        await Task.Delay(60); // let the UI paint before the (synchronous) search
+        GameAction act = Hints.Suggest(State);
+        HintsUsed++;
+        switch (act.Kind)
+        {
+            case ActionKind.Move:
+            case ActionKind.Fireball:
+            case ActionKind.Steal:
+            case ActionKind.Swap:
+                HintFrom = act.From; HintTo = act.To; break;
+            case ActionKind.Detonate:
+                HintFrom = act.From; HintTo = -1; break;
+            case ActionKind.Stun:
+            case ActionKind.PlaceBoulder:
+            case ActionKind.ClearBoulder:
+                HintFrom = -1; HintTo = act.To; break;
+            default:
+                HintFrom = HintTo = -1; break;
+        }
+        HintText = Hints.Describe(State, act);
+        HintThinking = false;
+        Sfx?.Invoke("pickup");
+        Changed?.Invoke();
+    }
+
     void ResetTracker(bool eligible)
     {
+        HintsUsed = 0;
+        HintBonus = 0;
+        ClearHint();
         tracker = new MatchTracker(Side.White, opt.Ai);
         endReported = false;
         rewardable = eligible;
@@ -864,6 +920,7 @@ public sealed class GameSession
         Inspect = -1;
         InspectSquare = -1;
         reviewIndex = -1;
+        ClearHint();
         ClearSelection();
         Side mover = State.ToMove;
         history.Record(State, a);
@@ -916,6 +973,7 @@ public sealed class GameSession
                 endReported = true;
                 var summary = tracker.Finish(Result, ResultReason);
                 summary.XpScale = Presets.XpScale(opt.Preset, opt.Freq, opt.Level);
+                summary.HintsUsed = HintsUsed;
                 GameEnded?.Invoke(summary);
             }
             Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == Side.Black ? "lose" : "win"));
@@ -1012,6 +1070,7 @@ public sealed class GameSession
         ClearSelection();
         Inspect = -1;
         position = Math.Clamp(position, 0, history.Count);
+        ClearHint();
         reviewIndex = position;
         Sfx?.Invoke("click");
         Changed?.Invoke();

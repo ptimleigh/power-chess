@@ -54,7 +54,7 @@ const pieceGroup = new THREE.Group(); scene.add(pieceGroup);
 
 function setView(name, target = [0, 0.75, 0], dist = 5.8) {
   const t = new THREE.Vector3(...target);
-  const dirs = { front: [0, 0.1, 1], side: [1, 0.1, 0], top: [0, 1, 0.001], iso: [0.8, 0.55, 1] };
+  const dirs = { front: [0, 0.1, 1], back: [0, 0.1, -1], side: [1, 0.1, 0], top: [0, 1, 0.001], iso: [0.8, 0.55, 1] };
   const d = new THREE.Vector3(...(dirs[name] || dirs.iso)).normalize();
   camera.position.copy(t).addScaledVector(d, dist);
   controls.target.copy(t); controls.update();

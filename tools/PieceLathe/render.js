@@ -29,7 +29,7 @@ const server = http.createServer((req, res) => {
   await page.goto(`http://localhost:${server.address().port}/`);
   await page.waitForFunction(() => window.pieceLatheReady);
   const states = files.map((f) => JSON.parse(fs.readFileSync(f, 'utf8')));
-  await page.evaluate(([s, v]) => { window.pieceLathe.setState(s[0]); window.pieceLathe.setView(v); if (s.length > 1) window.pieceLathe.lineup(s); }, [states, opt('view', 'iso')]);
+  await page.evaluate(([s, v]) => { window.pieceLathe.setState(s[0]); if (s.length > 1) window.pieceLathe.lineup(s); window.pieceLathe.setView(v, [0, 0.85, 0], 5.8 + (s.length > 1 ? s.length * 0.9 : 0)); }, [states, opt('view', 'iso')]);
   await page.waitForTimeout(300);
   const out = opt('out', 'piece.png');
   const url = await page.evaluate(() => window.pieceLathe.screenshot());

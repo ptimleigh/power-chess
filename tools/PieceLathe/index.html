@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Piece Lathe</title>
+<style>
+  :root { --bg:#14161b; --panel:#1b1e25; --line:#2b303b; --fg:#e6e9f0; --mute:#8a93a6; --acc:#7fb0ff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:13px/1.4 system-ui,sans-serif; }
+  #app { display:grid; grid-template-columns:1fr 380px; height:100%; }
+  #view { position:relative; min-width:0; }
+  #view canvas { display:block; }
+  #viewbar { position:absolute; left:10px; top:10px; display:flex; gap:6px; }
+  aside { background:var(--panel); border-left:1px solid var(--line); padding:10px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+  h2 { margin:0; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); font-weight:600; }
+  button,select,input,textarea { font:inherit; color:var(--fg); background:#262a33; border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
+  button { cursor:pointer; } button:hover { border-color:var(--acc); }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  #parts { display:flex; flex-wrap:wrap; gap:6px; }
+  .part.sel { border-color:var(--acc); background:#2b3750; }
+  .part small { color:var(--mute); margin-left:4px; }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; border:1px solid #0006; }
+  #editor { width:100%; height:300px; border:1px solid var(--line); border-radius:8px; touch-action:none; cursor:crosshair; }
+  .hint { color:var(--mute); font-size:11px; }
+  #props { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #props label { display:flex; flex-direction:column; gap:2px; color:var(--mute); font-size:11px; }
+  #props input { width:100%; }
+  #props input[type=color] { padding:0; height:28px; }
+  textarea { width:100%; height:160px; font:11px/1.35 ui-monospace,monospace; white-space:pre; }
+  #name { width:130px; }
+  @media (max-width:800px) { #app { grid-template-columns:1fr; grid-template-rows:45vh 1fr; } aside { border-left:0; border-top:1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <div id="viewbar">
+      <button data-view="iso">3/4</button><button data-view="front">Front</button>
+      <button data-view="side">Side</button><button data-view="top">Top</button>
+    </div>
+  </div>
+  <aside>
+    <div class="row">
+      <input id="name" value="piece" title="Piece name (used for file names)">
+      <select id="presets"><option>Open preset…</option></select>
+      <button id="undo" title="Ctrl+Z">Undo</button>
+    </div>
+    <div>
+      <h2>Parts</h2>
+      <div id="parts"></div>
+      <div class="row" style="margin-top:6px">
+        <button id="addLathe">+ Lathe</button><button id="addExtrude">+ Extrude</button>
+        <button id="dupPart">Duplicate</button><button id="delPart">Delete</button>
+      </div>
+    </div>
+    <div>
+      <h2>Profile</h2>
+      <canvas id="editor"></canvas>
+      <div class="hint">Click empty space: add point · drag: move · double-click: sharp/smooth corner (lathe) · right-click: delete.
+        Lathe: left of the axis is a mirror guide. Extrude: draw the side silhouette.</div>
+    </div>
+    <div><h2>Part settings</h2><div id="props"></div></div>
+    <div>
+      <h2>Piece JSON</h2>
+      <textarea id="json" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:6px">
+        <button id="applyJson">Apply JSON</button><button id="saveJson">Save .json</button>
+        <label class="row"><span class="hint">Load</span><input id="loadJson" type="file" accept=".json"></label>
+      </div>
+    </div>
+    <div class="row"><button id="exportGlb">Export .glb</button><button id="shot">Screenshot</button></div>
+  </aside>
+</div>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

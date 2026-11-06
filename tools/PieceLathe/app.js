@@ -301,9 +301,15 @@ function download(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+// The single-file build embeds the presets (window.__PRESETS__) because fetch() is blocked on file:// pages.
+async function getJSON(url) {
+  const embedded = window.__PRESETS__ && window.__PRESETS__[url.replace(/^pieces\//, '')];
+  return embedded ? clone(embedded) : (await fetch(url)).json();
+}
+
 async function loadPresetList() {
   try {
-    const list = await (await fetch('pieces/index.json')).json();
+    const list = await getJSON('pieces/index.json');
     const sel = $('presets'); sel.innerHTML = '<option value="">Open preset…</option>';
     list.forEach((f) => sel.insertAdjacentHTML('beforeend', `<option>${f}</option>`));
     sel.onchange = () => sel.value && api.loadURL('pieces/' + sel.value);
@@ -319,7 +325,7 @@ const api = {
     if (!state.parts.find((p) => p.id === selectedId)) selectedId = state.parts[0]?.id ?? null;
     nameEl.value = state.name; commit(true);
   },
-  async loadURL(url) { api.setState(await (await fetch(url)).json()); return api.getState(); },
+  async loadURL(url) { api.setState(await getJSON(url)); return api.getState(); },
   addPart(part) { pushUndo(); state.parts.push(part); state = normalize(state); selectedId = part.id; commit(true); },
   updatePart(id, patch) { const p = state.parts.find((x) => x.id === id); if (!p) throw new Error('no part ' + id); pushUndo(); Object.assign(p, clone(patch)); state = normalize(state); commit(true); },
   removePart(id) { pushUndo(); state.parts = state.parts.filter((p) => p.id !== id); if (selectedId === id) selectedId = state.parts[0]?.id ?? null; commit(true); },

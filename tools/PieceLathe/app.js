@@ -239,17 +239,18 @@ function buildRibbonSkinned(part) {
 }
 
 // ----------------------------------------------- idle ("ready to fight") ----
-// One loop = 2 hops, 1 sway, 1 breath. Bottom of the piece stays on the board; squash is about the base.
+// One loop = 2 hops, 1 sway, 1 breath. The piece dips (lands + squashes) at the far left and far right of the sway
+// and rises as it passes through the middle. The bottom of the piece stays on the board; squash is about the base.
 let idlePlaying = false, idleT = 0, physicsOn = true, simTime = 0, slide = null;
 const TAU = Math.PI * 2;
 const idleLoopSeconds = (c) => 2 / Math.max(0.05, c.speed);
 
 function idlePose(c, phase) {
-  const s = Math.sin(TAU * phase), hop = Math.abs(s), land = Math.pow(1 - hop, 6);
+  const s = Math.sin(TAU * phase), hop = Math.abs(Math.cos(TAU * phase)), land = Math.pow(1 - hop, 6);
   const sy = 1 - c.squash * land + c.breathe * s, sxz = 1 / Math.sqrt(sy), lean = THREE.MathUtils.degToRad(c.lean);
   return {
     x: c.sway * s, y: c.bounce * hop,
-    rz: -lean * Math.sin(TAU * phase - 0.4),                                          // lean into the sway
+    rz: -lean * s,                                                                   // lean into the dip on each side
     rx: THREE.MathUtils.degToRad(1.5) + lean * 0.4 * Math.sin(2 * TAU * phase + 1),   // chin-forward stance + rock
     sx: sxz, sy, sz: sxz,
   };

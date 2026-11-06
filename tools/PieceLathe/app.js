@@ -5,7 +5,9 @@ import { GLTFExporter } from './vendor/GLTFExporter.js';
 // ---------------------------------------------------------------- model ----
 // A piece is plain JSON: { name, parts: [ lathe | extrude | ribbon ], idle: {...} }
 //   lathe   : { id, type:'lathe', profile:[[radius,height,corner?],...], smooth, segments, color, offset, scale, rotationY }
-//   extrude : { id, type:'extrude', outline:[[x,y],...], depth, bevel, color, offset, scale, rotationY }
+//   extrude : { id, type:'extrude', outline:[[x,y,corner?],...], depth, bevel, bevelSegments, smooth, taper, color, offset, scale, rotationY }
+//             smooth = curve samples per outline segment (0 = straight edges), bevel = rounded edge size, taper narrows the
+//             piece toward +x (0..1) so a head can slim down toward the nose
 //   ribbon  : { id, type:'ribbon', offset(anchor), dir, length, width, tipWidth, segments, stiffness, damping, gravity, color }
 //             a chain of segments that trails behind the piece with spring physics (bandana tails, scarves, capes...)
 //   idle    : { speed, bounce, sway, lean, breathe, squash }  the looping "ready to fight" animation
@@ -37,7 +39,7 @@ function normalize(s) {
     else if (p.type === 'ribbon') {
       for (const k in RIBBON_DEFAULTS) if (p[k] === undefined) p[k] = clone(RIBBON_DEFAULTS[k]);
       p.offset = p.offset || [0, 0, 0];
-    } else { p.outline = p.outline || [[-0.3, 0], [0.3, 0], [0, 1]]; p.depth = p.depth ?? 0.4; p.bevel = p.bevel ?? 0.04; }
+    } else { p.outline = p.outline || [[-0.3, 0], [0.3, 0], [0, 1]]; p.depth = p.depth ?? 0.4; p.bevel = p.bevel ?? 0.04; p.bevelSegments = p.bevelSegments ?? 3; p.smooth = p.smooth ?? 0; p.taper = p.taper ?? 0; }
   });
   return s;
 }
@@ -97,15 +99,62 @@ function latheProfile(part) {
   return out;
 }
 
+// Smooth a closed outline with Catmull-Rom; points flagged as corners (3rd value = 1) stay sharp.
+function smoothOutline(pts, smooth) {
+  const P = pts.map((p) => ({ v: new THREE.Vector2(p[0], p[1]), c: !!p[2] }));
+  if (!smooth || smooth < 1 || P.length < 3) return P.map((p) => p.v);
+  const sample = (vs, closed) => {
+    const curve = new THREE.CatmullRomCurve3(vs.map((v) => new THREE.Vector3(v.x, v.y, 0)), closed, 'centripetal');
+    const out = curve.getPoints(closed ? vs.length * smooth : (vs.length - 1) * smooth).map((v) => new THREE.Vector2(v.x, v.y));
+    return out.slice(0, -1); // last point repeats the next run's first
+  };
+  const first = P.findIndex((p) => p.c);
+  if (first < 0) return sample(P.map((p) => p.v), true);
+  const arr = P.slice(first).concat(P.slice(0, first)), out = [];
+  let run = [arr[0].v];
+  for (let i = 1; i <= arr.length; i++) {
+    const q = arr[i % arr.length];
+    run.push(q.v);
+    if (q.c || i === arr.length) {
+      out.push(...(run.length >= 3 ? sample(run, false) : run.slice(0, -1)));
+      run = [q.v];
+    }
+  }
+  return out;
+}
+
+// Merge shared vertices and recompute normals so a smooth, bevelled extrusion shades smoothly instead of faceted.
+function weldSmooth(geo) {
+  const pos = geo.attributes.position, map = new Map(), verts = [], idx = [];
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const key = `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
+    let j = map.get(key);
+    if (j === undefined) { j = verts.length / 3; map.set(key, j); verts.push(x, y, z); }
+    idx.push(j);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  g.setIndex(idx); g.computeVertexNormals(); geo.dispose();
+  return g;
+}
+
 function buildPart(part) {
   let geo;
   if (part.type === 'lathe') {
     geo = new THREE.LatheGeometry(latheProfile(part), part.segments ?? state.segments ?? 48);
   } else {
-    const shape = new THREE.Shape(part.outline.map((p) => new THREE.Vector2(p[0], p[1])));
+    const shape = new THREE.Shape(smoothOutline(part.outline, part.smooth));
     const b = part.bevel || 0;
-    geo = new THREE.ExtrudeGeometry(shape, { depth: part.depth, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: 3, curveSegments: 12 });
+    geo = new THREE.ExtrudeGeometry(shape, { depth: part.depth, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: part.bevelSegments ?? 3, curveSegments: 12 });
     geo.translate(0, 0, -part.depth / 2);
+    if (part.taper) { // thickness shrinks linearly from the back (min x) to the front (max x)
+      geo.computeBoundingBox();
+      const { min, max } = geo.boundingBox, p = geo.attributes.position;
+      for (let i = 0; i < p.count; i++) p.setZ(i, p.getZ(i) * (1 - part.taper * ((p.getX(i) - min.x) / (max.x - min.x || 1))));
+      p.needsUpdate = true; geo.computeVertexNormals();
+    }
+    if (b > 0 && part.smooth > 0) geo = weldSmooth(geo);
   }
   const mat = new THREE.MeshStandardMaterial({ color: part.color, roughness: 0.45, metalness: 0.08, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, mat);
@@ -368,9 +417,10 @@ function drawEditor() {
   if (!p) { ctx.fillStyle = '#889'; ctx.fillText('Select or add a part', 12, 20); return; }
   if (p.type === 'ribbon') { ctx.fillStyle = '#889'; ctx.fillText('Ribbon: shape it with the settings below, then use Slide test.', 12, 20); return; }
   const g = geomOf(p);
+  const path = (p.type === 'lathe' ? latheProfile(p) : smoothOutline(p.outline, p.smooth)).map((v) => [v.x, v.y]);
   const trace = (mirror) => {
     ctx.beginPath();
-    g.forEach((pt, i) => { const [x, y] = toPx(f, mirror ? -pt[0] : pt[0], pt[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    path.forEach((pt, i) => { const [x, y] = toPx(f, mirror ? -pt[0] : pt[0], pt[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
     if (p.type === 'extrude') ctx.closePath();
   };
   if (p.type === 'lathe') { ctx.strokeStyle = '#3d4a63'; trace(true); ctx.stroke(); }
@@ -423,10 +473,10 @@ cv.addEventListener('pointermove', (e) => {
   commit(false);
 });
 cv.addEventListener('pointerup', () => { if (drag) { drag = null; commit(true); } });
-cv.addEventListener('dblclick', (e) => { // toggle sharp corner (lathe)
-  const p = selPart(); if (!p || p.type !== 'lathe') return;
-  const [px, py] = evPos(e), i = hit(frame(), p.profile, px, py); if (i < 0) return;
-  pushUndo(); const pt = p.profile[i]; pt[2] ? pt.splice(2, 1) : (pt[2] = 1); commit(true);
+cv.addEventListener('dblclick', (e) => { // toggle sharp corner
+  const p = selPart(); if (!p || p.type === 'ribbon') return;
+  const [px, py] = evPos(e), i = hit(frame(), geomOf(p), px, py); if (i < 0) return;
+  pushUndo(); const pt = geomOf(p)[i]; pt[2] ? pt.splice(2, 1) : (pt[2] = 1); commit(true);
 });
 cv.addEventListener('contextmenu', (e) => { // delete point
   e.preventDefault();
@@ -498,6 +548,9 @@ function renderProps() {
   } else {
     propsEl.appendChild(numField('depth', () => p.depth, (v) => (p.depth = Math.max(0.01, v))));
     propsEl.appendChild(numField('bevel', () => p.bevel, (v) => (p.bevel = Math.max(0, v))));
+    propsEl.appendChild(numField('bevel segs', () => p.bevelSegments, (v) => (p.bevelSegments = Math.max(1, Math.round(v))), 1));
+    propsEl.appendChild(numField('smooth', () => p.smooth, (v) => (p.smooth = Math.max(0, Math.round(v))), 1));
+    propsEl.appendChild(numField('taper', () => p.taper, (v) => (p.taper = Math.min(0.95, Math.max(-0.95, v))), 0.05));
   }
 }
 

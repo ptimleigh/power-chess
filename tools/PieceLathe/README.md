@@ -10,7 +10,7 @@ A piece is plain JSON (see `pieces/`): `{ name, parts: [...] }`. Each part is on
 | type | fields |
 |---|---|
 | `lathe` | `profile: [[radius, height, corner?], ...]` swept around the vertical axis. A third value of `1` marks a sharp corner; runs between corners are smoothed (`smooth` = samples per segment, 0 = straight). Also `segments`. |
-| `extrude` | `outline: [[x, y], ...]` side silhouette, extruded by `depth` with `bevel`. Use it for non-symmetric shapes such as the knight head. |
+| `extrude` | `outline: [[x, y, corner?], ...]` side silhouette, extruded by `depth`. `smooth` rounds the outline (a 3rd value of `1` keeps a point sharp), `bevel` + `bevelSegments` round the edges so the shape looks inflated, `taper` slims it toward +x (e.g. a head narrowing to the nose). Use it for non-symmetric shapes such as the knight head. |
 | `ribbon` | A flexible strip that trails behind the piece with spring physics: `offset` (anchor), `dir` (rest direction), `length`, `width`, `tipWidth`, `segments`, `stiffness`, `damping`, `gravity`. Used for bandana tails, scarves, capes. |
 
 `lathe` and `extrude` take `id`, `color`, `offset [x,y,z]`, `scale`, `rotationY` (degrees). A variant such as a pawn with a hat is the

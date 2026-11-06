@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Headless renderer so Claude (or CI) can look at a piece without a human clicking around.
-//   node render.js pieces/pawn.json [more.json ...] [--out=out.png] [--view=iso|front|side|top] [--glb=out.glb] [--size=900x700]
+//   node render.js pieces/pawn.json [more.json ...] [--out=out.png] [--view=iso|front|side|top] [--glb=out.glb] [--size=900x700] [--idle --t=SECONDS] [--slide=SECONDS]
 // Several files => side-by-side lineup (original vs variant).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -30,6 +30,12 @@ const server = http.createServer((req, res) => {
   await page.waitForFunction(() => window.pieceLatheReady);
   const states = files.map((f) => JSON.parse(fs.readFileSync(f, 'utf8')));
   await page.evaluate(([s, v]) => { window.pieceLathe.setState(s[0]); if (s.length > 1) window.pieceLathe.lineup(s); window.pieceLathe.setView(v, [0, 0.85, 0], 5.8 + (s.length > 1 ? s.length * 0.9 : 0)); }, [states, opt('view', 'iso')]);
+  // settle ribbon physics, then optionally show an idle pose (--idle --t=0.3) or a moment of the slide test (--slide=1.0)
+  await page.evaluate(([idle, t, slide]) => {
+    const api = window.pieceLathe; api.freeze(true); api.advance(1.5);
+    if (idle) { api.setIdle(true); api.advance(t); }
+    if (slide >= 0) { api.slideTest(); api.advance(slide); }
+  }, [args.includes('--idle'), parseFloat(opt('t', '0')), parseFloat(opt('slide', '-1'))]);
   await page.waitForTimeout(300);
   const out = opt('out', 'piece.png');
   const url = await page.evaluate(() => window.pieceLathe.screenshot());

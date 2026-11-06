@@ -23,9 +23,10 @@
   .sw { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; border:1px solid #0006; }
   #editor { width:100%; height:300px; border:1px solid var(--line); border-radius:8px; touch-action:none; cursor:crosshair; }
   .hint { color:var(--mute); font-size:11px; }
-  #props { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  #props label { display:flex; flex-direction:column; gap:2px; color:var(--mute); font-size:11px; }
-  #props input { width:100%; }
+  #props, #idleProps { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #props label, #idleProps label { display:flex; flex-direction:column; gap:2px; color:var(--mute); font-size:11px; }
+  #props input, #idleProps input { width:100%; }
+  .chk { display:flex; gap:5px; align-items:center; color:var(--fg); } .chk input { width:auto; padding:0; }
   #props input[type=color] { padding:0; height:28px; }
   textarea { width:100%; height:160px; font:11px/1.35 ui-monospace,monospace; white-space:pre; }
   #name { width:130px; }
@@ -50,7 +51,7 @@
       <h2>Parts</h2>
       <div id="parts"></div>
       <div class="row" style="margin-top:6px">
-        <button id="addLathe">+ Lathe</button><button id="addExtrude">+ Extrude</button>
+        <button id="addLathe">+ Lathe</button><button id="addExtrude">+ Extrude</button><button id="addRibbon">+ Ribbon</button>
         <button id="dupPart">Duplicate</button><button id="delPart">Delete</button>
       </div>
     </div>
@@ -62,6 +63,16 @@
     </div>
     <div><h2>Part settings</h2><div id="props"></div></div>
     <div>
+      <h2>Motion preview</h2>
+      <div class="row">
+        <button id="slide">Slide test</button>
+        <label class="chk"><input type="checkbox" id="physics" checked> Ribbon physics</label>
+        <label class="chk"><input type="checkbox" id="idleOn"> Idle: ready to fight</label>
+      </div>
+      <div id="idleProps" style="margin-top:6px"></div>
+      <div class="hint">Shift + drag in the 3D view to push the piece around and watch the ribbons trail. Idle settings are saved with the piece.</div>
+    </div>
+    <div>
       <h2>Piece JSON</h2>
       <textarea id="json" spellcheck="false"></textarea>
       <div class="row" style="margin-top:6px">
@@ -69,7 +80,7 @@
         <label class="row"><span class="hint">Load</span><input id="loadJson" type="file" accept=".json"></label>
       </div>
     </div>
-    <div class="row"><button id="exportGlb">Export .glb</button><button id="shot">Screenshot</button></div>
+    <div class="row"><button id="exportGlb">Export .glb</button><label class="chk"><input type="checkbox" id="exportIdle" checked> include idle animation</label><button id="shot">Screenshot</button></div>
   </aside>
 </div>
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>

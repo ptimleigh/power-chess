@@ -19,6 +19,17 @@ same file plus extra parts (`pieces/pawn_tophat.json`).
 A top-level `idle` block (`speed`, `bounce`, `sway`, `lean`, `breathe`, `squash`) defines the looping "ready to fight"
 animation. One loop is 2 hops, 1 sway and 1 breath and lasts `2 / speed` seconds; the base stays on the board.
 
+## Phones and tablets
+
+- Narrow screens get the 3D stage on top and the panel below, split into **Parts / Shape / Motion / File** tabs. Wide
+  screens keep the side panel with everything visible.
+- Touch has no right-click, double-click or Shift, so the Shape tab has **Add / move, Delete and Sharp / smooth** tools, and
+  the stage has a **Move piece** toggle (drag the piece around the floor instead of orbiting the camera).
+- The piece is remembered in the browser (localStorage), so a reload or a discarded tab does not lose work.
+- `node build-single.js` writes `dist/piece-lathe.html` (open anywhere) and `dist/piece-lathe.artifact.html` (the page body
+  for publishing as a claude.ai Artifact). Inside the Claude viewer, downloads are blocked and `.glb` is not an allowed
+  save type, so saving goes through the `downloads` capability and the 3D model is saved as a `.zip` holding the `.glb`.
+
 ## Motion preview
 
 - **Slide test** moves the piece along the floor and back so you can watch ribbons lag, swing and settle.

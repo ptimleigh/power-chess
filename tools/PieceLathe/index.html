@@ -2,35 +2,97 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
 <title>Piece Lathe</title>
 <style>
-  :root { --bg:#14161b; --panel:#1b1e25; --line:#2b303b; --fg:#e6e9f0; --mute:#8a93a6; --acc:#7fb0ff; }
+  /* Layout: a 3D stage with a tool panel beside it (wide screens) or under it (phones, panel split into tabs).
+     Dark-first tokens; the 3D stage stays dark in both themes so pieces keep their contrast. */
+  :root {
+    --bg:#12141a; --panel:#1a1d24; --line:#2a2f3a; --fg:#e7eaf1; --mute:#8d96a8; --acc:#7fb0ff;
+    --ctl:#252a34; --ctl-sel:#2b3a57; --toast-bg:#e7eaf1; --toast-fg:#12141a;
+    --stage:#20232b; --stage-ctl:#ffffff1f; --stage-fg:#e7eaf1; --stage-line:#ffffff33; --stage-on:#7fb0ff44;
+    --ed-bg:#171a20; --ed-grid:#2a2f3a; --ed-text:#667085; --ed-axis:#5b6b8c; --ed-ghost:#3d4a63;
+    --ed-curve:#7fb0ff; --ed-point:#ffffff; --ed-corner:#ff8a5b; --ed-drag:#ffd24a;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:#f3f4f7; --panel:#ffffff; --line:#d5d9e2; --fg:#1b2030; --mute:#5d6678; --acc:#2a62d6;
+      --ctl:#eceef3; --ctl-sel:#dbe6fb; --toast-bg:#1b2030; --toast-fg:#f3f4f7;
+      --ed-bg:#f7f8fb; --ed-grid:#e0e4ec; --ed-text:#8a93a6; --ed-axis:#8a9ac0; --ed-ghost:#c3cde2;
+      --ed-curve:#2a62d6; --ed-point:#1b2030; --ed-corner:#d9531e; --ed-drag:#d99a00;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#f3f4f7; --panel:#ffffff; --line:#d5d9e2; --fg:#1b2030; --mute:#5d6678; --acc:#2a62d6;
+    --ctl:#eceef3; --ctl-sel:#dbe6fb; --toast-bg:#1b2030; --toast-fg:#f3f4f7;
+    --ed-bg:#f7f8fb; --ed-grid:#e0e4ec; --ed-text:#8a93a6; --ed-axis:#8a9ac0; --ed-ghost:#c3cde2;
+    --ed-curve:#2a62d6; --ed-point:#1b2030; --ed-corner:#d9531e; --ed-drag:#d99a00;
+    color-scheme: light;
+  }
   * { box-sizing:border-box; }
-  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:13px/1.4 system-ui,sans-serif; }
-  #app { display:grid; grid-template-columns:1fr 380px; height:100%; }
-  #view { position:relative; min-width:0; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif; overscroll-behavior:none; }
+  body { -webkit-text-size-adjust:100%; }
+  #app { display:grid; grid-template-columns:1fr 400px; height:100%; }
+  #view { position:relative; min-width:0; min-height:0; background:var(--stage); overflow:hidden; }
   #view canvas { display:block; }
-  #viewbar { position:absolute; left:10px; top:10px; display:flex; gap:6px; }
-  aside { background:var(--panel); border-left:1px solid var(--line); padding:10px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+  #viewbar { position:absolute; left:max(10px,env(safe-area-inset-left,0px)); right:10px; top:10px; display:flex; flex-wrap:wrap; gap:6px; pointer-events:none; }
+  #viewbar button { pointer-events:auto; background:var(--stage-ctl); color:var(--stage-fg); border-color:var(--stage-line); backdrop-filter:blur(6px); }
+  #viewbar button[aria-pressed="true"] { background:var(--stage-on); border-color:var(--acc); }
+  #viewbar .sp { flex:1; }
+  #toast { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); max-width:calc(100% - 32px); padding:8px 14px; border-radius:999px; background:var(--toast-bg); color:var(--toast-fg); font-size:13px; text-align:center; pointer-events:none; }
+  aside { background:var(--panel); border-left:1px solid var(--line); overflow:auto; min-width:0; min-height:0; display:flex; flex-direction:column; -webkit-overflow-scrolling:touch;
+          padding:0 max(16px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) 16px; }
+  .top { position:sticky; top:0; z-index:2; background:var(--panel); padding:10px 0 8px; display:flex; flex-direction:column; gap:8px; }
+  .tabs { display:none; gap:4px; }
+  .tabs button { flex:1; border-radius:8px; }
+  .tabs button[aria-selected="true"] { background:var(--ctl-sel); border-color:var(--acc); }
+  section { display:flex; flex-direction:column; gap:8px; padding:8px 0 12px; border-top:1px solid var(--line); min-width:0; }
+  section:first-of-type { border-top:0; }
   h2 { margin:0; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); font-weight:600; }
-  button,select,input,textarea { font:inherit; color:var(--fg); background:#262a33; border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
+  button,select,input,textarea { font:inherit; color:var(--fg); background:var(--ctl); border:1px solid var(--line); border-radius:8px; padding:6px 10px; touch-action:manipulation; }
   button { cursor:pointer; } button:hover { border-color:var(--acc); }
-  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,canvas:focus-visible { outline:2px solid var(--acc); outline-offset:1px; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0; }
   #parts { display:flex; flex-wrap:wrap; gap:6px; }
-  .part.sel { border-color:var(--acc); background:#2b3750; }
+  .part[aria-pressed="true"] { border-color:var(--acc); background:var(--ctl-sel); }
   .part small { color:var(--mute); margin-left:4px; }
   .sw { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; border:1px solid #0006; }
-  #editor { width:100%; height:300px; border:1px solid var(--line); border-radius:8px; touch-action:none; cursor:crosshair; }
-  .hint { color:var(--mute); font-size:11px; }
-  #props, #idleProps { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  #props label, #idleProps label { display:flex; flex-direction:column; gap:2px; color:var(--mute); font-size:11px; }
-  #props input, #idleProps input { width:100%; }
-  .chk { display:flex; gap:5px; align-items:center; color:var(--fg); } .chk input { width:auto; padding:0; }
-  #props input[type=color] { padding:0; height:28px; }
-  textarea { width:100%; height:160px; font:11px/1.35 ui-monospace,monospace; white-space:pre; }
-  #name { width:130px; }
-  @media (max-width:800px) { #app { grid-template-columns:1fr; grid-template-rows:45vh 1fr; } aside { border-left:0; border-top:1px solid var(--line); } }
+  .seg { display:flex; gap:4px; }
+  .seg button { flex:1; }
+  .seg button[aria-pressed="true"] { background:var(--ctl-sel); border-color:var(--acc); }
+  #editor { width:100%; height:300px; border:1px solid var(--line); border-radius:10px; touch-action:none; cursor:crosshair; background:var(--ed-bg); }
+  .hint { color:var(--mute); font-size:12px; }
+  #props, #idleProps { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #props label, #idleProps label { display:flex; flex-direction:column; gap:2px; color:var(--mute); font-size:11px; min-width:0; }
+  #props input, #idleProps input { width:100%; min-width:0; }
+  .chk { display:flex; gap:6px; align-items:center; color:var(--fg); }
+  .chk input { width:18px; height:18px; padding:0; accent-color:var(--acc); }
+  #props input[type=color] { padding:2px; height:36px; }
+  textarea { width:100%; height:160px; font:12px/1.35 ui-monospace,Menlo,Consolas,monospace; white-space:pre; }
+  #name { width:120px; flex:1; min-width:90px; }
+  #presets { flex:2; min-width:120px; }
+  input[type=file] { max-width:100%; }
+
+  @media (pointer:coarse) { button,select,input:not([type=checkbox]):not([type=color]) { min-height:42px; } .chk input { width:22px; height:22px; } }
+  @media (max-width:820px) {
+    #app { grid-template-columns:1fr; grid-template-rows:minmax(200px,40%) minmax(0,1fr); }
+    aside { border-left:0; border-top:1px solid var(--line); padding-left:max(16px,env(safe-area-inset-left,0px)); }
+    .tabs { display:flex; }
+    aside[data-tab="parts"] section:not([data-tab="parts"]),
+    aside[data-tab="shape"] section:not([data-tab="shape"]),
+    aside[data-tab="motion"] section:not([data-tab="motion"]),
+    aside[data-tab="file"] section:not([data-tab="file"]) { display:none; }
+    section { border-top:0; }
+    input,select,textarea { font-size:16px; }   /* stops iOS zooming into focused fields */
+    #editor { height:clamp(190px, calc(60vh - 250px), 340px); }
+    textarea { height:220px; }
+  }
+</style>
+<style id="standalone-only">
+  body { padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
 </style>
 </head>
 <body>
@@ -39,48 +101,72 @@
     <div id="viewbar">
       <button data-view="iso">3/4</button><button data-view="front">Front</button><button data-view="back">Back</button>
       <button data-view="side">Side</button><button data-view="top">Top</button>
+      <span class="sp"></span>
+      <button id="moveMode" aria-pressed="false" title="Drag the piece around the floor instead of orbiting">Move piece</button>
     </div>
+    <div id="toast" role="status" hidden></div>
   </div>
-  <aside>
-    <div class="row">
-      <input id="name" value="piece" title="Piece name (used for file names)">
-      <select id="presets"><option>Open preset…</option></select>
-      <button id="undo" title="Ctrl+Z">Undo</button>
+  <aside id="panel" data-tab="parts">
+    <div class="top">
+      <div class="row">
+        <input id="name" value="piece" aria-label="Piece name" title="Piece name (used for file names)">
+        <select id="presets" aria-label="Open a preset"><option>Open preset…</option></select>
+        <button id="undo" title="Ctrl+Z">Undo</button>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="Panels">
+        <button role="tab" data-tab="parts" aria-selected="true">Parts</button>
+        <button role="tab" data-tab="shape" aria-selected="false">Shape</button>
+        <button role="tab" data-tab="motion" aria-selected="false">Motion</button>
+        <button role="tab" data-tab="file" aria-selected="false">File</button>
+      </nav>
     </div>
-    <div>
+    <section data-tab="parts">
       <h2>Parts</h2>
       <div id="parts"></div>
-      <div class="row" style="margin-top:6px">
+      <div class="row">
         <button id="addLathe">+ Lathe</button><button id="addExtrude">+ Extrude</button><button id="addRibbon">+ Ribbon</button>
         <button id="dupPart">Duplicate</button><button id="delPart">Delete</button>
       </div>
-    </div>
-    <div>
+      <h2>Part settings</h2>
+      <div id="props"></div>
+    </section>
+    <section data-tab="shape">
       <h2>Profile</h2>
-      <canvas id="editor"></canvas>
-      <div class="hint">Click empty space: add point · drag: move · double-click: sharp/smooth corner · right-click: delete.
-        Lathe: left of the axis is a mirror guide. Extrude: draw the side silhouette.</div>
-    </div>
-    <div><h2>Part settings</h2><div id="props"></div></div>
-    <div>
+      <div class="hint" id="selInfo"></div>
+      <div class="seg" id="tools" role="group" aria-label="Profile tool">
+        <button data-tool="edit" aria-pressed="true">Add / move</button>
+        <button data-tool="delete" aria-pressed="false">Delete</button>
+        <button data-tool="corner" aria-pressed="false">Sharp / smooth</button>
+      </div>
+      <canvas id="editor" tabindex="0" aria-label="Profile editor"></canvas>
+      <div class="hint">Tap empty space to add a point, drag a point to move it. Pick Delete or Sharp / smooth, then tap a point.
+        Lathe: the faint mirror shows the other side of the axis. Extrude: draw the side silhouette.
+        Mouse: right-click deletes and double-click toggles a corner.</div>
+    </section>
+    <section data-tab="motion">
       <h2>Motion preview</h2>
       <div class="row">
         <button id="slide">Slide test</button>
         <label class="chk"><input type="checkbox" id="physics" checked> Ribbon physics</label>
         <label class="chk"><input type="checkbox" id="idleOn"> Idle: ready to fight</label>
       </div>
-      <div id="idleProps" style="margin-top:6px"></div>
-      <div class="hint">Shift + drag in the 3D view to push the piece around and watch the ribbons trail. Idle settings are saved with the piece.</div>
-    </div>
-    <div>
-      <h2>Piece JSON</h2>
-      <textarea id="json" spellcheck="false"></textarea>
-      <div class="row" style="margin-top:6px">
-        <button id="applyJson">Apply JSON</button><button id="saveJson">Save .json</button>
-        <label class="row"><span class="hint">Load</span><input id="loadJson" type="file" accept=".json"></label>
+      <div id="idleProps"></div>
+      <div class="hint">Turn on Move piece (top of the 3D view) and drag to push the piece around and watch the ribbons trail.
+        With a mouse you can hold Shift and drag instead. Idle settings are saved with the piece.</div>
+    </section>
+    <section data-tab="file">
+      <h2>Save and load</h2>
+      <div class="row">
+        <button id="saveJson">Save piece (.json)</button>
+        <button id="exportGlb">Export 3D model</button>
+        <button id="shot">Screenshot</button>
       </div>
-    </div>
-    <div class="row"><button id="exportGlb">Export .glb</button><label class="chk"><input type="checkbox" id="exportIdle" checked> include idle animation</label><button id="shot">Screenshot</button></div>
+      <label class="chk"><input type="checkbox" id="exportIdle" checked> Include idle animation in the 3D model</label>
+      <label class="row"><span class="hint">Load a piece</span><input id="loadJson" type="file" accept=".json,application/json"></label>
+      <h2>Piece JSON</h2>
+      <textarea id="json" spellcheck="false" aria-label="Piece JSON"></textarea>
+      <div class="row"><button id="applyJson">Apply JSON</button></div>
+    </section>
   </aside>
 </div>
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>

@@ -66,7 +66,8 @@ const root = new THREE.Group(); scene.add(root);            // moved around the 
 const pieceGroup = new THREE.Group(); root.add(pieceGroup); // the piece's own parts; idle animation moves this
 const ribbonGroup = new THREE.Group(); scene.add(ribbonGroup); // ribbon meshes live in world space (physics)
 
-function setView(name, target = [0, 0.75, 0], dist = 5.8) {
+const DEFAULT_DIST = () => (matchMedia('(max-width:820px)').matches ? 4.4 : 5.8); // closer on phones: the stage is short
+function setView(name, target = [0, 0.75, 0], dist = DEFAULT_DIST()) {
   const t = new THREE.Vector3(...target);
   const dirs = { front: [0, 0.1, 1], back: [0, 0.1, -1], side: [1, 0.1, 0], top: [0, 1, 0.001], iso: [0.8, 0.55, 1] };
   const d = new THREE.Vector3(...(dirs[name] || dirs.iso)).normalize();
@@ -168,6 +169,14 @@ function buildPart(part) {
 
 function disposeGroup(g) {
   [...g.children].forEach((c) => { c.geometry?.dispose(); c.material?.dispose(); g.remove(c); });
+}
+
+function rebuildOne(id) {
+  const part = state.parts.find((p) => p.id === id);
+  if (!part || part.type === 'ribbon') return rebuild3D();
+  const old = pieceGroup.getObjectByName(id);
+  if (old) { old.geometry.dispose(); old.material.dispose(); pieceGroup.remove(old); }
+  pieceGroup.add(buildPart(part));
 }
 
 function rebuild3D() {
@@ -290,7 +299,7 @@ function buildRibbonSkinned(part) {
 // ----------------------------------------------- idle ("ready to fight") ----
 // One loop = 2 hops, 1 sway, 1 breath. The piece dips (lands + squashes) at the far left and far right of the sway
 // and rises as it passes through the middle. The bottom of the piece stays on the board; squash is about the base.
-let idlePlaying = false, idleT = 0, physicsOn = true, simTime = 0, slide = null;
+let idlePlaying = false, idleT = 0, physicsOn = true, simTime = 0, slide = null, moveMode = false;
 const TAU = Math.PI * 2;
 const idleLoopSeconds = (c) => 2 / Math.max(0.05, c.speed);
 
@@ -349,7 +358,7 @@ function advance(dt) {
   for (const r of ribbons) updateRibbonMesh(r);
 }
 
-// Shift + drag moves the piece around the floor (so you can watch the ribbons trail).
+// Shift + drag (mouse) or the Move piece toggle (touch) moves the piece around the floor so you can watch ribbons trail.
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hitP = new THREE.Vector3();
 let grab = null;
 function floorPoint(e) {
@@ -359,7 +368,8 @@ function floorPoint(e) {
   return ray.ray.intersectPlane(floorPlane, hitP);
 }
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (!e.shiftKey) return;
+  if (!e.shiftKey && !moveMode) return;
+  if (moveMode && !e.isPrimary) return;
   const pt = floorPoint(e); if (!pt) return;
   controls.enabled = false; e.stopImmediatePropagation();
   slide = null; grab = { dx: root.position.x - pt.x, dz: root.position.z - pt.z };
@@ -386,6 +396,13 @@ const cv = document.getElementById('editor');
 const ctx = cv.getContext('2d');
 let drag = null;
 const SCALE_UNITS = 1.9; // units visible vertically
+const COARSE = matchMedia('(pointer:coarse)').matches;
+const HANDLE = COARSE ? 8 : 5, HIT = COARSE ? 26 : 12;
+let tool = 'edit'; // edit (add / move) | delete | corner
+const edColors = () => {
+  const cs = getComputedStyle(document.documentElement), c = (n) => cs.getPropertyValue('--ed-' + n).trim();
+  return { bg: c('bg'), grid: c('grid'), text: c('text'), axis: c('axis'), ghost: c('ghost'), curve: c('curve'), point: c('point'), corner: c('corner'), drag: c('drag') };
+};
 
 const geomOf = (p) => (p.type === 'lathe' ? p.profile : p.outline);
 const selPart = () => state.parts.find((p) => p.id === selectedId);
@@ -401,11 +418,11 @@ const toPx = (f, x, y) => [f.ox + x * f.s, f.oy - y * f.s];
 const fromPx = (f, px, py) => [(px - f.ox) / f.s, (f.oy - py) / f.s];
 
 function drawEditor() {
-  const f = frame(); const p = selPart();
+  const f = frame(); const p = selPart(), C = edColors();
   ctx.setTransform(f.dpr, 0, 0, f.dpr, 0, 0);
   ctx.clearRect(0, 0, f.w, f.h);
-  ctx.fillStyle = '#171a20'; ctx.fillRect(0, 0, f.w, f.h);
-  ctx.strokeStyle = '#2a2f3a'; ctx.lineWidth = 1; ctx.font = '10px sans-serif'; ctx.fillStyle = '#566';
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, f.w, f.h);
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.font = '10px sans-serif'; ctx.fillStyle = C.text;
   for (let v = -2; v <= 2; v += 0.25) {
     const [x] = toPx(f, v, 0); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, f.h); ctx.stroke();
   }
@@ -413,9 +430,9 @@ function drawEditor() {
     const [, y] = toPx(f, 0, v); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(f.w, y); ctx.stroke();
     if (v % 0.5 === 0) ctx.fillText(v.toFixed(1), 3, y - 2);
   }
-  ctx.strokeStyle = '#5b6b8c'; ctx.beginPath(); ctx.moveTo(f.ox, 0); ctx.lineTo(f.ox, f.h); ctx.stroke();
-  if (!p) { ctx.fillStyle = '#889'; ctx.fillText('Select or add a part', 12, 20); return; }
-  if (p.type === 'ribbon') { ctx.fillStyle = '#889'; ctx.fillText('Ribbon: shape it with the settings below, then use Slide test.', 12, 20); return; }
+  ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(f.ox, 0); ctx.lineTo(f.ox, f.h); ctx.stroke();
+  if (!p) { ctx.fillStyle = C.text; ctx.fillText('Select or add a part', 12, 20); return; }
+  if (p.type === 'ribbon') { ctx.fillStyle = C.text; ctx.fillText('Ribbon: shape it with the settings below, then use Slide test.', 12, 20); return; }
   const g = geomOf(p);
   const path = (p.type === 'lathe' ? latheProfile(p) : smoothOutline(p.outline, p.smooth)).map((v) => [v.x, v.y]);
   const trace = (mirror) => {
@@ -423,19 +440,19 @@ function drawEditor() {
     path.forEach((pt, i) => { const [x, y] = toPx(f, mirror ? -pt[0] : pt[0], pt[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
     if (p.type === 'extrude') ctx.closePath();
   };
-  if (p.type === 'lathe') { ctx.strokeStyle = '#3d4a63'; trace(true); ctx.stroke(); }
-  ctx.strokeStyle = '#7fb0ff'; ctx.lineWidth = 2; trace(false); ctx.stroke(); ctx.lineWidth = 1;
+  if (p.type === 'lathe') { ctx.strokeStyle = C.ghost; trace(true); ctx.stroke(); }
+  ctx.strokeStyle = C.curve; ctx.lineWidth = 2; trace(false); ctx.stroke(); ctx.lineWidth = 1;
   g.forEach((pt, i) => {
     const [x, y] = toPx(f, pt[0], pt[1]);
     ctx.beginPath();
-    if (pt[2]) ctx.rect(x - 5, y - 5, 10, 10); else ctx.arc(x, y, 5, 0, 7);
-    ctx.fillStyle = drag && drag.i === i ? '#ffd24a' : pt[2] ? '#ff8a5b' : '#fff'; ctx.fill();
+    if (pt[2]) ctx.rect(x - HANDLE, y - HANDLE, HANDLE * 2, HANDLE * 2); else ctx.arc(x, y, HANDLE, 0, 7);
+    ctx.fillStyle = drag && drag.i === i ? C.drag : pt[2] ? C.corner : C.point; ctx.fill();
   });
 }
 
 function evPos(e) { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
-function hit(f, g, px, py) {
-  let best = -1, bd = 12;
+function hit(f, g, px, py, r = HIT) {
+  let best = -1, bd = r;
   g.forEach((pt, i) => { const [x, y] = toPx(f, pt[0], pt[1]); const d = Math.hypot(x - px, y - py); if (d < bd) { bd = d; best = i; } });
   return best;
 }
@@ -455,7 +472,9 @@ function nearestSegment(f, g, px, py, closed) {
 cv.addEventListener('pointerdown', (e) => {
   const p = selPart(); if (!p || p.type === 'ribbon' || e.button !== 0) return;
   const f = frame(), [px, py] = evPos(e), g = geomOf(p);
-  let i = hit(f, g, px, py);
+  let i = hit(f, g, px, py, e.pointerType === 'mouse' ? 12 : 26);
+  if (tool === 'delete') { if (i >= 0 && g.length > 3) { pushUndo(); g.splice(i, 1); commit(true); } return; }
+  if (tool === 'corner') { if (i >= 0) { pushUndo(); const pt = g[i]; pt[2] ? pt.splice(2, 1) : (pt[2] = 1); commit(true); } return; }
   if (i < 0) {
     pushUndo();
     const [x, y] = fromPx(f, px, py);
@@ -473,6 +492,7 @@ cv.addEventListener('pointermove', (e) => {
   commit(false);
 });
 cv.addEventListener('pointerup', () => { if (drag) { drag = null; commit(true); } });
+cv.addEventListener('pointercancel', () => { if (drag) { drag = null; commit(true); } });
 cv.addEventListener('dblclick', (e) => { // toggle sharp corner
   const p = selPart(); if (!p || p.type === 'ribbon') return;
   const [px, py] = evPos(e), i = hit(frame(), geomOf(p), px, py); if (i < 0) return;
@@ -486,6 +506,8 @@ cv.addEventListener('contextmenu', (e) => { // delete point
   pushUndo(); g.splice(i, 1); commit(true);
 });
 new ResizeObserver(drawEditor).observe(cv);
+matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', drawEditor);
+new MutationObserver(drawEditor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 // ------------------------------------------------------------ panel UI ----
 const $ = (id) => document.getElementById(id);
@@ -494,16 +516,33 @@ const partsEl = $('parts'), jsonEl = $('json'), propsEl = $('props'), nameEl = $
 function pushUndo() { undoStack.push(JSON.stringify(state)); if (undoStack.length > 100) undoStack.shift(); }
 
 // commit(true) = full UI refresh; commit(false) = lightweight (during drag)
+let dragRaf = 0;
 function commit(full = true) {
+  if (!full) { // dragging a point: rebuild just that part, at most once per frame
+    if (!dragRaf) dragRaf = requestAnimationFrame(() => { dragRaf = 0; rebuildOne(selectedId); drawEditor(); });
+    return;
+  }
+  if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = 0; }
   rebuild3D(); drawEditor();
-  if (full) { renderParts(); renderProps(); renderIdleProps(); if (document.activeElement !== jsonEl) jsonEl.value = JSON.stringify(state, null, 2); }
+  renderParts(); renderProps(); renderIdleProps();
+  if (document.activeElement !== jsonEl) jsonEl.value = JSON.stringify(state, null, 2);
+  saveDraft();
 }
+
+// Remember the piece in this browser so a phone reload or tab discard does not lose work.
+const DRAFT_KEY = 'pieceLathe.draft.v1';
+let draftTimer = 0;
+function saveDraft() { clearTimeout(draftTimer); draftTimer = setTimeout(() => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); } catch { /* storage unavailable */ } }, 400); }
+function loadDraft() { try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return d && Array.isArray(d.parts) && d.parts.length ? d : null; } catch { return null; } }
+
+let toastTimer = 0;
+function toast(msg, ms = 2600) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), ms); }
 
 function renderParts() {
   partsEl.innerHTML = '';
   state.parts.forEach((p) => {
     const b = document.createElement('button');
-    b.className = 'part' + (p.id === selectedId ? ' sel' : '');
+    b.className = 'part'; b.setAttribute('aria-pressed', String(p.id === selectedId));
     b.innerHTML = `<span class="sw" style="background:${p.color}"></span>${p.id} <small>${p.type}</small>`;
     b.onclick = () => { selectedId = p.id; commit(true); };
     partsEl.appendChild(b);
@@ -519,7 +558,9 @@ function numField(label, get, set, step = 0.01) {
 
 function renderProps() {
   propsEl.innerHTML = '';
-  const p = selPart(); if (!p) return;
+  const p = selPart();
+  $('selInfo').textContent = p ? `Editing "${p.id}" (${p.type}). Pick another part on the Parts tab.` : 'No part selected. Pick one on the Parts tab.';
+  if (!p) return;
   p.offset = p.offset || [0, 0, 0];
   const idL = document.createElement('label'); idL.textContent = 'id';
   const idI = document.createElement('input'); idI.value = p.id;
@@ -580,18 +621,73 @@ $('dupPart').onclick = () => { const p = selPart(); if (p) api.addPart({ ...clon
 $('delPart').onclick = () => selectedId && api.removePart(selectedId);
 $('undo').onclick = () => api.undo();
 $('applyJson').onclick = () => { try { api.setState(JSON.parse(jsonEl.value)); } catch (e) { alert('Bad JSON: ' + e.message); } };
-$('exportGlb').onclick = async () => download(new Blob([await api.exportGLB({ idle: $('exportIdle').checked })], { type: 'model/gltf-binary' }), state.name + '.glb');
-$('saveJson').onclick = () => download(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), state.name + '.json');
+$('exportGlb').onclick = async () => {
+  try {
+    const buf = await api.exportGLB({ idle: $('exportIdle').checked });
+    // The viewer only saves a few file types, not .glb, so inside it the model goes out as a .zip holding the .glb.
+    if (inViewer()) await saveFile(zipStore(fileBase() + '.glb', new Uint8Array(buf)), fileBase() + '.zip');
+    else await saveFile(new Blob([buf], { type: 'model/gltf-binary' }), fileBase() + '.glb');
+  } catch (e) { toast('Could not build the 3D model'); }
+};
+$('saveJson').onclick = () => saveFile(JSON.stringify(state, null, 2), fileBase() + '.json');
 $('loadJson').onchange = async (e) => { const f = e.target.files[0]; if (f) api.setState(JSON.parse(await f.text())); e.target.value = ''; };
-$('shot').onclick = async () => download(await (await fetch(api.screenshot())).blob(), state.name + '.png');
+$('shot').onclick = () => saveFile(Uint8Array.from(atob(api.screenshot().split(',')[1]), (c) => c.charCodeAt(0)), fileBase() + '.png');
 nameEl.onchange = () => { pushUndo(); state.name = nameEl.value || 'piece'; commit(true); };
 document.querySelectorAll('[data-view]').forEach((b) => (b.onclick = () => setView(b.dataset.view)));
 document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'z' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); api.undo(); } });
 
-function download(blob, filename) {
+const fileBase = () => (state.name || 'piece').replace(/[^\w.-]+/g, '_');
+const inViewer = () => typeof window.claude?.use === 'function';
+
+// ---- saving: in the Claude viewer through the `downloads` capability, elsewhere as a normal browser download.
+const crcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xffffffff; for (let i = 0; i < u8.length; i++) c = crcTable[(c ^ u8[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function zipStore(filename, data) { // one-file zip, stored uncompressed
+  const name = new TextEncoder().encode(filename), crc = crc32(data), n = data.length;
+  const lh = new DataView(new ArrayBuffer(30)), ch = new DataView(new ArrayBuffer(46)), eo = new DataView(new ArrayBuffer(22));
+  lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
+  lh.setUint32(14, crc, true); lh.setUint32(18, n, true); lh.setUint32(22, n, true); lh.setUint16(26, name.length, true);
+  ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true);
+  ch.setUint32(16, crc, true); ch.setUint32(20, n, true); ch.setUint32(24, n, true); ch.setUint16(28, name.length, true);
+  eo.setUint32(0, 0x06054b50, true); eo.setUint16(8, 1, true); eo.setUint16(10, 1, true);
+  eo.setUint32(12, 46 + name.length, true); eo.setUint32(16, 30 + name.length + n, true);
+  const out = new Uint8Array(30 + name.length + n + 46 + name.length + 22); let o = 0;
+  for (const part of [new Uint8Array(lh.buffer), name, data, new Uint8Array(ch.buffer), name, new Uint8Array(eo.buffer)]) { out.set(part, o); o += part.length; }
+  return out;
+}
+
+async function saveFile(data, filename) {
+  if (inViewer()) {
+    let dl = null;
+    try { dl = await window.claude.use('downloads'); } catch { /* no capability */ }
+    if (!dl) { toast('Saving is not available in this view'); return false; }
+    try { await dl.save({ filename, data }); toast('Saved ' + filename); return true; } catch (e) {
+      const ext = filename.split('.').pop();
+      toast(e?.code === 'declined' ? 'Save cancelled' : e?.code === 'rejected_extension' || e?.code === 'extension_not_enabled' ? `This view cannot save .${ext} files` : 'Could not save ' + filename);
+      return false;
+    }
+  }
+  const blob = data instanceof Blob ? data : new Blob([data]);
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  return true;
 }
+
+// ---- profile tools, move-piece toggle, tabs
+document.querySelectorAll('#tools [data-tool]').forEach((b) => (b.onclick = () => {
+  tool = b.dataset.tool;
+  document.querySelectorAll('#tools [data-tool]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  cv.style.cursor = tool === 'edit' ? 'crosshair' : 'pointer';
+}));
+$('moveMode').onclick = () => {
+  moveMode = !moveMode; $('moveMode').setAttribute('aria-pressed', String(moveMode));
+  toast(moveMode ? 'Drag on the floor to move the piece' : 'Drag to orbit the camera');
+};
+function showTab(t) {
+  $('panel').dataset.tab = t; $('panel').scrollTop = 0;
+  document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+}
+document.querySelectorAll('.tabs [data-tab]').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
 
 // The single-file build embeds the presets (window.__PRESETS__) because fetch() is blocked on file:// pages.
 async function getJSON(url) {
@@ -664,7 +760,9 @@ resize(); setView('iso');
 loadPresetList();
 const q = new URLSearchParams(location.search);
 (async () => {
-  try { await api.loadURL('pieces/' + (q.get('piece') || 'pawn.json')); } catch { api.setState({ name: 'piece', parts: [newPart('lathe')] }); }
+  const draft = q.get('piece') ? null : loadDraft();
+  if (draft) { api.setState(draft); toast('Restored your last piece. Open a preset to start over.', 3600); }
+  else { try { await api.loadURL('pieces/' + (q.get('piece') || 'pawn.json')); } catch { api.setState({ name: 'piece', parts: [newPart('lathe')] }); } }
   undoStack.length = 0;
   window.pieceLatheReady = true;
 })();

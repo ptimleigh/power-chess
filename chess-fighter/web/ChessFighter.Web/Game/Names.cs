@@ -47,8 +47,8 @@ public static class Names
     /// <summary>Description for a power at a given tier.</summary>
     public static string Desc(PowerupKind k, int tier) => k == PowerupKind.Harpoon
         ? (tier >= 2
-            ? "Harpoon II: fire a hook on every diagonal at once. Each rival it hooks is dragged next to this piece; one already next to it is stunned for a turn. Uses your turn, one use."
-            : "Harpoon I: fire a hook along one diagonal and drag the first rival in line next to this piece. A rival already next to it is stunned for a turn. Land on another Harpoon square for II. Uses your turn, one use.")
+            ? "Harpoon II: fire a hook on every diagonal at once. Each rival it hooks is dragged toward this piece; one that cannot be pulled any closer is stunned for a turn. Uses your turn, one use."
+            : "Harpoon I: fire a hook along one diagonal and drag the first rival in line toward this piece. A rival that cannot be pulled any closer is stunned for a turn. Land on another Harpoon square for II. Uses your turn, one use.")
         : k == PowerupKind.Fireball
         ? (tier >= 2
             ? "Fireball II: fire along ranks, files and diagonals (like a queen). Destroys the first enemy in line instead of moving. Counts as a threat for check. Lost if the piece is destroyed."

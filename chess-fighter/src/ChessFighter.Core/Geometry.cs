@@ -192,34 +192,49 @@ namespace ChessFighter.Core
         }
 
         /// <summary>
-        /// The rival piece a Harpoon fired from <paramref name="from"/> along diagonal <paramref name="dir"/> (4-7) would hook, or
-        /// -1. It must be the first piece in line, an enemy (a king can be hooked) that is not armored, and there must be room to
-        /// pull it: either it is already next to the shooter (it stays and is stunned) or the square next to the shooter is free
-        /// of powerup squares and teleporters and, for a pawn, not a back rank. Boulders stop the rope.
+        /// The rival piece a Harpoon fired from <paramref name="from"/> along diagonal <paramref name="dir"/> (4-7) would hook, or -1.
+        /// It must be the first piece in line and an enemy (a king can be hooked) that is not armored. Boulders stop the rope.
+        /// Whether the hook leaves your own king in check is decided by the usual legality check, not here.
         /// </summary>
         public static int HarpoonTarget(GameState s, int from, int dir)
         {
             if (dir < 4 || dir > 7) return -1;
             var shooter = s.Cells[from];
+            int idx = FirstPieceInLine(s, from, dir);
+            if (idx < 0) return -1;
+            var p = s.Cells[idx];
+            if (p.Side == shooter.Side || p.Has(Buff.Armor)) return -1;
+            return idx;
+        }
+
+        /// <summary>
+        /// The first enemy on a diagonal whether or not it can be hooked (armor, or a hook that would be illegal), so the interface can
+        /// say why a rival in line is not on offer. -1 when nothing hostile is first in line.
+        /// </summary>
+        public static int HarpoonRivalInLine(GameState s, int from, int dir)
+        {
+            if (dir < 4 || dir > 7) return -1;
+            int idx = FirstPieceInLine(s, from, dir);
+            if (idx < 0) return -1;
+            return s.Cells[idx].Side != s.Cells[from].Side ? idx : -1;
+        }
+
+        /// <summary>
+        /// Where a hooked piece ends up: the free square nearest the shooter along the rope. A powerup square or teleporter is never
+        /// landed on (nothing is triggered), so the piece stops short of it. If it cannot move at all it stays and is stunned instead.
+        /// </summary>
+        public static int HarpoonLanding(GameState s, int from, int target, int dir)
+        {
             int cf = Sq.File(from) + DirFile[dir], cr = Sq.Rank(from) + DirRank[dir];
-            int adjacent = Sq.OnBoard(cf, cr) ? Sq.Make(cf, cr) : -1;
             while (Sq.OnBoard(cf, cr))
             {
                 int idx = Sq.Make(cf, cr);
-                if (s.Boulders[idx]) return -1;
-                var p = s.Cells[idx];
-                if (!p.IsEmpty)
-                {
-                    if (p.Side == shooter.Side || p.Has(Buff.Armor)) return -1;
-                    if (idx == adjacent) return idx;
-                    if (s.Mystery[adjacent] || s.Portal[adjacent]) return -1;
-                    if (p.Type == PieceType.Pawn && (Sq.Rank(adjacent) == 0 || Sq.Rank(adjacent) == 7)) return -1;
-                    return idx;
-                }
+                if (idx == target) return target;
+                if (s.Cells[idx].IsEmpty && !s.Boulders[idx] && !s.Mystery[idx] && !s.Portal[idx]) return idx;
                 cf += DirFile[dir];
                 cr += DirRank[dir];
             }
-            return -1;
+            return target;
         }
 
         /// <summary>The first piece along direction <paramref name="dir"/> (0-7) from <paramref name="from"/>, or -1. Boulders stop the line.</summary>

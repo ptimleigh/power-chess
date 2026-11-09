@@ -818,7 +818,14 @@ public sealed class GameSession
         Mode = InputMode.HarpoonAim;
         Targets.Clear();
         Doomed.Clear();
+        Spared.Clear();
         foreach (var c in cands) Targets.Add(c.To);
+        // A rival that is first in line on a diagonal but not on offer is outlined, with the reason shown if it is tapped.
+        for (int dir = 4; dir < 8; dir++)
+        {
+            int rival = Geometry.HarpoonRivalInLine(State, Selected, dir);
+            if (rival >= 0 && !Targets.Contains(rival)) Spared.Add(rival);
+        }
         Sfx?.Invoke("click");
         Changed?.Invoke();
     }
@@ -1065,6 +1072,15 @@ public sealed class GameSession
 
         if (Mode == InputMode.HarpoonAim)
         {
+            if (Spared.Contains(sq))
+            {
+                // Say why this rival cannot be hooked instead of silently ignoring the tap.
+                bool armored = State.Cells[sq].Has(Buff.Armor);
+                AddToast("Can't hook that piece", armored ? "It is armored." : "Pulling it in would leave your king in check.", "gold", "hook");
+                Sfx?.Invoke("click");
+                Changed?.Invoke();
+                return;
+            }
             if (!Targets.Contains(sq)) { Cancel(); return; }
             await Human(Legal.First(a => a.Kind == ActionKind.Harpoon && a.From == Selected && a.To == sq));
             return;
@@ -1327,7 +1343,7 @@ public sealed class GameSession
                     _ => "",
                 };
             if (Mode == InputMode.FireAim) return "Fireball: tap an enemy to choose the direction";
-            if (Mode == InputMode.HarpoonAim) return "Harpoon: tap the rival to hook";
+            if (Mode == InputMode.HarpoonAim) return Spared.Count > 0 ? "Harpoon: tap the rival to hook (outlined pieces cannot be hooked)" : "Harpoon: tap the rival to hook";
             if (Mode == InputMode.BombPreview)
                 return $"Bomb: destroys {BombOwnLosses} of your pieces (the bomber too) and {BombEnemyLosses} of theirs"
                     + (BombChain > 0 ? $", and sets off {BombChain} more {(BombChain == 1 ? "bomb" : "bombs")}" : "") + ". Confirm or cancel.";

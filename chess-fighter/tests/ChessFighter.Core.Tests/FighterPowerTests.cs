@@ -637,7 +637,7 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Harpoon_is_stopped_by_friends_boulders_and_armor_and_needs_room_to_pull()
+        public void Harpoon_is_stopped_by_friends_boulders_and_armor()
         {
             var friend = T.Fen("7k/8/8/8/6n1/5P2/8/3RK3 w - - 0 1");
             T.Give(friend, "d1", Buff.Harpoon);
@@ -653,10 +653,39 @@ namespace ChessFighter.Core.Tests
             T.Give(armor, "d1", Buff.Harpoon);
             Assert.IsFalse(MoveGen.LegalActions(armor).Any(a => a.Kind == ActionKind.Harpoon), "armor shrugs it off");
 
-            var occupied = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
-            T.Square(occupied, "e2", PowerupKind.Fireball);
-            T.Give(occupied, "d1", Buff.Harpoon);
-            Assert.IsFalse(MoveGen.LegalActions(occupied).Any(a => a.Kind == ActionKind.Harpoon), "no pulling onto a powerup square");
+        }
+
+        [Test]
+        public void A_hooked_piece_stops_short_of_a_powerup_square_and_is_stunned_if_it_cannot_move_at_all()
+        {
+            // Powerup square on e2, right next to the shooter: the knight is pulled as far as f3, not refused.
+            var s = T.Fen("7k/8/8/8/6n1/8/8/3R3K w - - 0 1");
+            T.Square(s, "e2", PowerupKind.Fireball);
+            T.Give(s, "d1", Buff.Harpoon);
+            T.Do(s, "Harpoon d1->g4");
+            Assert.AreEqual(PieceType.Knight, T.At(s, "f3").Type, "pulled to the nearest free square");
+            Assert.IsTrue(s.Mystery[Sq.Parse("e2")], "and the powerup square is untouched");
+
+            // Powerup squares fill the whole way: nowhere to go, so it is stunned where it stands.
+            var jam = T.Fen("7k/8/8/8/6n1/8/8/3R3K w - - 0 1");
+            T.Square(jam, "e2", PowerupKind.Fireball);
+            T.Square(jam, "f3", PowerupKind.Fireball);
+            T.Give(jam, "d1", Buff.Harpoon);
+            T.Do(jam, "Harpoon d1->g4");
+            Assert.AreEqual(PieceType.Knight, T.At(jam, "g4").Type, "it stays where it was");
+            Assert.IsTrue(T.At(jam, "g4").IsStunned);
+        }
+
+        [Test]
+        public void Harpoon_I_offers_every_rival_in_line_even_when_a_powerup_square_is_beside_the_shooter()
+        {
+            // Two rivals on two diagonals, and a powerup square next to the shooter on one of them: both are still on offer.
+            var s = T.Fen("7k/6n1/8/8/3R4/8/1b6/7K w - - 0 1");
+            T.Give(s, "d4", Buff.Harpoon);
+            T.Tier(s, "d4", 1);
+            T.Square(s, "e5", PowerupKind.Fireball);
+            var targets = MoveGen.LegalActions(s).Where(a => a.Kind == ActionKind.Harpoon).Select(a => Sq.Name(a.To)).OrderBy(x => x).ToArray();
+            CollectionAssert.AreEqual(new[] { "b2", "g7" }, targets);
         }
 
         [Test]

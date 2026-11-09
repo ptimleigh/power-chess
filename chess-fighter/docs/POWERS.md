@@ -65,7 +65,7 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World 
 
 - **Poison lasts the pickup turn plus 5 more owner turns**, so the opponent gets 5 replies while it is active.
 - **Harpoon is one use**, like Fireball, and uses the turn. A hooked rival that is already adjacent is stunned for **1 turn**.
-- **A harpoon will not pull a piece onto a powerup square or teleporter**, so those shots are not offered.
+- **A harpoon pulls a rival as far toward the shooter as it can, but never lands it on a powerup square or teleporter** (nothing is triggered); it stops short of one. If it cannot move at all it is stunned where it stands. A hook that would leave your own king in check is not offered, and the interface outlines such a rival and says why when tapped.
 - **Harpoon is not a check threat** (only Fireball, Ghost and Bomb are).
 - **Armored pieces cannot be hooked.** A king can.
 - **Bomb:** the bomber is destroyed by its own blast, except an armored bomber, which survives with the bomb spent. A blast never removes

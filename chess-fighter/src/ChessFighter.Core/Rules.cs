@@ -102,12 +102,12 @@ namespace ChessFighter.Core
                         if (a.Aux != 8 && a.Aux != dir) continue;
                         int target = Geometry.HarpoonTarget(s, a.From, dir);
                         if (target < 0) continue;
-                        int landing = Geometry.NextTo(a.From, dir);
+                        int landing = Geometry.HarpoonLanding(s, a.From, target, dir);
                         Emit(ev, EventKind.HarpoonFired, a.From, target, shooter.Type, me, PowerupKind.Harpoon);
                         var hooked = s.Cells[target];
                         if (target == landing)
                         {
-                            // Already next to the shooter: it cannot be pulled any closer, so it is stunned for a turn.
+                            // It cannot be pulled any closer (already next to the shooter, or powerup squares fill the way): stunned instead.
                             hooked.StunTurns = HarpoonStunTurns;
                             s.Cells[target] = hooked;
                             Emit(ev, EventKind.StunStruck, target, target, hooked.Type, me, PowerupKind.Harpoon);

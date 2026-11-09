@@ -84,6 +84,7 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World 
   is **checkmate**. Change this if you would rather the cancelled card just fail.
 - **Take back** returns the board to the start of your previous turn (so your move and the rival's reply are both undone, and pieces lost in
   that round come back). Your bag, the rival's bag and the random sequence are **not** undone. It needs at least three turns of history.
+  It does **not** cost the turn: after rewinding, the player who played it moves again. (If the rival cancels it with Nuh-uh, the turn is spent as usual.)
 - **Summon Mars** shows the best move automatically at the start of your next 3 turns (free, no XP penalty). It does not stack.
 - **Dragon Strike** burns every piece on rows 3 to 6 that has no king on it, both colors, except armored pieces. Boulders and powerup squares stay.
 - **Summon Shiva** strikes up to 3 random rival pieces (never kings, never armored), skipping any whose removal would leave your own king in check.

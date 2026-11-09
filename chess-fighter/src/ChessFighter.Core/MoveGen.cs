@@ -135,6 +135,8 @@ namespace ChessFighter.Core
             c.SearchMode = true;
             c.Probe = true;
             Rules.Apply(c, a, null);
+            // Take back restores a position that may start in check; that is allowed.
+            if (a.Kind == ActionKind.PlayCard && Cards.KindOf(a.Aux) == CardKind.TakeBack) return true;
             return !Geometry.IsKingAttacked(c, s.ToMove);
         }
 

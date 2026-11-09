@@ -78,6 +78,8 @@ namespace ChessFighter.Core
         public int DoubleSquare = -1;
         /// <summary>Forced follow-up moves still owed by the ForcedMover (Double Move: 1, Triple Move: 2 after the first).</summary>
         public int MultiLeft;
+        /// <summary>Transient: the card just played (Take back) leaves the same player on move.</summary>
+        public bool KeepTurn;
         public bool ClockReset;
         /// <summary>Extra moves a Combo pickup just granted, and the square of the piece that gets them. Resolved in Rules.Finish.</summary>
         public int ComboGain;
@@ -131,6 +133,7 @@ namespace ChessFighter.Core
             Array.Copy(Content, c.Content, 64);
             Array.Copy(Portal, c.Portal, 64);
             c.MultiLeft = MultiLeft;
+            c.KeepTurn = KeepTurn;
             Array.Copy(Inventory, c.Inventory, 64);
             c.ToMove = ToMove;
             c.Castling = Castling;

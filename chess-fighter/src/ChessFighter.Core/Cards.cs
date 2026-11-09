@@ -371,6 +371,7 @@ namespace ChessFighter.Core
                     s.MissileLeft = snap.MissileLeft;
                     s.MissileAnchor = snap.MissileAnchor;
                     s.TurnStarts = new GameState[3];
+                    s.KeepTurn = true;
                     Rules.Emit(ev, EventKind.TurnRewound, 0, 0, PieceType.None, me, PowerupKind.None);
                     break;
                 }

@@ -483,6 +483,14 @@ namespace ChessFighter.Core
 
         static void EndTurn(GameState s, List<GameEvent> ev)
         {
+            if (s.KeepTurn)
+            {
+                // Take back: the rewound position is the player's own turn start, so they move again.
+                s.KeepTurn = false;
+                s.MultiLeft = 0;
+                if (!s.SearchMode) PushTurnStart(s);
+                return;
+            }
             Side me = s.ToMove;
             s.MultiLeft = 0;
             for (int sq = 0; sq < 64; sq++)

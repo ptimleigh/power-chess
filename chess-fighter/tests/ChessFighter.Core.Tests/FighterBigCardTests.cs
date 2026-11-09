@@ -39,7 +39,7 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(T.At(s, "a5").IsEmpty);
             Assert.AreEqual(PieceType.King, T.At(s, "h7").Type, "and the rival's reply is undone too");
             Assert.AreEqual(0, s.CardCount(Side.White, CardKind.TakeBack));
-            Assert.AreEqual(Side.Black, s.ToMove, "the card cost the turn");
+            Assert.AreEqual(Side.White, s.ToMove, "Take back does not cost the turn: the player who played it moves again");
         }
 
         [Test]

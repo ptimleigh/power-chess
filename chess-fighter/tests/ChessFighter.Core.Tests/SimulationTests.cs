@@ -51,7 +51,8 @@ namespace ChessFighter.Core.Tests
                 Rules.Apply(s, action);
                 AssertInvariants(s, "after " + action + " (seed " + seed + ")");
                 // A card still waiting on the rival's answer has not happened yet, and a cancelled escape card is mate by rule.
-                if (!armored && s.RespCard == CardKind.None && s.LostSide < 0)
+                bool tookBack = action.Kind == ActionKind.PlayCard && Cards.KindOf(action.Aux) == CardKind.TakeBack && s.ToMove == mover; // rewound to a turn that began in check
+                if (!armored && !tookBack && s.RespCard == CardKind.None && s.LostSide < 0)
                     Assert.IsFalse(Geometry.IsKingAttacked(s, mover), "mover left own king in check after " + action + "\n" + s);
             }
             Assert.Fail("game did not terminate, seed " + seed);

@@ -102,6 +102,8 @@ public sealed class GameSession
     public HashSet<int> BlastArea { get; } = new();
     public int BombOwnLosses { get; private set; }
     public int BombEnemyLosses { get; private set; }
+    /// <summary>Other bomb pieces the previewed blast would set off.</summary>
+    public int BombChain { get; private set; }
     /// <summary>Square of the powered-up piece whose info card is open, or -1.</summary>
     public int Inspect { get; private set; } = -1;
     /// <summary>Square of the powerup square whose info card is open, or -1.</summary>
@@ -560,10 +562,14 @@ public sealed class GameSession
         Spared.Clear();
         BlastArea.Clear();
         BombOwnLosses = BombEnemyLosses = 0;
-        var area = new List<int>();
-        Geometry.AreaAround(bomber, Geometry.BombRadius(piece), area);
-        foreach (int sq in area)
+        // The whole blast, chain reactions included: every bomb piece it reaches goes off too, and the bomber is destroyed with the rest.
+        var zone = new bool[64];
+        var order = new List<int>();
+        Geometry.BlastChain(State, bomber, zone, order);
+        BombChain = order.Count - 1;
+        for (int sq = 0; sq < 64; sq++)
         {
+            if (!zone[sq]) continue;
             BlastArea.Add(sq);
             var c = State.Cells[sq];
             if (Geometry.IsVulnerableToBomb(c))
@@ -572,7 +578,7 @@ public sealed class GameSession
                 if (c.Side == piece.Side) BombOwnLosses++; else BombEnemyLosses++;
             }
             else if (State.Boulders[sq]) Doomed.Add(sq);
-            else if (!c.IsEmpty) Spared.Add(sq);
+            else if (!c.IsEmpty && sq != bomber) Spared.Add(sq);
         }
         Sfx?.Invoke("click");
         Changed?.Invoke();
@@ -980,6 +986,7 @@ public sealed class GameSession
         bool big = ev.Any(e => e.Kind == EventKind.Detonated || e.Kind == EventKind.FireballFired);
         bool hit = ev.Any(e => e.Kind == EventKind.Captured || e.Kind == EventKind.Destroyed || e.Kind == EventKind.Converted);
         int wait = big ? 1000 : hit ? 700 : 450;
+        wait += 350 * Math.Max(0, ev.Count(e => e.Kind == EventKind.Detonated) - 1); // each extra bomb in a chain gets its own beat
         if (opt.Drama && ev.Any(e => e.Kind == EventKind.Captured)) wait += 330; // room for the strike beat
         if (opt.Drama && !GameOver && InCheck && !Reviewing)
         {
@@ -1063,11 +1070,18 @@ public sealed class GameSession
             if (Mode == InputMode.FireAim) return "Fireball: tap an enemy to choose the direction";
             if (Mode == InputMode.HarpoonAim) return "Harpoon: tap the rival to hook";
             if (Mode == InputMode.BombPreview)
-                return $"Bomb: destroys {BombOwnLosses} of your pieces and {BombEnemyLosses} of theirs. Confirm or cancel.";
+                return $"Bomb: destroys {BombOwnLosses} of your pieces (the bomber too) and {BombEnemyLosses} of theirs"
+                    + (BombChain > 0 ? $", and sets off {BombChain} more {(BombChain == 1 ? "bomb" : "bombs")}" : "") + ". Confirm or cancel.";
             if (Mode == InputMode.Promotion) return "Promote to...";
             if (State.ForcedMover >= 0) return $"Combo! {State.MultiLeft} more {(State.MultiLeft == 1 ? "move" : "moves")} with that piece";
             string who = VsAi ? "Your move" : (State.ToMove == Side.White ? "White to move" : "Black to move");
-            return InCheck ? who + " - you are in check!" : who;
+            if (InCheck)
+            {
+                int ks = Geometry.FindKing(State, State.ToMove);
+                bool bomb = ks >= 0 && Geometry.BombThreatens(State, ks, State.ToMove.Opponent());
+                return who + (bomb ? " - check! A bomb blast (chain reactions count) could reach your king" : " - you are in check!");
+            }
+            return who;
         }
     }
 
@@ -1415,7 +1429,10 @@ public sealed class GameSession
                 }
                 case EventKind.PickupRejected:
                     AddFx("burst", e.To, css: "rock");
-                    AddToast("King can't use " + Names.Name(e.Powerup), PowerupInfo.IsTransform(e.Powerup) ? "A king can never change type. The square is used up." : "A king can't be poisoned. The square is used up.", "gold", "crown");
+                    if (e.Piece != PieceType.King)
+                        AddToast("Too risky", "Taking this bomb would put your own king in a blast chain. The square is used up.", "gold", Names.Icon(e.Powerup));
+                    else
+                        AddToast("King can't use " + Names.Name(e.Powerup), PowerupInfo.IsTransform(e.Powerup) ? "A king can never change type. The square is used up." : PowerupInfo.IsBanked(e.Powerup) && e.Powerup != PowerupKind.Poison ? "A king can't carry a bomb. The square is used up." : "A king can't be poisoned. The square is used up.", "gold", "crown");
                     Sfx?.Invoke("thud");
                     break;
                 case EventKind.TeleportBlocked:

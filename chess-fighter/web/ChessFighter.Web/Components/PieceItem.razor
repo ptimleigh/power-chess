@@ -18,6 +18,10 @@
             }
         </div>
     }
+    @if (P.Buffs.HasFlag(Buff.SmallBomb) || P.Buffs.HasFlag(Buff.BigBomb))
+    {
+        <div class="wick @(P.Buffs.HasFlag(Buff.BigBomb) ? "big" : "small")" aria-hidden="true"><i></i></div>
+    }
     <div class="piece-body land-@(P.AnimSeq % 2)">
         <PieceSvg Type="P.Type" Side="P.Side" />
     </div>

@@ -473,3 +473,11 @@ html, body {
 .aura.pz { filter: drop-shadow(0 0 2px #7a2fd0); }
 .aura.pz i:nth-child(3) { display: block; height: 70%; }
 .piece.poisoned .piece-body { filter: drop-shadow(0 3px 0 #000a) drop-shadow(2px 0 0 #b05cff) drop-shadow(-2px 0 0 #b05cff); }
+
+/* ---------- Bomb: a sparking fuse above the piece (longer and brighter at tier II) ---------- */
+.wick { position: absolute; left: 50%; top: -14%; width: 8%; height: 24%; transform: translateX(-50%); z-index: 3; pointer-events: none; background: repeating-linear-gradient(180deg, #d9a35a 0 3px, #6b3d12 3px 6px); box-shadow: 0 0 0 1px #000; }
+.wick i { position: absolute; left: 50%; top: -34%; width: 230%; aspect-ratio: 1; transform: translateX(-50%); background: #ffe23a; box-shadow: 0 0 0 2px #ff7a1f, 0 0 0 4px #000; animation: wickspark .36s steps(2) infinite; }
+.wick.big { height: 34%; top: -22%; width: 10%; }
+.wick.big i { width: 300%; }
+@keyframes wickspark { 0% { background: #ffe23a; transform: translateX(-50%) rotate(0deg) scale(1); } 50% { background: #fff; transform: translateX(-50%) rotate(45deg) scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .wick i { animation: none; } }

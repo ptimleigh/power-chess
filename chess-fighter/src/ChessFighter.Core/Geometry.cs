@@ -81,22 +81,76 @@ namespace ChessFighter.Core
                     cr += DirRank[d];
                 }
             }
-            return AttackedByGhost(s, sq, by);
+            return AttackedBySpecials(s, sq, by);
+        }
+
+        public static bool HasBomb(Piece p)
+        {
+            return p.Has(Buff.SmallBomb) || p.Has(Buff.BigBomb);
         }
 
         /// <summary>
-        /// A ghost passes through pieces and boulders, so it threatens along its whole line (sliders), a ghost knight also
-        /// threatens a king's step, and a ghost king reaches two squares. Stunned ghosts threaten nothing.
+        /// A bomb detonation starting at the bomb piece on <paramref name="start"/>: its blast area, plus the blast of every other
+        /// bomb piece caught inside it (either side), and so on. <paramref name="zone"/> receives every square a blast reaches,
+        /// each bomber's own square included; <paramref name="order"/> lists the detonating pieces in the order they go off.
         /// </summary>
-        static bool AttackedByGhost(GameState s, int sq, Side by)
+        public static void BlastChain(GameState s, int start, bool[] zone, List<int> order)
         {
-            bool any = false;
+            System.Array.Clear(zone, 0, 64);
+            order.Clear();
+            var seen = new bool[64];
+            var queue = new List<int>(4) { start };
+            seen[start] = true;
+            for (int qi = 0; qi < queue.Count; qi++)
+            {
+                int sq = queue[qi];
+                order.Add(sq);
+                int radius = BombRadius(s.Cells[sq]);
+                if (radius < 1) radius = 1;
+                int f = Sq.File(sq), r = Sq.Rank(sq);
+                for (int df = -radius; df <= radius; df++)
+                {
+                    for (int dr = -radius; dr <= radius; dr++)
+                    {
+                        if (!Sq.OnBoard(f + df, r + dr)) continue;
+                        int i = Sq.Make(f + df, r + dr);
+                        zone[i] = true;
+                        if (!seen[i] && HasBomb(s.Cells[i])) { seen[i] = true; queue.Add(i); }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Squares threatened by side <paramref name="by"/>'s ghost and bomb pieces, which the plain line scan above cannot see.
+        /// A ghost passes through pieces and boulders, so it threatens along its whole line (sliders), a ghost knight also
+        /// threatens a king's step, and a ghost king reaches two squares. A bomb piece threatens everything in its blast,
+        /// chain reactions included. Stunned pieces start nothing.
+        /// </summary>
+        static bool AttackedBySpecials(GameState s, int sq, Side by)
+        {
+            bool ghost = false;
+            List<int> bombers = null;
             for (int i = 0; i < 64; i++)
             {
                 var g = s.Cells[i];
-                if (!g.IsEmpty && g.Side == by && g.Has(Buff.Ghost) && g.StunTurns == 0) { any = true; break; }
+                if (g.IsEmpty || g.Side != by || g.StunTurns != 0) continue;
+                if (g.Has(Buff.Ghost)) ghost = true;
+                if (HasBomb(g)) { if (bombers == null) bombers = new List<int>(2); bombers.Add(i); }
             }
-            if (!any) return false;
+            if (!ghost && bombers == null) return false;
+
+            if (bombers != null)
+            {
+                var zone = new bool[64];
+                var order = new List<int>(4);
+                foreach (int b in bombers)
+                {
+                    BlastChain(s, b, zone, order);
+                    if (zone[sq]) return true;
+                }
+            }
+            if (!ghost) return false;
 
             int f = Sq.File(sq), r = Sq.Rank(sq);
             for (int d = 0; d < 8; d++)
@@ -118,6 +172,21 @@ namespace ChessFighter.Core
                     cr += DirRank[d];
                     dist++;
                 }
+            }
+            return false;
+        }
+
+        /// <summary>Would a blast from one of side <paramref name="by"/>'s bomb pieces (chains included) reach this square? Used to explain a bomb check.</summary>
+        public static bool BombThreatens(GameState s, int sq, Side by)
+        {
+            var zone = new bool[64];
+            var order = new List<int>(4);
+            for (int i = 0; i < 64; i++)
+            {
+                var g = s.Cells[i];
+                if (g.IsEmpty || g.Side != by || g.StunTurns != 0 || !HasBomb(g)) continue;
+                BlastChain(s, i, zone, order);
+                if (zone[sq]) return true;
             }
             return false;
         }

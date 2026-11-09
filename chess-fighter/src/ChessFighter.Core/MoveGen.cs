@@ -287,6 +287,8 @@ namespace ChessFighter.Core
             bool hasSteal = s.Perks(me, PowerupKind.Steal) > 0;
             bool hasStun = s.Perks(me, PowerupKind.Stun) > 0;
             var scratch = new List<int>(16);
+            var zone = new bool[64];
+            var order = new List<int>(4);
 
             for (int sq = 0; sq < 64; sq++)
             {
@@ -338,15 +340,17 @@ namespace ChessFighter.Core
                     }
                 }
 
-                int radius = Geometry.BombRadius(p);
-                if (radius > 0)
+                if (Geometry.BombRadius(p) > 0 && !p.IsStunned)
                 {
-                    scratch.Clear();
-                    Geometry.AreaAround(sq, radius, scratch);
+                    // The blast (and any chain it sets off) must not reach your own king, and must hit something besides the bomber.
+                    Geometry.BlastChain(s, sq, zone, order);
+                    int ownKing = Geometry.FindKing(s, me);
+                    if (ownKing >= 0 && zone[ownKing] && !s.Cells[ownKing].Has(Buff.Armor)) continue;
                     bool any = false;
-                    foreach (int t in scratch)
+                    for (int t = 0; t < 64 && !any; t++)
                     {
-                        if (s.Boulders[t] || Geometry.IsVulnerableToBomb(s.Cells[t])) { any = true; break; }
+                        if (!zone[t] || t == sq) continue;
+                        if (s.Boulders[t] || Geometry.IsVulnerableToBomb(s.Cells[t])) any = true;
                     }
                     if (any) o.Add(new GameAction(ActionKind.Detonate, sq, -1, 0));
                 }

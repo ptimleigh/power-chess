@@ -315,7 +315,7 @@ namespace ChessFighter.Core.Tests
         // ---------- Bombs ----------
 
         [Test]
-        public void Small_bomb_destroys_the_3x3_area_but_spares_kings_armor_and_the_bomber()
+        public void Small_bomb_destroys_the_3x3_area_and_the_bomber_but_spares_kings_and_armor()
         {
             var s = T.Fen("8/8/8/2pPk3/3N4/4P3/8/K7 w - - 0 1");
             // c5 black pawn, d5 white pawn (armored), e5 black king, e3 own pawn, d4 bomber knight.
@@ -327,9 +327,8 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(T.At(s, "e3").IsEmpty, "own pawn destroyed too");
             Assert.AreEqual(PieceType.Pawn, T.At(s, "d5").Type, "armor survives");
             Assert.AreEqual(PieceType.King, T.At(s, "e5").Type, "kings survive");
-            Assert.AreEqual(PieceType.Knight, T.At(s, "d4").Type, "bomber survives");
+            Assert.IsTrue(T.At(s, "d4").IsEmpty, "the bomber is destroyed by its own blast");
             Assert.IsFalse(s.Boulders[Sq.Parse("c3")], "boulder cleared");
-            Assert.IsFalse(T.At(s, "d4").Has(Buff.SmallBomb), "bomb is spent");
         }
 
         [Test]

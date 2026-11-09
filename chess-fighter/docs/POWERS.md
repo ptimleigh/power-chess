@@ -24,7 +24,7 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | **Fireball** | Fires along ranks and files like a rook at the first piece in line (enemy only). One use. | Also fires diagonally, like a queen. | Counts as a rook (I) or queen (II) for check and mate. A king can hold one. | **Built** |
 | **Poison** | If the piece is captured, the capturer is also lost. Lasts 5 of the owner's moves. | None. | A king cannot capture a poisoned piece. | **Built** |
 | **Harpoon** | Fires a small bishop-shaped projectile on a rope along one diagonal at a rival piece and pulls it next to the shooter. If already adjacent, it stays and is stunned. | Fires on all four diagonals at once. | A king can be pulled. A king holding Harpoon cannot pull a piece that would give check to it; show an X where the option would be. | **Built** (see assumptions below) |
-| **Bomb** | Detonate: destroys all pieces in the 3x3 around the piece, itself included. Chain-detonates other bomb pieces in the blast. | 5x5. | A king in the blast zone counts as in check (chains too; spell it out to the player). A king landing on a Bomb square gets nothing and the square is used up. A detonation that would destroy your own king is illegal. | **Partly built.** Done: tiers I and II (a second Bomb square upgrades it) and kings refusing Bomb squares. Not yet: the bomber is destroyed by its own blast (it currently survives), chain detonation, kings in the blast counting as check, and an own-king-destroyed detonation being illegal. |
+| **Bomb** | Detonate: destroys all pieces in the 3x3 around the piece, itself included. Chain-detonates other bomb pieces in the blast. | 5x5. | A king in the blast zone counts as in check (chains too; spell it out to the player). A king landing on a Bomb square gets nothing and the square is used up. A detonation that would destroy your own king is illegal. | **Built** |
 | **Ghost** | 3 moves as a ghost. The counter does not go down if the piece does not move. | None. | A ghost can threaten check and mate. | **Built** |
 
 ## Instant moves
@@ -67,6 +67,10 @@ All cards: **Planned**.
 - **A harpoon will not pull a piece onto a powerup square or teleporter**, so those shots are not offered.
 - **Harpoon is not a check threat** (only Fireball, Ghost and Bomb are).
 - **Armored pieces cannot be hooked.** A king can.
+- **Bomb:** the bomber is destroyed by its own blast, except an armored bomber, which survives with the bomb spent. A blast never removes
+  a king or an armored piece, and clears boulders. A detonation needs at least one other target, and a stunned bomber cannot detonate or
+  threaten. Taking a Bomb square that would put your own king inside an enemy blast chain is refused and the square is used up.
+  The chain follows bombs of either colour caught in the blast. The status line spells out a bomb check.
 - **Ghost's three moves exclude the pickup move itself**, and a stunned ghost neither moves nor threatens.
 - The generated daily puzzles were regenerated under these rules (`tools/PuzzleGen`).
 

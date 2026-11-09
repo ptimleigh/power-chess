@@ -209,6 +209,103 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(ev.Any(e => e.Kind == EventKind.PickupRejected));
         }
 
+        // ---------- Bomb: self-destruct, chains and check ----------
+
+        [Test]
+        public void An_armored_bomber_survives_its_own_blast_but_the_bomb_is_spent()
+        {
+            var s = T.Fen("k7/8/8/8/3N4/2p5/8/4K3 w - - 0 1");
+            T.Give(s, "d4", Buff.SmallBomb);
+            T.Give(s, "d4", Buff.Armor, 3);
+            T.Do(s, "Detonate d4");
+            Assert.IsTrue(T.At(s, "c3").IsEmpty, "enemy pawn destroyed");
+            Assert.AreEqual(PieceType.Knight, T.At(s, "d4").Type, "armor protects the bomber");
+            Assert.IsFalse(T.At(s, "d4").Has(Buff.SmallBomb));
+        }
+
+        [Test]
+        public void A_blast_sets_off_every_bomb_piece_it_reaches_in_a_chain()
+        {
+            // d4 white bomber (3x3). A black bomb piece on e5 is caught, and its own 3x3 reaches f6, outside the first blast.
+            var s = T.Fen("k7/8/5r2/4n3/3N4/8/8/4K3 w - - 0 1");
+            T.Give(s, "d4", Buff.SmallBomb);
+            T.Give(s, "e5", Buff.SmallBomb);
+            var far = s.Cells[Sq.Parse("g7")] = new Piece(PieceType.Rook, Side.Black);
+            Assert.AreEqual(PieceType.Rook, far.Type);
+            var ev = T.Do(s, "Detonate d4");
+            Assert.IsTrue(T.At(s, "e5").IsEmpty, "the caught bomb piece is destroyed");
+            Assert.IsTrue(T.At(s, "f6").IsEmpty, "its blast reached f6, beyond the first blast");
+            Assert.AreEqual(PieceType.Rook, T.At(s, "g7").Type, "but not g7");
+            Assert.AreEqual(2, ev.Count(e => e.Kind == EventKind.Detonated), "two detonations");
+        }
+
+        [Test]
+        public void A_king_inside_a_bomb_blast_is_in_check()
+        {
+            // White rook on d4 is the bomber; the black king on e3 is inside the 3x3 around it but not attacked by the rook itself.
+            var s = T.Fen("8/8/8/8/3R4/4k3/8/K7 b - - 0 1");
+            Assert.IsFalse(Geometry.IsKingAttacked(s, Side.Black));
+            T.Give(s, "d4", Buff.SmallBomb);
+            Assert.IsTrue(Geometry.IsKingAttacked(s, Side.Black), "e3 is inside the 3x3 around d4");
+            Assert.IsTrue(T.IsLegal(s, "e3f3"), "stepping out of the zone resolves it");
+            Assert.IsTrue(T.IsLegal(s, "e3e2"), "so does stepping to e2");
+
+            // An armored king cannot be checked.
+            var armored = T.Fen("8/8/8/8/3R4/4k3/8/K7 b - - 0 1");
+            T.Give(armored, "d4", Buff.SmallBomb);
+            T.Give(armored, "e3", Buff.Armor, 3);
+            Assert.IsFalse(Geometry.IsKingAttacked(armored, Side.Black));
+
+            // A stunned bomber threatens nothing.
+            var stunned = T.Fen("8/8/8/8/3R4/4k3/8/K7 b - - 0 1");
+            T.Give(stunned, "d4", Buff.SmallBomb);
+            var p = stunned.Cells[Sq.Parse("d4")];
+            p.StunTurns = 1;
+            stunned.Cells[Sq.Parse("d4")] = p;
+            Assert.IsFalse(Geometry.IsKingAttacked(stunned, Side.Black));
+        }
+
+        [Test]
+        public void A_chain_reaction_can_put_a_king_in_check()
+        {
+            // White bomber d4 (a rook) reaches black's own bomb piece on e4, whose blast reaches f5 where the black king stands.
+            var s = T.Fen("8/8/8/5k2/3Rn3/8/8/K7 b - - 0 1");
+            T.Give(s, "d4", Buff.SmallBomb);
+            Assert.IsFalse(Geometry.IsKingAttacked(s, Side.Black), "f5 is outside the first blast and no chain yet");
+            T.Give(s, "e4", Buff.SmallBomb);
+            Assert.IsTrue(Geometry.IsKingAttacked(s, Side.Black), "the chain through e4 reaches f5");
+            Assert.IsTrue(Geometry.BombThreatens(s, Sq.Parse("f5"), Side.White));
+        }
+
+        [Test]
+        public void A_detonation_that_would_reach_your_own_king_is_illegal()
+        {
+            var near = T.Fen("k7/8/8/8/3NK3/8/8/8 w - - 0 1");
+            T.Give(near, "d4", Buff.SmallBomb);
+            Assert.IsFalse(T.IsLegal(near, "Detonate d4"), "the king stands next to the bomber");
+
+            // Reached by a chain: white bomber d4, black bomb piece e5, white king f6 (inside e5's blast only).
+            var chain = T.Fen("k7/8/5K2/4n3/3N4/8/8/8 w - - 0 1");
+            T.Give(chain, "d4", Buff.SmallBomb);
+            T.Give(chain, "e5", Buff.SmallBomb);
+            Assert.IsFalse(T.IsLegal(chain, "Detonate d4"), "the chain would reach your own king");
+        }
+
+        [Test]
+        public void A_bomb_pickup_that_would_put_your_own_king_in_check_is_refused()
+        {
+            // Black knight on c5 holds a bomb (blast b4-d6). White king e7 is outside it. If the white rook takes a Bomb square on d6,
+            // the rook joins the chain and its blast (c5-e7) reaches the king.
+            var s = T.Fen("k7/4K3/8/2n5/8/8/8/3R4 w - - 0 1");
+            T.Give(s, "c5", Buff.SmallBomb);
+            T.Square(s, "d6", PowerupKind.SmallBomb);
+            var ev = T.Do(s, "d1d6");
+            Assert.IsFalse(T.At(s, "d6").Has(Buff.SmallBomb), "refused");
+            Assert.IsFalse(s.Mystery[Sq.Parse("d6")], "the square is used up");
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.PickupRejected));
+            Assert.IsFalse(Geometry.IsKingAttacked(s, Side.White), "and the king is not left in check");
+        }
+
         // ---------- Combo ----------
 
         static int MovesInTurn(GameState s, Side side, string firstMove)

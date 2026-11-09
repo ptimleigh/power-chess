@@ -150,14 +150,19 @@ namespace ChessFighter.Core
 
                 case ActionKind.Detonate:
                 {
-                    var bomber = s.Cells[a.From];
-                    int radius = Geometry.BombRadius(bomber);
-                    var area = new List<int>(24);
-                    Geometry.AreaAround(a.From, radius, area);
-                    Emit(ev, EventKind.Detonated, a.From, a.From, bomber.Type, me,
-                        radius > 1 ? PowerupKind.BigBomb : PowerupKind.SmallBomb);
-                    foreach (int t in area)
+                    // The bomber and every other bomb piece the blast reaches go off; the bombers themselves are destroyed too.
+                    var zone = new bool[64];
+                    var order = new List<int>(4);
+                    Geometry.BlastChain(s, a.From, zone, order);
+                    foreach (int b in order)
                     {
+                        var piece = s.Cells[b];
+                        Emit(ev, EventKind.Detonated, b, b, piece.Type, me,
+                            Geometry.BombRadius(piece) > 1 ? PowerupKind.BigBomb : PowerupKind.SmallBomb);
+                    }
+                    for (int t = 0; t < 64; t++)
+                    {
+                        if (!zone[t]) continue;
                         if (Geometry.IsVulnerableToBomb(s.Cells[t])) Destroy(s, t, ev);
                         if (s.Boulders[t])
                         {
@@ -165,9 +170,15 @@ namespace ChessFighter.Core
                             Emit(ev, EventKind.BoulderCleared, t, t, PieceType.None, me, PowerupKind.SmallBomb);
                         }
                     }
-                    bomber.Buffs &= ~(Buff.SmallBomb | Buff.BigBomb);
-                    bomber.Tier = 0;
-                    s.Cells[a.From] = bomber;
+                    // An armored bomb piece survives its own blast but the bomb is spent.
+                    foreach (int b in order)
+                    {
+                        var left = s.Cells[b];
+                        if (left.IsEmpty) continue;
+                        left.Buffs &= ~(Buff.SmallBomb | Buff.BigBomb);
+                        left.Tier = 0;
+                        s.Cells[b] = left;
+                    }
                     s.ClockReset = true;
                     Finish(s, ev);
                     return;
@@ -519,6 +530,23 @@ namespace ChessFighter.Core
         }
 
         public static void ApplyPickup(GameState s, Side me, int sq, PowerupKind kind, List<GameEvent> ev)
+        {
+            var before = s.Cells[sq];
+            int mark = ev == null ? 0 : ev.Count;
+            ApplyPickupCore(s, me, sq, kind, ev);
+            // A bomb makes its holder part of any enemy blast chain, which can put your own king in check. Refuse it then.
+            if ((kind == PowerupKind.SmallBomb || kind == PowerupKind.BigBomb) && Geometry.IsKingAttacked(s, me))
+            {
+                s.Cells[sq] = before;
+                if (ev != null)
+                {
+                    ev.RemoveRange(mark, ev.Count - mark);
+                    Emit(ev, EventKind.PickupRejected, sq, sq, before.Type, me, kind);
+                }
+            }
+        }
+
+        static void ApplyPickupCore(GameState s, Side me, int sq, PowerupKind kind, List<GameEvent> ev)
         {
             var p = s.Cells[sq];
             switch (kind)

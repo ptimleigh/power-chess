@@ -16,6 +16,7 @@ public static class Icons
             "bigbomb" => "<circle cx=\"10.5\" cy=\"14.5\" r=\"8\"/><path d=\"M15 8l3-3\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\"/><circle cx=\"19\" cy=\"4\" r=\"2.4\" fill=\"#ffd54a\"/><circle cx=\"8\" cy=\"12\" r=\"1.6\" fill=\"#ffffff55\"/>",
             "fire" => "<path d=\"M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z\"/>",
             "hadouken" => "<circle cx=\"16\" cy=\"12\" r=\"6\"/><circle cx=\"14.5\" cy=\"10.5\" r=\"2.2\" fill=\"#ffffff88\"/><path d=\"M10 12L1 7l3 5-3 5z\"/>",
+            "hook" => "<path d=\"M12 2v12\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\"/><path d=\"M5 13a7 7 0 0 0 14 0\" stroke=\"currentColor\" stroke-width=\"2.8\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M2 14l3-4 3 4zM16 14l3-4 3 4z\"/><circle cx=\"12\" cy=\"3.2\" r=\"2\"/>",
             "plus2" => "<text x=\"12\" y=\"17\" font-size=\"14\" font-weight=\"900\" text-anchor=\"middle\" font-family=\"Arial,Helvetica,sans-serif\">+2</text>",
             "plus4" => "<text x=\"12\" y=\"17\" font-size=\"14\" font-weight=\"900\" text-anchor=\"middle\" font-family=\"Arial,Helvetica,sans-serif\">+4</text>",
             "rock" => "<polygon points=\"3,18 5,9 11,4 18,7 21,15 14,21\"/>",

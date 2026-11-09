@@ -10,7 +10,7 @@ shell, new theme, and a reworked set of powers.
 ## Status
 
 Early build. The engine, AI, tests, PWA and web shell come from Power Chess; the visual identity is new (32x32 sprites,
-arcade HUD, scanlines). **Built so far:** Fireball I/II, Bomb tiers, Combo +2/+4 and the one-banked-move-per-piece rule
+arcade HUD, scanlines). **Built so far:** all five banked moves (Fireball, Harpoon, Bomb, Poison, Ghost), Combo +2/+4 and the one-banked-move-per-piece rule
 (see [docs/POWERS.md](docs/POWERS.md)). The rest of the powers and the whole card system are still to come.
 
 ## Layout
@@ -23,6 +23,7 @@ arcade HUD, scanlines). **Built so far:** Fireball I/II, Bomb tiers, Combo +2/+4
 | `web/ChessFighter.Web/wwwroot/css/app.css` | Layout and components inherited from Power Chess. |
 | `web/ChessFighter.Web/wwwroot/css/fighter.css` | **The 16-bit theme.** Loaded after `app.css` and overrides it. |
 | `web/ChessFighter.Web/Game/Sprites.cs`, `Sprites.Data.cs` | 32x32 piece sprites as text grids (`Sprites.Data.cs` is generated). |
+| `tools/PuzzleGen` | Regenerates the verified daily puzzles into `PuzzleData.cs` after a rules change. |
 | `tools/make-sprites.py` | Builds the sprites from shape definitions: lighting, 5-step color ramps, dithering, gold trim, outlines. |
 
 ## Run

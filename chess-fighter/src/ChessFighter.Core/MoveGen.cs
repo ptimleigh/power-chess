@@ -61,6 +61,7 @@ namespace ChessFighter.Core
                     if (!s.Cells[a.To].IsEmpty || a.Aux != 0) return true;
                     return s.Cells[a.From].Type == PieceType.Pawn && Sq.File(a.From) != Sq.File(a.To); // en passant
                 case ActionKind.Fireball:
+                case ActionKind.Harpoon:
                 case ActionKind.Detonate:
                 case ActionKind.Steal:
                     return true;
@@ -182,6 +183,7 @@ namespace ChessFighter.Core
                 return;
             }
             if (!Geometry.IsVulnerable(t, p.Side)) return;
+            if (t.Has(Buff.Poison) && p.Type == PieceType.King) return; // a king cannot capture a poisoned piece
             o.Add(GameAction.Move(from, to));
         }
 
@@ -300,6 +302,29 @@ namespace ChessFighter.Core
                         scratch.Clear();
                         Geometry.FireballVictims(s, sq, dir, scratch);
                         if (scratch.Count > 0) o.Add(new GameAction(ActionKind.Fireball, sq, scratch[0], dir));
+                    }
+                }
+
+                if (p.Has(Buff.Harpoon) && !p.IsStunned)
+                {
+                    // Harpoon I picks one diagonal; Harpoon II fires every diagonal that has a target in a single action.
+                    if (p.Tier >= 2)
+                    {
+                        int firstTarget = -1;
+                        for (int dir = 4; dir < 8; dir++)
+                        {
+                            int t = Geometry.HarpoonTarget(s, sq, dir);
+                            if (t >= 0 && firstTarget < 0) firstTarget = t;
+                        }
+                        if (firstTarget >= 0) o.Add(new GameAction(ActionKind.Harpoon, sq, firstTarget, 8));
+                    }
+                    else
+                    {
+                        for (int dir = 4; dir < 8; dir++)
+                        {
+                            int t = Geometry.HarpoonTarget(s, sq, dir);
+                            if (t >= 0) o.Add(new GameAction(ActionKind.Harpoon, sq, t, dir));
+                        }
                     }
                 }
 

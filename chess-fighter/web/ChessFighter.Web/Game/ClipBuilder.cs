@@ -72,6 +72,7 @@ public static class ClipBuilder
         {
             ActionKind.Move => $"{e.Before.Cells[a.From].Type} {Sq.Name(a.From)} to {Sq.Name(a.To)}",
             ActionKind.Fireball => "Fireball",
+            ActionKind.Harpoon => "Harpoon",
             ActionKind.Stun => "Stun",
             ActionKind.Steal => "Steal",
             ActionKind.Swap => "Swap",

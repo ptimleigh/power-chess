@@ -315,6 +315,238 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(pool.All(w => w.Weight > 0));
         }
 
+        // ---------- Poison ----------
+
+        [Test]
+        public void Poison_wears_off_after_the_pickup_turn_and_five_more_owner_turns()
+        {
+            var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
+            T.Square(s, "a3", PowerupKind.Poison);
+            T.Do(s, "a1a3");
+            Assert.IsTrue(T.At(s, "a3").Has(Buff.Poison));
+            Assert.AreEqual(5, T.At(s, "a3").PoisonTurns);
+
+            string[] white = { "e1e2", "e2e1", "e1e2", "e2e1" };
+            string[] black = { "h8h7", "h7h8", "h8h7", "h7h8" };
+            T.Do(s, "h8h7");
+            for (int i = 0; i < 4; i++)
+            {
+                T.Do(s, white[i]);
+                if (i < 3) T.Do(s, black[(i + 1) % 4]);
+            }
+            Assert.IsTrue(T.At(s, "a3").Has(Buff.Poison), "still poisoned after four more owner turns");
+            Assert.AreEqual(1, T.At(s, "a3").PoisonTurns);
+
+            T.Do(s, "h8h7");
+            var ev = T.Do(s, "e1e2");
+            Assert.IsFalse(T.At(s, "a3").Has(Buff.Poison), "worn off at the end of the fifth");
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.PoisonFaded));
+        }
+
+        // ---------- Ghost ----------
+
+        [Test]
+        public void Ghost_spends_a_move_only_when_the_ghost_piece_itself_moves()
+        {
+            var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
+            Rules.ApplyPickup(s, Side.White, Sq.Parse("a1"), PowerupKind.Ghost, null);
+            Assert.AreEqual(3, T.At(s, "a1").GhostTurns);
+
+            T.Do(s, "e1e2");
+            Assert.AreEqual(3, T.At(s, "a1").GhostTurns, "another piece moved, the ghost keeps its moves");
+            T.Do(s, "h8h7");
+            T.Do(s, "a1a3");
+            Assert.AreEqual(2, T.At(s, "a3").GhostTurns);
+            T.Do(s, "h7h8");
+            T.Do(s, "a3a5");
+            Assert.AreEqual(1, T.At(s, "a5").GhostTurns);
+            T.Do(s, "h8h7");
+            var ev = T.Do(s, "a5a6");
+            Assert.IsFalse(T.At(s, "a6").Has(Buff.Ghost), "third ghost move used it up");
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.GhostFaded));
+        }
+
+        [Test]
+        public void A_ghost_threatens_check_through_blockers()
+        {
+            // Rook down the file through a pawn.
+            var rook = T.Fen("k7/8/8/p7/8/8/8/R3K3 b - - 0 1");
+            Assert.IsFalse(Geometry.IsKingAttacked(rook, Side.Black));
+            T.Give(rook, "a1", Buff.Ghost);
+            Assert.IsTrue(Geometry.IsKingAttacked(rook, Side.Black), "a ghost rook threatens through the pawn");
+
+            // Bishop along a diagonal through a pawn.
+            var bishop = T.Fen("7k/8/8/4p3/8/8/8/B3K3 b - - 0 1");
+            T.Give(bishop, "a1", Buff.Ghost);
+            Assert.IsTrue(Geometry.IsKingAttacked(bishop, Side.Black));
+
+            // A ghost knight also threatens a king's step; a ghost king reaches two squares.
+            var knight = T.Fen("k7/1N6/8/8/8/8/8/4K3 b - - 0 1");
+            Assert.IsFalse(Geometry.IsKingAttacked(knight, Side.Black));
+            T.Give(knight, "b7", Buff.Ghost);
+            Assert.IsTrue(Geometry.IsKingAttacked(knight, Side.Black));
+
+            var king = T.Fen("k7/8/K7/8/8/8/8/8 b - - 0 1");
+            Assert.IsFalse(Geometry.IsKingAttacked(king, Side.Black));
+            T.Give(king, "a6", Buff.Ghost);
+            Assert.IsTrue(Geometry.IsKingAttacked(king, Side.Black), "a ghost king reaches two squares");
+
+            // A stunned ghost threatens nothing.
+            var p = rook.Cells[Sq.Parse("a1")];
+            p.StunTurns = 1;
+            rook.Cells[Sq.Parse("a1")] = p;
+            Assert.IsFalse(Geometry.IsKingAttacked(rook, Side.Black));
+        }
+
+        // ---------- Harpoon ----------
+
+        [Test]
+        public void Harpoon_I_pulls_the_first_rival_on_a_diagonal_next_to_the_shooter()
+        {
+            var s = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
+            T.Give(s, "d1", Buff.Harpoon);
+            T.Tier(s, "d1", 1);
+            var ev = T.Do(s, "Harpoon d1->g4");
+            Assert.IsTrue(T.At(s, "g4").IsEmpty);
+            Assert.AreEqual(PieceType.Knight, T.At(s, "e2").Type, "pulled to the square next to the shooter");
+            Assert.AreEqual(Side.Black, T.At(s, "e2").Side);
+            Assert.AreEqual(PieceType.Rook, T.At(s, "d1").Type, "the shooter stays put");
+            Assert.IsFalse(T.At(s, "d1").Has(Buff.Harpoon), "one use");
+            Assert.AreEqual(Side.Black, s.ToMove, "firing uses the turn");
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.HarpoonFired));
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.PulledIn));
+        }
+
+        [Test]
+        public void A_rival_already_next_to_the_shooter_is_stunned_instead()
+        {
+            var s = T.Fen("7k/8/8/8/8/8/4b3/3RK3 w - - 0 1");
+            T.Give(s, "d1", Buff.Harpoon);
+            T.Do(s, "Harpoon d1->e2");
+            Assert.AreEqual(PieceType.Bishop, T.At(s, "e2").Type, "it stays where it was");
+            Assert.IsTrue(T.At(s, "e2").IsStunned);
+        }
+
+        [Test]
+        public void Harpoon_is_stopped_by_friends_boulders_and_armor_and_needs_room_to_pull()
+        {
+            var friend = T.Fen("7k/8/8/8/6n1/5P2/8/3RK3 w - - 0 1");
+            T.Give(friend, "d1", Buff.Harpoon);
+            Assert.IsFalse(MoveGen.LegalActions(friend).Any(a => a.Kind == ActionKind.Harpoon), "own pawn is first in line");
+
+            var rock = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
+            rock.Boulders[Sq.Parse("f3")] = true;
+            T.Give(rock, "d1", Buff.Harpoon);
+            Assert.IsFalse(MoveGen.LegalActions(rock).Any(a => a.Kind == ActionKind.Harpoon));
+
+            var armor = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
+            T.Give(armor, "g4", Buff.Armor, 3);
+            T.Give(armor, "d1", Buff.Harpoon);
+            Assert.IsFalse(MoveGen.LegalActions(armor).Any(a => a.Kind == ActionKind.Harpoon), "armor shrugs it off");
+
+            var occupied = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
+            T.Square(occupied, "e2", PowerupKind.Fireball);
+            T.Give(occupied, "d1", Buff.Harpoon);
+            Assert.IsFalse(MoveGen.LegalActions(occupied).Any(a => a.Kind == ActionKind.Harpoon), "no pulling onto a powerup square");
+        }
+
+        [Test]
+        public void A_king_can_be_hooked_but_the_shooter_may_not_be_left_in_check()
+        {
+            var kingHook = T.Fen("8/8/8/8/6k1/8/8/3R3K w - - 0 1");
+            T.Give(kingHook, "d1", Buff.Harpoon);
+            T.Do(kingHook, "Harpoon d1->g4");
+            Assert.AreEqual(PieceType.King, T.At(kingHook, "e2").Type, "a king is pulled like any other piece");
+
+            // A king holding the harpoon cannot pull a pawn that would then attack it.
+            var self = T.Fen("7k/8/8/8/6p1/8/8/3K4 w - - 0 1");
+            T.Give(self, "d1", Buff.Harpoon);
+            Assert.IsFalse(T.IsLegal(self, "Harpoon d1->g4"), "the pawn pulled to e2 would check the king");
+        }
+
+        [Test]
+        public void Harpoon_II_fires_every_diagonal_at_once()
+        {
+            var s = T.Fen("7k/6n1/8/8/3R4/8/1b6/7K w - - 0 1");
+            T.Give(s, "d4", Buff.Harpoon);
+            T.Tier(s, "d4", 2);
+            var ev = T.Do(s, "Harpoon d4->g7");
+            Assert.AreEqual(PieceType.Knight, T.At(s, "e5").Type, "up-right target pulled in");
+            Assert.AreEqual(PieceType.Bishop, T.At(s, "c3").Type, "down-left target pulled in");
+            Assert.IsTrue(T.At(s, "g7").IsEmpty);
+            Assert.IsTrue(T.At(s, "b2").IsEmpty);
+            Assert.AreEqual(2, ev.Count(e => e.Kind == EventKind.PulledIn));
+        }
+
+        [Test]
+        public void Harpoon_tiers_upgrade_replace_and_a_king_can_hold_one()
+        {
+            var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
+            T.Square(s, "a3", PowerupKind.Harpoon);
+            T.Square(s, "a5", PowerupKind.Harpoon);
+            T.Square(s, "a6", PowerupKind.Harpoon);
+            T.Do(s, "a1a3");
+            Assert.AreEqual(1, T.At(s, "a3").Tier);
+            T.Do(s, "h8h7");
+            T.Do(s, "a3a5");
+            Assert.AreEqual(2, T.At(s, "a5").Tier);
+            T.Do(s, "h7h8");
+            var ev = T.Do(s, "a5a6");
+            Assert.AreEqual(2, T.At(s, "a6").Tier);
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.PowerMaxed));
+
+            Assert.IsTrue(Rules.Eligible(s, T.At(s, "e1"), 4, PowerupKind.Harpoon), "kings can hold a harpoon");
+
+            var fire = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
+            T.Give(fire, "a1", Buff.Harpoon);
+            T.Square(fire, "a3", PowerupKind.Fireball);
+            T.Do(fire, "a1a3");
+            Assert.IsFalse(T.At(fire, "a3").Has(Buff.Harpoon), "a different banked power replaces it");
+            Assert.IsTrue(T.At(fire, "a3").Has(Buff.Fireball));
+        }
+
+        // ---------- saves must keep every new kind (regression: Combo squares and mid-combo states once failed to reload) ----------
+
+        [Test]
+        public void Saves_keep_combo_squares_mid_combo_state_harpoon_and_poison_fuses()
+        {
+            var cfg = T.Cfg();
+            var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1", cfg);
+            T.Square(s, "a3", PowerupKind.Combo4);
+            T.Square(s, "c5", PowerupKind.Harpoon);
+            T.Square(s, "d5", PowerupKind.Combo2);
+            T.Do(s, "a1a3"); // mid-combo: four more moves owed
+            Assert.AreEqual(4, s.MultiLeft);
+            Assert.AreEqual(Sq.Parse("a3"), s.ForcedMover);
+
+            GameState s2;
+            GameHistory h2;
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(s, new GameHistory()), cfg, out s2, out h2), "mid-combo save must reload");
+            Assert.AreEqual(4, s2.MultiLeft);
+            Assert.AreEqual(Sq.Parse("a3"), s2.ForcedMover);
+            Assert.AreEqual((byte)PowerupKind.Combo2, s2.Content[Sq.Parse("d5")], "revealed Combo square survives");
+            Assert.AreEqual((byte)PowerupKind.Harpoon, s2.Content[Sq.Parse("c5")], "revealed Harpoon square survives");
+
+            var banked = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1", cfg);
+            T.Give(banked, "a1", Buff.Harpoon);
+            T.Tier(banked, "a1", 2);
+            var po = banked.Cells[Sq.Parse("e1")];
+            po.Buffs |= Buff.Poison; po.PoisonTurns = 4;
+            banked.Cells[Sq.Parse("e1")] = po;
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(banked, new GameHistory()), cfg, out s2, out h2));
+            Assert.IsTrue(T.At(s2, "a1").Has(Buff.Harpoon), "the buff past the old 8-bit range survives");
+            Assert.AreEqual(2, T.At(s2, "a1").Tier);
+            Assert.AreEqual(4, T.At(s2, "e1").PoisonTurns);
+
+            // And a history entry for the new action kind round-trips.
+            var hist = new GameHistory();
+            var before = T.Fen("7k/6n1/8/8/3R4/8/1b6/7K w - - 0 1", cfg);
+            T.Give(before, "d4", Buff.Harpoon);
+            hist.Record(before.Clone(), T.Find(before, "Harpoon d4->g7"));
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(before, hist), cfg, out s2, out h2));
+            Assert.AreEqual(1, h2.Count);
+        }
+
         // ---------- whole-game stability ----------
 
         [Test]

@@ -55,6 +55,8 @@ namespace ChessFighter.Core
                 }
                 case ActionKind.Fireball:
                     return "Fire the fireball from " + Sq.Name(a.From) + " at " + Sq.Name(a.To);
+                case ActionKind.Harpoon:
+                    return "Fire the harpoon from " + Sq.Name(a.From) + (a.Aux == 8 ? " along every diagonal" : " at " + Sq.Name(a.To));
                 case ActionKind.Detonate:
                     return "Detonate the bomb on " + Sq.Name(a.From);
                 case ActionKind.Stun:

@@ -22,10 +22,10 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | Power | Tier I | Tier II | King rule | Status |
 |---|---|---|---|---|
 | **Fireball** | Fires along ranks and files like a rook at the first piece in line (enemy only). One use. | Also fires diagonally, like a queen. | Counts as a rook (I) or queen (II) for check and mate. A king can hold one. | **Built** |
-| **Poison** | If the piece is captured, the capturer is also lost. Lasts 5 of the owner's moves. | None. | A king cannot capture a poisoned piece. | Planned (old rule still in place) |
-| **Harpoon** | Fires a small bishop-shaped projectile on a rope along one diagonal at a rival piece and pulls it next to the shooter. If already adjacent, it stays and is stunned. | Fires on all four diagonals at once. | A king can be pulled. A king holding Harpoon cannot pull a piece that would give check to it; show an X where the option would be. | Planned |
+| **Poison** | If the piece is captured, the capturer is also lost. Lasts 5 of the owner's moves. | None. | A king cannot capture a poisoned piece. | **Built** |
+| **Harpoon** | Fires a small bishop-shaped projectile on a rope along one diagonal at a rival piece and pulls it next to the shooter. If already adjacent, it stays and is stunned. | Fires on all four diagonals at once. | A king can be pulled. A king holding Harpoon cannot pull a piece that would give check to it; show an X where the option would be. | **Built** (see assumptions below) |
 | **Bomb** | Detonate: destroys all pieces in the 3x3 around the piece, itself included. Chain-detonates other bomb pieces in the blast. | 5x5. | A king in the blast zone counts as in check (chains too; spell it out to the player). A king landing on a Bomb square gets nothing and the square is used up. A detonation that would destroy your own king is illegal. | **Built** (tiers, king rule); chain-check explanation planned |
-| **Ghost** | 3 moves as a ghost. The counter does not go down if the piece does not move. | None. | A ghost can threaten check and mate. | Partly built (still counts turns, not moves) |
+| **Ghost** | 3 moves as a ghost. The counter does not go down if the piece does not move. | None. | A ghost can threaten check and mate. | **Built** |
 
 ## Instant moves
 
@@ -59,6 +59,16 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | Take back | Undo 1 round of moves. | at will |
 
 All cards: **Planned**.
+
+## Assumptions made while building (change any of these)
+
+- **Poison lasts the pickup turn plus 5 more owner turns**, so the opponent gets 5 replies while it is active.
+- **Harpoon is one use**, like Fireball, and uses the turn. A hooked rival that is already adjacent is stunned for **1 turn**.
+- **A harpoon will not pull a piece onto a powerup square or teleporter**, so those shots are not offered.
+- **Harpoon is not a check threat** (only Fireball, Ghost and Bomb are).
+- **Armored pieces cannot be hooked.** A king can.
+- **Ghost's three moves exclude the pickup move itself**, and a stunned ghost neither moves nor threatens.
+- The generated daily puzzles were regenerated under these rules (`tools/PuzzleGen`).
 
 ## Not carried over from Power Chess
 

@@ -81,7 +81,82 @@ namespace ChessFighter.Core
                     cr += DirRank[d];
                 }
             }
+            return AttackedByGhost(s, sq, by);
+        }
+
+        /// <summary>
+        /// A ghost passes through pieces and boulders, so it threatens along its whole line (sliders), a ghost knight also
+        /// threatens a king's step, and a ghost king reaches two squares. Stunned ghosts threaten nothing.
+        /// </summary>
+        static bool AttackedByGhost(GameState s, int sq, Side by)
+        {
+            bool any = false;
+            for (int i = 0; i < 64; i++)
+            {
+                var g = s.Cells[i];
+                if (!g.IsEmpty && g.Side == by && g.Has(Buff.Ghost) && g.StunTurns == 0) { any = true; break; }
+            }
+            if (!any) return false;
+
+            int f = Sq.File(sq), r = Sq.Rank(sq);
+            for (int d = 0; d < 8; d++)
+            {
+                int cf = f + DirFile[d], cr = r + DirRank[d];
+                int dist = 1;
+                while (Sq.OnBoard(cf, cr))
+                {
+                    var p = s.Cells[Sq.Make(cf, cr)];
+                    if (!p.IsEmpty && p.Side == by && p.Has(Buff.Ghost) && p.StunTurns == 0)
+                    {
+                        if (p.Type == PieceType.Queen) return true;
+                        if (d < 4 && p.Type == PieceType.Rook) return true;
+                        if (d >= 4 && p.Type == PieceType.Bishop) return true;
+                        if (dist == 1 && p.Type == PieceType.Knight) return true;
+                        if (dist == 2 && p.Type == PieceType.King) return true;
+                    }
+                    cf += DirFile[d];
+                    cr += DirRank[d];
+                    dist++;
+                }
+            }
             return false;
+        }
+
+        /// <summary>
+        /// The rival piece a Harpoon fired from <paramref name="from"/> along diagonal <paramref name="dir"/> (4-7) would hook, or
+        /// -1. It must be the first piece in line, an enemy (a king can be hooked) that is not armored, and there must be room to
+        /// pull it: either it is already next to the shooter (it stays and is stunned) or the square next to the shooter is free
+        /// of powerup squares and teleporters and, for a pawn, not a back rank. Boulders stop the rope.
+        /// </summary>
+        public static int HarpoonTarget(GameState s, int from, int dir)
+        {
+            if (dir < 4 || dir > 7) return -1;
+            var shooter = s.Cells[from];
+            int cf = Sq.File(from) + DirFile[dir], cr = Sq.Rank(from) + DirRank[dir];
+            int adjacent = Sq.OnBoard(cf, cr) ? Sq.Make(cf, cr) : -1;
+            while (Sq.OnBoard(cf, cr))
+            {
+                int idx = Sq.Make(cf, cr);
+                if (s.Boulders[idx]) return -1;
+                var p = s.Cells[idx];
+                if (!p.IsEmpty)
+                {
+                    if (p.Side == shooter.Side || p.Has(Buff.Armor)) return -1;
+                    if (idx == adjacent) return idx;
+                    if (s.Mystery[adjacent] || s.Portal[adjacent]) return -1;
+                    if (p.Type == PieceType.Pawn && (Sq.Rank(adjacent) == 0 || Sq.Rank(adjacent) == 7)) return -1;
+                    return idx;
+                }
+                cf += DirFile[dir];
+                cr += DirRank[dir];
+            }
+            return -1;
+        }
+
+        /// <summary>The square next to <paramref name="from"/> along diagonal <paramref name="dir"/>.</summary>
+        public static int NextTo(int from, int dir)
+        {
+            return Sq.Make(Sq.File(from) + DirFile[dir], Sq.Rank(from) + DirRank[dir]);
         }
 
         /// <summary>Can this piece be harmed by hostile effects (capture, stun, steal, fireball, bomb)?</summary>

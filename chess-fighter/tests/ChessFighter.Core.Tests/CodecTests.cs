@@ -99,10 +99,10 @@ namespace ChessFighter.Core.Tests
             s.Mystery[Sq.Parse("d4")] = true; // a hidden mystery has no content, which is all version 1 could express
             var cur = Convert.FromBase64String(GameStateCodec.EncodeGame(s, new GameHistory()));
 
-            // Rewrite as version 1: per cell drop the ghost and tier bytes, then drop the portal bitset, multi-move byte and 64 content bytes.
+            // Rewrite as version 1: per cell keep only the v1 per-cell fields, then drop the portal bitset, multi-move byte and 64 content bytes.
             var v1 = new System.Collections.Generic.List<byte> { 1 };
             int pos = 1;
-            for (int i = 0; i < 64; i++) { for (int k = 0; k < 5; k++) v1.Add(cur[pos + k]); pos += 7; }
+            for (int i = 0; i < 64; i++) { foreach (int k in new[] { 0, 1, 2, 4, 5 }) v1.Add(cur[pos + k]); pos += 9; } // type, side, buff (low byte), armor, stun out of 9 bytes per cell
             for (int k = 0; k < 16; k++) v1.Add(cur[pos + k]); // boulders + mystery
             pos += 16 + 8 + 1 + 64;
             for (; pos < cur.Length; pos++) v1.Add(cur[pos]);

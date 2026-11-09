@@ -174,6 +174,12 @@
                 <span class="pi">@Icons.Svg("fire")</span><span class="pl">Fireball</span>
             </button>
         }
+        @if (S.HasHarpoon)
+        {
+            <button class="perk fire-btn" data-action="harpoon" @onclick="S.StartHarpoon">
+                <span class="pi">@Icons.Svg("hook")</span><span class="pl">Harpoon</span>
+            </button>
+        }
         @if (S.HasDetonate)
         {
             <button class="perk boom-btn" data-action="detonate" @onclick="S.PreviewBomb">
@@ -272,7 +278,7 @@
                 <b>@InspectTitle(ip)</b>
                 <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
             </div>
-            @foreach (var flag in new[] { Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.Fireball, Buff.SmallBomb, Buff.BigBomb })
+            @foreach (var flag in new[] { Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.Fireball, Buff.Harpoon, Buff.SmallBomb, Buff.BigBomb })
             {
                 if (!ip.Has(flag)) { continue; }
                 var kind = Names.ForBuff(flag);
@@ -1262,7 +1268,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;
-            c += S.Mode == InputMode.Armed || S.Mode == InputMode.FireAim
+            c += S.Mode == InputMode.Armed || S.Mode == InputMode.FireAim || S.Mode == InputMode.HarpoonAim
                 ? " aim"
                 : enemy ? " target cap" : " target";
         }

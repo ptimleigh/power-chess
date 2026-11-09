@@ -20,12 +20,13 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Poison_does_not_hurt_a_king()
+        public void A_king_cannot_capture_a_poisoned_piece()
         {
             var s = T.Fen("4k3/8/8/8/8/8/3p4/3K4 w - - 0 1");
             T.Give(s, "d2", Buff.Poison);
-            T.Do(s, "d1d2");
-            Assert.AreEqual(PieceType.King, T.At(s, "d2").Type);
+            Assert.IsFalse(T.IsLegal(s, "d1d2"), "the king may not take a poisoned piece");
+            var plain = T.Fen("4k3/8/8/8/8/8/3p4/3K4 w - - 0 1");
+            Assert.IsTrue(T.IsLegal(plain, "d1d2"), "an ordinary pawn is fine");
         }
 
         // ---------- Spiked armor ----------

@@ -46,7 +46,8 @@ namespace ChessFighter.Core
         /// <summary>Chance a spawn is a pair of teleporter squares instead of powerup squares. 0 = never.</summary>
         public double PortalChance = 0;
         public int MaxPortalPairs = 1;
-        public int GhostTurns = 4;
+        /// <summary>Moves a ghost piece gets (the pickup move itself does not count). Standing still costs nothing.</summary>
+        public int GhostTurns = 3;
         public List<WeightedKind> Pool = DefaultPool();
 
         /// <summary>The pool before the playtest tuning, kept so BalanceSim can compare old and new weights.</summary>
@@ -116,6 +117,7 @@ namespace ChessFighter.Core
             {
                 new WeightedKind(PowerupKind.Fireball, 12),
                 new WeightedKind(PowerupKind.Poison, 6),
+                new WeightedKind(PowerupKind.Harpoon, 9),
                 new WeightedKind(PowerupKind.SmallBomb, 8),
                 new WeightedKind(PowerupKind.Ghost, 8),
                 new WeightedKind(PowerupKind.Combo2, 8),

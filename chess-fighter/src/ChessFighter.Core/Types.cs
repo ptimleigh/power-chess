@@ -13,7 +13,7 @@ namespace ChessFighter.Core
 
     /// <summary>Abilities that live on a piece and are lost when it is destroyed.</summary>
     [Flags]
-    public enum Buff : byte
+    public enum Buff : ushort
     {
         None = 0,
         DoubleMove = 1,
@@ -27,6 +27,8 @@ namespace ChessFighter.Core
         Ghost = 64,
         /// <summary>Like Double Move, but three moves in a row.</summary>
         TripleMove = 128,
+        /// <summary>Banked: fire a rope and bishop-shaped hook along a diagonal and pull the first rival piece in line next to this piece.</summary>
+        Harpoon = 256,
     }
 
     /// <summary>What a mystery square can contain. Perks go to the player's inventory, the rest apply to the piece.</summary>
@@ -56,6 +58,8 @@ namespace ChessFighter.Core
         Combo2,
         /// <summary>Instant: like Combo2 but 4 more moves (5 in all).</summary>
         Combo4,
+        /// <summary>Banked: Harpoon I pulls a rival along one diagonal, Harpoon II along all four at once.</summary>
+        Harpoon,
     }
 
     public static class PowerupInfo
@@ -64,7 +68,7 @@ namespace ChessFighter.Core
         public static bool IsBanked(PowerupKind k)
         {
             return k == PowerupKind.Fireball || k == PowerupKind.Poison || k == PowerupKind.SmallBomb
-                || k == PowerupKind.BigBomb || k == PowerupKind.Ghost;
+                || k == PowerupKind.BigBomb || k == PowerupKind.Ghost || k == PowerupKind.Harpoon;
         }
 
         public static bool IsCombo(PowerupKind k) { return k == PowerupKind.Combo2 || k == PowerupKind.Combo4; }
@@ -107,6 +111,8 @@ namespace ChessFighter.Core
         public byte GhostTurns;
         /// <summary>Tier of the banked move on this piece: 0 = none, 1 = I, 2 = II. Fireball I shoots like a rook, II like a queen.</summary>
         public byte Tier;
+        /// <summary>Owner turns of poison left; the poison fades when it reaches 0.</summary>
+        public byte PoisonTurns;
 
         public Piece(PieceType type, Side side)
         {
@@ -117,6 +123,7 @@ namespace ChessFighter.Core
             StunTurns = 0;
             GhostTurns = 0;
             Tier = 0;
+            PoisonTurns = 0;
         }
 
         public bool IsEmpty { get { return Type == PieceType.None; } }
@@ -150,6 +157,8 @@ namespace ChessFighter.Core
         RerollPickup,
         /// <summary>Swap two of your own pieces (From, To). Costs the turn.</summary>
         Swap,
+        /// <summary>Fire a Harpoon from From. Tier I: To = the rival hit, Aux = diagonal direction (4-7). Tier II: Aux = 8, fires every diagonal that has a target.</summary>
+        Harpoon,
     }
 
     public struct GameAction : IEquatable<GameAction>
@@ -237,6 +246,12 @@ namespace ChessFighter.Core
         PowerMaxed,
         /// <summary>A piece upgraded the banked move it already held (Fireball I to II, Bomb I to II).</summary>
         PowerUpgraded,
+        /// <summary>A harpoon was fired: From is the shooter, To the rival it hooked.</summary>
+        HarpoonFired,
+        /// <summary>A hooked piece was dragged next to the shooter: From is where it was, To where it landed.</summary>
+        PulledIn,
+        /// <summary>A poisoned piece's poison wore off.</summary>
+        PoisonFaded,
     }
 
     /// <summary>Describes what happened so the view layer can animate it. The engine itself never reads these.</summary>

@@ -9,7 +9,7 @@ namespace ChessFighter.Core
     /// </summary>
     public static class GameStateCodec
     {
-        const byte Version = 4;
+        const byte Version = 5;
         const int MaxHistory = 5000;
 
         public static string EncodeGame(GameState current, GameHistory history)
@@ -46,7 +46,7 @@ namespace ChessFighter.Core
                 using (var r = new BinaryReader(ms))
                 {
                     byte version = r.ReadByte();
-                    if (version < 1 || version > 4) return false; // version 1 saves predate revealed squares
+                    if (version < 1 || version > 5) return false; // version 1 saves predate revealed squares
                     var state = ReadState(r, config, version);
                     int count = r.ReadInt32();
                     if (count < 0 || count > MaxHistory) return false;
@@ -55,7 +55,7 @@ namespace ChessFighter.Core
                     {
                         var before = ReadState(r, config, version);
                         var action = new GameAction((ActionKind)r.ReadByte(), r.ReadInt16(), r.ReadInt16(), r.ReadInt16());
-                        if (action.Kind > ActionKind.Swap) return false;
+                        if (action.Kind > ActionKind.Harpoon) return false;
                         h.Record(before, action);
                     }
                     if (ms.Position != ms.Length) return false;
@@ -77,11 +77,12 @@ namespace ChessFighter.Core
                 var p = s.Cells[i];
                 w.Write((byte)p.Type);
                 w.Write((byte)p.Side);
-                w.Write((byte)p.Buffs);
+                w.Write((ushort)p.Buffs);
                 w.Write(p.ArmorTurns);
                 w.Write(p.StunTurns);
                 w.Write(p.GhostTurns);
                 w.Write(p.Tier);
+                w.Write(p.PoisonTurns);
             }
             w.Write(Pack(s.Boulders));
             w.Write(Pack(s.Mystery));
@@ -109,16 +110,20 @@ namespace ChessFighter.Core
             {
                 var type = r.ReadByte();
                 var side = r.ReadByte();
-                var buffs = r.ReadByte();
+                var buffs = version >= 5 ? r.ReadUInt16() : (ushort)r.ReadByte();
                 if (type > (byte)PieceType.King || side > 1 || false) throw new InvalidDataException("bad piece");
-                s.Cells[i] = new Piece((PieceType)type, (Side)side)
+                var piece = new Piece((PieceType)type, (Side)side)
                 {
                     Buffs = (Buff)buffs,
                     ArmorTurns = r.ReadByte(),
                     StunTurns = r.ReadByte(),
                     GhostTurns = version >= 3 ? r.ReadByte() : (byte)0,
                     Tier = version >= 4 ? r.ReadByte() : (byte)0,
+                    PoisonTurns = version >= 5 ? r.ReadByte() : (byte)0,
                 };
+                // Saves from before poison wore off: give an existing poison a full fuse.
+                if (version < 5 && piece.Has(Buff.Poison)) piece.PoisonTurns = 5;
+                s.Cells[i] = piece;
             }
             Unpack(r.ReadUInt64(), s.Boulders);
             Unpack(r.ReadUInt64(), s.Mystery);
@@ -126,7 +131,7 @@ namespace ChessFighter.Core
             {
                 Unpack(r.ReadUInt64(), s.Portal);
                 s.MultiLeft = r.ReadByte();
-                if (s.MultiLeft > 2) throw new InvalidDataException("bad multi");
+                if (s.MultiLeft > Rules.MaxComboMoves) throw new InvalidDataException("bad multi");
             }
             if (version >= 2)
             {
@@ -134,7 +139,7 @@ namespace ChessFighter.Core
                 if (content.Length != 64) throw new InvalidDataException("bad content");
                 for (int i = 0; i < 64; i++)
                 {
-                    if (content[i] > (byte)PowerupKind.Swap) throw new InvalidDataException("bad content kind");
+                    if (content[i] > (byte)PowerupKind.Harpoon) throw new InvalidDataException("bad content kind");
                     s.Content[i] = content[i];
                 }
             }

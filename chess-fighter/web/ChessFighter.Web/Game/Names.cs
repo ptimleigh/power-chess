@@ -27,6 +27,7 @@ public static class Names
         PowerupKind.Swap => "Swap",
         PowerupKind.Combo2 => "Combo +2",
         PowerupKind.Combo4 => "Combo +4",
+        PowerupKind.Harpoon => "Harpoon",
         _ => "",
     };
 
@@ -34,13 +35,18 @@ public static class Names
     public static string TierName(PowerupKind k, int tier) => k switch
     {
         PowerupKind.Fireball => tier >= 2 ? "Fireball II" : "Fireball I",
+        PowerupKind.Harpoon => tier >= 2 ? "Harpoon II" : "Harpoon I",
         PowerupKind.SmallBomb => "Bomb I",
         PowerupKind.BigBomb => "Bomb II",
         _ => Name(k),
     };
 
     /// <summary>Description for a power at a given tier.</summary>
-    public static string Desc(PowerupKind k, int tier) => k == PowerupKind.Fireball
+    public static string Desc(PowerupKind k, int tier) => k == PowerupKind.Harpoon
+        ? (tier >= 2
+            ? "Harpoon II: fire a hook on every diagonal at once. Each rival it hooks is dragged next to this piece; one already next to it is stunned for a turn. Uses your turn, one use."
+            : "Harpoon I: fire a hook along one diagonal and drag the first rival in line next to this piece. A rival already next to it is stunned for a turn. Land on another Harpoon square for II. Uses your turn, one use.")
+        : k == PowerupKind.Fireball
         ? (tier >= 2
             ? "Fireball II: fire along ranks, files and diagonals (like a queen). Destroys the first enemy in line instead of moving. Counts as a threat for check. Lost if the piece is destroyed."
             : "Fireball I: fire along ranks and files (like a rook). Destroys the first enemy in line instead of moving. Counts as a threat for check. Land on another Fireball square to upgrade to II.")
@@ -49,7 +55,7 @@ public static class Names
     public static string Desc(PowerupKind k) => k switch
     {
         PowerupKind.DoubleMove => "This piece must move twice next time it moves. Giving check cancels the second move.",
-        PowerupKind.Poison => "If this piece is captured, the capturer dies too.",
+        PowerupKind.Poison => "If this piece is captured, the capturer dies too. A king cannot capture it. Wears off after 5 of your turns.",
         PowerupKind.SpikedArmor => "Uncapturable and immune to effects for 3 turns. An armored king can't be checked, and may even stand next to the enemy king and check it.",
         PowerupKind.Stun => "Pick any enemy piece. It can't move for 3 turns (kings and armored pieces are immune).",
         PowerupKind.SmallBomb => "Bomb I: detonate instead of moving to destroy everything in the 3x3 around it (not kings). Land on another Bomb square to upgrade to II (5x5).",
@@ -61,7 +67,7 @@ public static class Names
         PowerupKind.Boulder => "Place a boulder on an empty square. Nothing can enter or cross it.",
         PowerupKind.Reroll => "Re-draw a powerup you just found, or smash a boulder.",
         PowerupKind.Rewind => "Take back your last turn and your opponent's reply. Use it on your turn.",
-        PowerupKind.Ghost => "For 3 turns this piece passes through pieces and boulders. Sliders slide through, pawns leapfrog a blocker, knights also step like a king, and a king reaches two squares. It never lands on its own side or gives check through a blocker.",
+        PowerupKind.Ghost => "This piece passes through pieces and boulders for its next 3 moves (standing still costs nothing). Sliders slide through, pawns leapfrog a blocker, knights also step like a king, and a king reaches two squares. It can give check and mate through blockers.",
         PowerupKind.TripleMove => "This piece must move three times in a row next time it moves. Giving check cancels the rest.",
         PowerupKind.Swap => "Trade places between two of your own pieces (not kings). Buffs travel with the pieces. A pawn swapped onto the far rank becomes a Queen. Costs your turn.",
         _ => PowerupInfo.IsTransform(k) ? "This piece changes type on the spot." : "",
@@ -76,6 +82,7 @@ public static class Names
         PowerupKind.SmallBomb => "bomb",
         PowerupKind.BigBomb => "bigbomb",
         PowerupKind.Fireball => "hadouken",
+        PowerupKind.Harpoon => "hook",
         PowerupKind.Combo2 => "plus2",
         PowerupKind.Combo4 => "plus4",
         PowerupKind.Steal => "steal",
@@ -101,13 +108,14 @@ public static class Names
         Buff.Armor => PowerupKind.SpikedArmor,
         Buff.SmallBomb => PowerupKind.SmallBomb,
         Buff.BigBomb => PowerupKind.BigBomb,
+        Buff.Harpoon => PowerupKind.Harpoon,
         _ => PowerupKind.None,
     };
 
     /// <summary>The powers listed in the help sheet, banked moves first, then instant moves.</summary>
     public static readonly PowerupKind[] Guide =
     {
-        PowerupKind.Fireball, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
+        PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
         PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.Stun, PowerupKind.Steal, PowerupKind.SpikedArmor,
     };
 

@@ -8,6 +8,10 @@ namespace ChessFighter.Core
     {
         const int ArmorStartTurns = 4; // 1 for the pickup turn itself + 3 more owner turns
         const int StunDuration = 3;
+        /// <summary>Most extra moves a stack of Combo squares can owe at once.</summary>
+        public const int MaxComboMoves = 24;
+        /// <summary>A poison fuse: the pickup turn plus 5 more owner turns.</summary>
+        const int PoisonStartTurns = 6;
 
         public static void Apply(GameState s, GameAction a, List<GameEvent> ev = null)
         {
@@ -81,6 +85,39 @@ namespace ChessFighter.Core
                     s.Cells[a.From] = shooter;
                     Emit(ev, EventKind.FireballFired, a.From, a.To, s.Cells[a.From].Type, me, PowerupKind.Fireball);
                     foreach (int v in victims) Destroy(s, v, ev);
+                    s.ClockReset = true;
+                    Finish(s, ev);
+                    return;
+                }
+
+                case ActionKind.Harpoon:
+                {
+                    var shooter = s.Cells[a.From];
+                    for (int dir = 4; dir < 8; dir++)
+                    {
+                        if (a.Aux != 8 && a.Aux != dir) continue;
+                        int target = Geometry.HarpoonTarget(s, a.From, dir);
+                        if (target < 0) continue;
+                        int landing = Geometry.NextTo(a.From, dir);
+                        Emit(ev, EventKind.HarpoonFired, a.From, target, shooter.Type, me, PowerupKind.Harpoon);
+                        var hooked = s.Cells[target];
+                        if (target == landing)
+                        {
+                            // Already next to the shooter: it cannot be pulled any closer, so it is stunned for a turn.
+                            hooked.StunTurns = 1;
+                            s.Cells[target] = hooked;
+                            Emit(ev, EventKind.StunStruck, target, target, hooked.Type, me, PowerupKind.Harpoon);
+                        }
+                        else
+                        {
+                            Remove(s, target);
+                            Place(s, landing, hooked);
+                            Emit(ev, EventKind.PulledIn, target, landing, hooked.Type, me, PowerupKind.Harpoon);
+                        }
+                    }
+                    shooter.Buffs &= ~Buff.Harpoon;
+                    shooter.Tier = 0;
+                    s.Cells[a.From] = shooter;
                     s.ClockReset = true;
                     Finish(s, ev);
                     return;
@@ -205,7 +242,15 @@ namespace ChessFighter.Core
             else if (mover.Has(Buff.DoubleMove)) owed = 1;
             s.MultiLeft = 0;
             if (!wasForced) mover.Buffs &= ~(Buff.DoubleMove | Buff.TripleMove);
+            // A ghost spends one of its moves each time it moves; standing still costs nothing.
+            bool ghostFaded = false;
+            if (mover.Has(Buff.Ghost) && mover.GhostTurns > 0)
+            {
+                mover.GhostTurns--;
+                if (mover.GhostTurns == 0) { mover.Buffs &= ~Buff.Ghost; mover.Tier = 0; ghostFaded = true; }
+            }
             Place(s, a.To, mover);
+            if (ghostFaded) Emit(ev, EventKind.GhostFaded, a.To, a.To, mover.Type, me, PowerupKind.Ghost);
 
             if (didCapture || origType == PieceType.Pawn) s.ClockReset = true;
             if (origType == PieceType.Pawn && Math.Abs(Sq.Rank(a.To) - Sq.Rank(a.From)) == 2
@@ -311,7 +356,7 @@ namespace ChessFighter.Core
             {
                 // A Combo square: the piece that landed on it owes that many extra moves, added to any it already owed.
                 if (s.DoubleSquare != s.ComboSquare) { s.DoubleSquare = s.ComboSquare; s.MultiLeft = 0; }
-                s.MultiLeft += s.ComboGain;
+                s.MultiLeft = Math.Min(MaxComboMoves, s.MultiLeft + s.ComboGain);
             }
             s.ComboGain = 0;
             s.ComboSquare = -1;
@@ -352,14 +397,15 @@ namespace ChessFighter.Core
                 if (p.IsEmpty || p.Side != me) continue;
                 bool changed = false;
                 if (p.StunTurns > 0) { p.StunTurns--; changed = true; }
-                if (p.Has(Buff.Ghost))
+                if (p.Has(Buff.Poison))
                 {
-                    p.GhostTurns--;
+                    p.PoisonTurns--;
                     changed = true;
-                    if (p.GhostTurns == 0)
+                    if (p.PoisonTurns == 0)
                     {
-                        p.Buffs &= ~Buff.Ghost;
-                        Emit(ev, EventKind.GhostFaded, sq, sq, p.Type, me, PowerupKind.Ghost);
+                        p.Buffs &= ~Buff.Poison;
+                        p.Tier = 0;
+                        Emit(ev, EventKind.PoisonFaded, sq, sq, p.Type, me, PowerupKind.Poison);
                     }
                 }
                 if (p.Has(Buff.Armor))
@@ -490,6 +536,7 @@ namespace ChessFighter.Core
                     if (p.Has(Buff.Poison)) { MaxOut(s, sq, p, kind, ev); return; }
                     ClearBanked(ref p);
                     p.Buffs |= Buff.Poison;
+                    p.PoisonTurns = PoisonStartTurns;
                     p.Tier = 1;
                     break;
                 case PowerupKind.Fireball:
@@ -508,6 +555,19 @@ namespace ChessFighter.Core
                 case PowerupKind.SpikedArmor:
                     p.Buffs |= Buff.Armor;
                     p.ArmorTurns = ArmorStartTurns;
+                    break;
+                case PowerupKind.Harpoon:
+                    if (p.Has(Buff.Harpoon))
+                    {
+                        if (p.Tier >= 2) { MaxOut(s, sq, p, kind, ev); return; }
+                        p.Tier = 2;
+                        s.Cells[sq] = p;
+                        Emit(ev, EventKind.PowerUpgraded, sq, sq, p.Type, me, kind);
+                        return;
+                    }
+                    ClearBanked(ref p);
+                    p.Buffs |= Buff.Harpoon;
+                    p.Tier = 1;
                     break;
                 case PowerupKind.SmallBomb:
                     if (p.Has(Buff.BigBomb)) { MaxOut(s, sq, p, kind, ev); return; }
@@ -561,13 +621,14 @@ namespace ChessFighter.Core
             Emit(ev, EventKind.BuffGained, sq, sq, p.Type, me, kind);
         }
 
-        const Buff BankedMask = Buff.Fireball | Buff.Poison | Buff.SmallBomb | Buff.BigBomb | Buff.Ghost;
+        const Buff BankedMask = Buff.Fireball | Buff.Poison | Buff.SmallBomb | Buff.BigBomb | Buff.Ghost | Buff.Harpoon;
 
         /// <summary>A piece holds one banked move at a time, so taking a different one wipes the old one.</summary>
         static void ClearBanked(ref Piece p)
         {
             p.Buffs &= ~BankedMask;
             p.GhostTurns = 0;
+            p.PoisonTurns = 0;
             p.Tier = 0;
         }
 

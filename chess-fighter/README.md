@@ -44,8 +44,21 @@ The debug URL options and the tap-the-logo-five-times debug panel work as descri
 - Stage: sunset sky behind the board.
 - Effects: hard offset shadows instead of glows, stepped animation, scanline + vignette overlay (`body::after`).
 
+## Debug tools and URL options
+
+Tap the logo five times (or open `?debug=1`) for the debug panel: hand cards to you or the rival, give a piece any banked power at tier I or II
+(or strip or stun it), drop any powerup square, spawn a pair, clear every power, and the old progress buttons. Handy URL options for setting up a
+position: `fen=`, `seed=`, `ai=`, `buffs=e4:fireball,e4:fireball` (listing a power twice makes it tier II), `reveal=a3:combo2`,
+`cards=w:takeback,b:nuhuh`, `pending=placeboulder` (an immediate card to aim first), `perks=`, `mystery=`, `spawn=`, `pairs=`, `tut=`, `drama=`.
+
+## Replay clip
+
+`web/ChessFighter.Web/wwwroot/js/clip.js` plays the last few moves as a 9:16 highlight in the game's 16-bit style (sunset stage, hazard-stripe frame,
+fight bars with K.O., FIGHT! intro, YOU WIN end card) and records it for sharing. Pieces are drawn from the same 32x32 sprite grids the game uses
+(`ClipBuilder` passes them in), so a sprite change shows up in the replay automatically. It animates every power and card event the engine reports.
+
 ## Known gaps
 
-- `wwwroot/js/clip.js` (replay-clip video) and `wwwroot/js/fx.js` still draw with the old neon look.
+- Sound is still the Power Chess synth (`wwwroot/js/fx.js` and the replay's own tones): no arcade music or voice yet.
 - App icons in `wwwroot/icons` are still the Power Chess icons.
 - No deploy workflow yet: GitHub Pages for this repo already serves Power Chess at `/power-chess/`.

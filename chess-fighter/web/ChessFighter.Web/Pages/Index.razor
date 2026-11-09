@@ -272,19 +272,23 @@
         <section class="debug" data-testid="debug">
             <div class="debug-head"><b>DEBUG</b><small>@(S.DebugHint == "" ? "Pick a tool, then tap the board" : S.DebugHint)</small>
                 <button class="x" aria-label="Close debug" @onclick="CloseDebug">x</button></div>
-            <div class="debug-row"><span>Perk +1</span>
-                @foreach (var k in DebugPerks)
+            <div class="debug-row"><span>Cards to @(S.DebugCardsToRival ? "rival" : "you")</span>
+                <button class="dbtn @(S.DebugCardsToRival ? "on" : "")" data-dcards="side" @onclick="S.DebugToggleCardSide">@(S.DebugCardsToRival ? "Rival" : "You")</button>
+                @foreach (var k in CardKinds)
                 {
                     var kk = k;
-                    <button class="dbtn" data-dperk="@kk.ToString().ToLowerInvariant()" @onclick="() => S.DebugGivePerk(kk)">@Names.Name(kk)</button>
+                    <button class="dbtn" data-dcard="@kk.ToString().ToLowerInvariant()" @onclick="() => S.DebugGiveCard(kk)">@Names.CardShort(kk)</button>
                 }
+                <button class="dbtn warn" data-dcards="clear" @onclick="S.DebugClearBags">Clear bags</button>
             </div>
-            <div class="debug-row"><span>Buff a piece</span>
-                @foreach (var k in DebugBuffs)
+            <div class="debug-row"><span>Power a piece</span>
+                @foreach (var (label, kind, times) in DebugBuffs)
                 {
-                    var kk = k;
-                    <button class="dbtn @(S.DebugArmed == DebugTool.Buff && S.DebugKind == kk ? "on" : "")" data-dbuff="@kk.ToString().ToLowerInvariant()" @onclick="() => S.DebugArm(DebugTool.Buff, kk)">@Names.Name(kk)</button>
+                    var kk = kind; var tt = times;
+                    <button class="dbtn @(S.DebugArmed == DebugTool.Buff && S.DebugKind == kk && S.DebugTimes == tt ? "on" : "")" data-dbuff="@(kk.ToString().ToLowerInvariant() + (tt > 1 ? "2" : ""))" @onclick="() => S.DebugArm(DebugTool.Buff, kk, tt)">@label</button>
                 }
+                <button class="dbtn warn @(S.DebugArmed == DebugTool.Unbuff ? "on" : "")" data-dbuff="strip" @onclick="() => S.DebugArm(DebugTool.Unbuff)">Strip</button>
+                <button class="dbtn @(S.DebugArmed == DebugTool.Stun ? "on" : "")" data-dbuff="stun" @onclick="() => S.DebugArm(DebugTool.Stun)">Stun</button>
             </div>
             <div class="debug-row"><span>Drop square</span>
                 <button class="dbtn @(S.DebugArmed == DebugTool.Square && S.DebugKind == PowerupKind.None ? "on" : "")" data-dsquare="hidden" @onclick="() => S.DebugArm(DebugTool.Square, PowerupKind.None)">? Mystery</button>
@@ -295,6 +299,10 @@
                 }
                 <button class="dbtn @(S.DebugArmed == DebugTool.Portal ? "on" : "")" data-dsquare="portal" @onclick="() => S.DebugArm(DebugTool.Portal)">Teleporters</button>
                 <button class="dbtn warn @(S.DebugArmed == DebugTool.Clear ? "on" : "")" data-dsquare="clear" @onclick="() => S.DebugArm(DebugTool.Clear)">Remove</button>
+            </div>
+            <div class="debug-row"><span>Board</span>
+                <button class="dbtn" data-dboard="spawn" @onclick="S.DebugSpawn">Spawn pair</button>
+                <button class="dbtn warn" data-dboard="clear" @onclick="S.DebugClearBoard">Clear all powers</button>
             </div>
             <div class="debug-row"><span>Progress</span>
                 <button class="dbtn" data-dprog="max" @onclick="() => DebugXp(Progression.XpForLevel(Progression.MaxLevel))">Max level</button>
@@ -865,18 +873,20 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     int logoTaps;
     DateTime lastLogoTap;
 
-    static readonly PowerupKind[] DebugPerks = { PowerupKind.Steal, PowerupKind.Stun, PowerupKind.Boulder, PowerupKind.Swap, PowerupKind.Reroll, PowerupKind.Rewind };
-    static readonly PowerupKind[] DebugBuffs =
+    /// <summary>Banked moves and Armor to put on a piece; the second number is how many times to apply it (2 = tier II).</summary>
+    static readonly (string Label, PowerupKind Kind, int Times)[] DebugBuffs =
     {
-        PowerupKind.DoubleMove, PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.Poison, PowerupKind.SpikedArmor,
-        PowerupKind.Fireball, PowerupKind.SmallBomb, PowerupKind.BigBomb,
-        PowerupKind.TransformKnight, PowerupKind.TransformBishop, PowerupKind.TransformRook, PowerupKind.TransformQueen,
+        ("Fireball I", PowerupKind.Fireball, 1), ("Fireball II", PowerupKind.Fireball, 2),
+        ("Harpoon I", PowerupKind.Harpoon, 1), ("Harpoon II", PowerupKind.Harpoon, 2),
+        ("Bomb I", PowerupKind.SmallBomb, 1), ("Bomb II", PowerupKind.SmallBomb, 2),
+        ("Poison", PowerupKind.Poison, 1), ("Ghost", PowerupKind.Ghost, 1), ("Armor", PowerupKind.SpikedArmor, 1),
     };
+
+    /// <summary>Every kind of powerup square the pool can hand out.</summary>
     static readonly PowerupKind[] DebugSquares =
     {
-        PowerupKind.DoubleMove, PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.Poison, PowerupKind.SpikedArmor,
-        PowerupKind.Fireball, PowerupKind.SmallBomb, PowerupKind.BigBomb, PowerupKind.TransformQueen,
-        PowerupKind.Steal, PowerupKind.Stun, PowerupKind.Boulder, PowerupKind.Swap, PowerupKind.Reroll, PowerupKind.Rewind,
+        PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
+        PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.StunBolt, PowerupKind.StealGrab, PowerupKind.DrawCard, PowerupKind.SpikedArmor,
     };
 
     /// <summary>Tap the logo five times to open the debug tools (or start with ?debug=1).</summary>
@@ -936,7 +946,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
         showDebug = uri.Query.Contains("debug=1", StringComparison.OrdinalIgnoreCase);
-        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=", "preset=", "freq=", "custom=" }
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "cards=", "pending=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=", "preset=", "freq=", "custom=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game

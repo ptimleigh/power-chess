@@ -520,3 +520,9 @@ html, body {
 .board.flipping { animation: boardflip 1s steps(10); }
 @keyframes boardflip { 0% { transform: rotate(180deg) scale(.9); filter: brightness(2); } 100% { transform: none; filter: none; } }
 @media (prefers-reduced-motion: reduce) { .board.flipping { animation: none; } .sq.missile::after { animation: none; } }
+
+/* ---------- Debug panel: a lot of buttons, so it scrolls instead of pushing the board away ---------- */
+.debug { max-height: 34vh; overflow-y: auto; }
+.debug-row { flex-wrap: wrap; }
+.dbtn { font-family: var(--px); font-size: 7px; font-weight: 400; border: 2px solid #000; box-shadow: var(--bevel), 2px 2px 0 #000; }
+.dbtn.on { background: var(--gold); color: #2a1a00; }

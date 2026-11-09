@@ -7,7 +7,7 @@ public enum PuzzleResult { None, Solved, Failed }
 public enum InputMode { Normal, Armed, FireAim, HarpoonAim, BombPreview, Promotion }
 
 /// <summary>What a debug tap does: give a piece a buff, drop a powerup square pair, drop teleporters, or clean up.</summary>
-public enum DebugTool { None, Buff, Square, Portal, Clear }
+public enum DebugTool { None, Buff, Square, Portal, Clear, Unbuff, Stun }
 
 /// <summary>A piece with a stable identity so CSS transitions can animate it as the engine state changes.</summary>
 public sealed class PieceView
@@ -920,27 +920,83 @@ public sealed class GameSession
 
     public DebugTool DebugArmed { get; private set; }
     public PowerupKind DebugKind { get; private set; }
+    /// <summary>How many times a Buff tap applies its power: 2 turns Fireball I into II, Bomb I into II, Harpoon I into II.</summary>
+    public int DebugTimes { get; private set; } = 1;
+    /// <summary>Cards from the debug panel go to the rival's bag instead of yours.</summary>
+    public bool DebugCardsToRival { get; private set; }
 
-    /// <summary>Give the player (the human, or whoever is to move) one of a perk.</summary>
-    public void DebugGivePerk(PowerupKind kind)
+    /// <summary>Give a card to your bag (or the rival's).</summary>
+    public void DebugGiveCard(CardKind kind)
     {
         if (Busy) return;
         DebugUsed = true;
-        State.AddPerk(Me, kind, 1);
+        State.AddCard(DebugCardsToRival ? Me.Opponent() : Me, kind, 1);
         Sfx?.Invoke("pickup");
         Refresh();
         Save();
         Changed?.Invoke();
     }
 
-    public void DebugArm(DebugTool tool, PowerupKind kind = PowerupKind.None)
+    public void DebugToggleCardSide()
+    {
+        DebugCardsToRival = !DebugCardsToRival;
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    public void DebugClearBags()
+    {
+        if (Busy) return;
+        DebugUsed = true;
+        Array.Clear(State.Bag, 0, State.Bag.Length);
+        Refresh();
+        Save();
+        Changed?.Invoke();
+    }
+
+    /// <summary>Wipe every power from every piece and every powerup square, like No More Powers.</summary>
+    public void DebugClearBoard()
+    {
+        if (Busy) return;
+        DebugUsed = true;
+        for (int i = 0; i < 64; i++)
+        {
+            var p = State.Cells[i];
+            if (!p.IsEmpty) { p.Buffs = Buff.None; p.Tier = 0; p.GhostTurns = 0; p.PoisonTurns = 0; p.ArmorTurns = 0; p.StunTurns = 0; State.Cells[i] = p; }
+            State.Mystery[i] = false;
+            State.Content[i] = 0;
+        }
+        State.MissileLeft = 0;
+        State.MissileAnchor = -1;
+        State.Mars[0] = State.Mars[1] = 0;
+        SyncViews();
+        Refresh();
+        Save();
+        Changed?.Invoke();
+    }
+
+    /// <summary>Drop one more mirrored pair of powerup squares, as the game would.</summary>
+    public void DebugSpawn()
+    {
+        if (Busy) return;
+        DebugUsed = true;
+        var ev = new List<GameEvent>();
+        Rules.TrySpawnPair(State, ev, false);
+        Process(ev);
+        Refresh();
+        Save();
+        Changed?.Invoke();
+    }
+
+    public void DebugArm(DebugTool tool, PowerupKind kind = PowerupKind.None, int times = 1)
     {
         ClearSelection();
         Inspect = -1;
         InspectSquare = -1;
-        bool same = DebugArmed == tool && DebugKind == kind;
+        bool same = DebugArmed == tool && DebugKind == kind && DebugTimes == times;
         DebugArmed = same ? DebugTool.None : tool;
         DebugKind = same ? PowerupKind.None : kind;
+        DebugTimes = same ? 1 : times;
         Sfx?.Invoke("click");
         Changed?.Invoke();
     }
@@ -949,15 +1005,18 @@ public sealed class GameSession
     {
         DebugArmed = DebugTool.None;
         DebugKind = PowerupKind.None;
+        DebugTimes = 1;
         Changed?.Invoke();
     }
 
     public string DebugHint => DebugArmed switch
     {
-        DebugTool.Buff => $"Debug: tap a piece to give it {Names.Name(DebugKind)}",
+        DebugTool.Buff => $"Debug: tap a piece to give it {(DebugKind == PowerupKind.Fireball || DebugKind == PowerupKind.Harpoon || DebugKind == PowerupKind.SmallBomb ? Names.TierName(DebugKind, DebugTimes) : Names.Name(DebugKind))}",
         DebugTool.Square => DebugKind == PowerupKind.None ? "Debug: tap an empty square for a mystery pair" : $"Debug: tap an empty square for a {Names.Name(DebugKind)} pair",
         DebugTool.Portal => "Debug: tap an empty square for a teleporter pair",
         DebugTool.Clear => "Debug: tap a powerup square, teleporter or boulder to remove it",
+        DebugTool.Unbuff => "Debug: tap a piece to strip its powers",
+        DebugTool.Stun => "Debug: tap a piece to stun it for 2 turns",
         _ => "",
     };
 
@@ -972,11 +1031,32 @@ public sealed class GameSession
             case DebugTool.Buff:
             {
                 if (cell.IsEmpty) return;
-                if (Rules.KingIncompatible(cell, DebugKind)) { AddToast("King can't use " + Names.Name(DebugKind), "Kings can't be poisoned or transformed. Pick another piece.", "gold", "crown"); break; }
+                if (Rules.KingIncompatible(cell, DebugKind)) { AddToast("King can't use " + Names.Name(DebugKind), "Kings can't carry poison or bombs. Pick another piece.", "gold", "crown"); break; }
                 var ev = new List<GameEvent>();
                 DebugUsed = true;
-                Rules.ApplyPickup(State, cell.Side, sq, DebugKind, ev);
+                for (int i = 0; i < DebugTimes; i++) Rules.ApplyPickup(State, cell.Side, sq, DebugKind, ev);
                 Process(ev);
+                SyncViews();
+                break;
+            }
+            case DebugTool.Unbuff:
+            {
+                if (cell.IsEmpty) return;
+                var p = cell;
+                p.Buffs = Buff.None; p.Tier = 0; p.GhostTurns = 0; p.PoisonTurns = 0; p.ArmorTurns = 0;
+                State.Cells[sq] = p;
+                DebugUsed = true;
+                SyncViews();
+                break;
+            }
+            case DebugTool.Stun:
+            {
+                if (cell.IsEmpty) return;
+                var p = cell;
+                p.StunTurns = Rules.StunBoltTurns;
+                State.Cells[sq] = p;
+                DebugUsed = true;
+                AddFx("stars", sq, css: "stun");
                 SyncViews();
                 break;
             }

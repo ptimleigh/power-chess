@@ -45,6 +45,16 @@ namespace ChessFighter.Core
 
         /// <summary>The side (as an int, -1 for none) that ended its turn with its king still in check, after its only escape was cancelled by Nuh-uh. It loses.</summary>
         public int LostSide = -1;
+        /// <summary>0 = left in check after a cancelled card, 1 = a king was in the missile's quadrant.</summary>
+        public byte LostWhy;
+
+        /// <summary>Turns of automatic best-move hints left per side (Summon Mars).</summary>
+        public readonly byte[] Mars = new byte[2];
+        /// <summary>Plies until the missile lands (0 = none in flight) and the corner square of the quadrant it will hit.</summary>
+        public int MissileLeft;
+        public int MissileAnchor = -1;
+        /// <summary>Snapshots of the position at the start of the last three turns (oldest first), for Take back. Immutable once taken.</summary>
+        public GameState[] TurnStarts;
 
         /// <summary>Whose decision the game is waiting for: normally the side to move, but the rival while a card awaits an answer.</summary>
         public Side Decider { get { return RespCard != CardKind.None ? ToMove.Opponent() : ToMove; } }
@@ -140,6 +150,11 @@ namespace ChessFighter.Core
             c.RespAux = RespAux;
             c.NoSpawnUntilPly = NoSpawnUntilPly;
             c.LostSide = LostSide;
+            c.LostWhy = LostWhy;
+            Array.Copy(Mars, c.Mars, 2);
+            c.MissileLeft = MissileLeft;
+            c.MissileAnchor = MissileAnchor;
+            c.TurnStarts = TurnStarts;
             c.EffectSquare = EffectSquare;
             c.ForcedMover = ForcedMover;
             c.DoubleSquare = DoubleSquare;
@@ -186,7 +201,7 @@ namespace ChessFighter.Core
                         case 'k': type = PieceType.King; break;
                         default: throw new ArgumentException("Bad FEN piece: " + ch);
                     }
-                    s.Cells[Sq.Make(file, rank)] = new Piece(type, side);
+                    s.Cells[Sq.Make(file, rank)] = new Piece(type, side) { Origin = (byte)(Sq.Make(file, rank) + 1) };
                     file++;
                 }
             }

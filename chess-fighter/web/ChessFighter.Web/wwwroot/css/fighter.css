@@ -507,3 +507,16 @@ html, body {
 .bag.opp .card-item { font-size: 6px; padding: 3px 5px; }
 .card-prompt { width: calc(var(--b) + 12px); display: grid; gap: 8px; justify-items: center; padding: 8px; background: #150e3cf2; border: 3px solid #000; box-shadow: 0 0 0 2px var(--gold), 4px 4px 0 #000; animation: pxpop .25s steps(4); }
 .cp-title { font-family: var(--px); font-size: 9px; color: var(--gold); text-shadow: 2px 2px 0 #000; text-align: center; line-height: 1.5; }
+
+/* ---------- Big cards: missile zone, dragon fire, board flip ---------- */
+.sq.missile::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+    background: repeating-linear-gradient(45deg, #ff2e4d55 0 6px, #ff2e4d00 6px 12px);
+    box-shadow: inset 0 0 0 2px #ff2e4d99;
+    animation: missilepulse .8s steps(2) infinite;
+}
+@keyframes missilepulse { 50% { opacity: .45; } }
+.fx-beam.dragon { height: 16px; margin-top: -8px; background: repeating-linear-gradient(90deg, #fffbd0 0 6px, #ffb400 6px 12px, #ff3b2f 12px 18px); box-shadow: 0 0 0 2px #000, 0 0 16px #ff7a1f; animation-timing-function: steps(8); }
+.board.flipping { animation: boardflip 1s steps(10); }
+@keyframes boardflip { 0% { transform: rotate(180deg) scale(.9); filter: brightness(2); } 100% { transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .board.flipping { animation: none; } .sq.missile::after { animation: none; } }

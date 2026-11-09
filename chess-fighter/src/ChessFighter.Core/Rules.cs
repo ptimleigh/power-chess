@@ -165,7 +165,7 @@ namespace ChessFighter.Core
 
                 case ActionKind.StealPick:
                 {
-                    var stolen = new Piece(s.Cells[a.To].Type, me);
+                    var stolen = new Piece(s.Cells[a.To].Type, me) { Origin = s.Cells[a.To].Origin };
                     Place(s, a.To, stolen);
                     Emit(ev, EventKind.Converted, a.From, a.To, stolen.Type, me, PowerupKind.StealGrab);
                     s.ClockReset = true;
@@ -178,7 +178,7 @@ namespace ChessFighter.Core
                 case ActionKind.Steal:
                 {
                     s.AddPerk(me, PowerupKind.Steal, -1);
-                    var stolen = new Piece(s.Cells[a.To].Type, me);
+                    var stolen = new Piece(s.Cells[a.To].Type, me) { Origin = s.Cells[a.To].Origin };
                     Place(s, a.To, stolen);
                     Emit(ev, EventKind.Converted, a.From, a.To, stolen.Type, me, PowerupKind.Steal);
                     s.ClockReset = true;
@@ -521,8 +521,54 @@ namespace ChessFighter.Core
             s.Ply++;
             s.ToMove = me.Opponent();
 
+            if (s.Mars[(int)me] > 0) s.Mars[(int)me]--;
+            if (s.MissileLeft > 0 && --s.MissileLeft == 0) ResolveMissile(s, ev);
+
             if (!s.SearchMode && s.Config.SpawnInterval > 0 && s.Ply % s.Config.SpawnInterval == 0 && s.Ply >= s.NoSpawnUntilPly)
                 TrySpawnPair(s, ev);
+
+            if (!s.SearchMode) PushTurnStart(s);
+        }
+
+        /// <summary>Remembers the position at the start of this turn (the last three are kept) for Take back.</summary>
+        static void PushTurnStart(GameState s)
+        {
+            var snap = s.Clone();
+            snap.TurnStarts = null;
+            var old = s.TurnStarts;
+            s.TurnStarts = new[] { old == null ? null : old[1], old == null ? null : old[2], snap };
+        }
+
+        /// <summary>
+        /// The missile lands on its quadrant: every piece there is destroyed (armored pieces and kings are not), boulders and
+        /// powerup squares are cleared. A king left in the quadrant loses the game; both kings means a draw.
+        /// </summary>
+        static void ResolveMissile(GameState s, List<GameEvent> ev)
+        {
+            int f0 = Sq.File(s.MissileAnchor), r0 = Sq.Rank(s.MissileAnchor);
+            bool whiteKing = false, blackKing = false;
+            Emit(ev, EventKind.MissileStruck, s.MissileAnchor, s.MissileAnchor, PieceType.None, s.ToMove, PowerupKind.None);
+            for (int f = f0; f < f0 + 4; f++)
+            {
+                for (int r = r0; r < r0 + 4; r++)
+                {
+                    int sq = Sq.Make(f, r);
+                    var p = s.Cells[sq];
+                    if (p.Type == PieceType.King) { if (p.Side == Side.White) whiteKing = true; else blackKing = true; }
+                    else if (Geometry.IsVulnerableToBomb(p)) Destroy(s, sq, ev);
+                    s.Boulders[sq] = false;
+                    s.Mystery[sq] = false;
+                    s.Content[sq] = 0;
+                    if (s.Portal[sq]) { s.Portal[sq] = false; s.Portal[Sq.Mirror(sq)] = false; }
+                }
+            }
+            s.MissileAnchor = -1;
+            s.ClockReset = true;
+            s.LostWhy = 1;
+            if (whiteKing && blackKing) s.LostSide = 2;
+            else if (whiteKing) s.LostSide = (int)Side.White;
+            else if (blackKing) s.LostSide = (int)Side.Black;
+            else s.LostWhy = 0;
         }
 
         // ---- board mutation helpers that keep castling rights honest ----
@@ -887,9 +933,14 @@ namespace ChessFighter.Core
         public static GameResult GetResult(GameState s, out string reason)
         {
             reason = "";
+            if (s.LostSide == 2)
+            {
+                reason = "Both kings were hit";
+                return GameResult.Draw;
+            }
             if (s.LostSide >= 0)
             {
-                reason = "Checkmate";
+                reason = s.LostWhy == 1 ? "Missile strike" : "Checkmate";
                 return s.LostSide == (int)Side.White ? GameResult.BlackWins : GameResult.WhiteWins;
             }
             if (s.PendingSquare < 0 && s.ForcedMover < 0 && s.EffectKind == PowerupKind.None && s.PendingCard == CardKind.None && s.RespCard == CardKind.None)

@@ -102,11 +102,11 @@ namespace ChessFighter.Core.Tests
             // Rewrite as version 1: per cell keep only the v1 per-cell fields, then drop the portal bitset, multi-move byte and 64 content bytes.
             var v1 = new System.Collections.Generic.List<byte> { 1 };
             int pos = 1;
-            for (int i = 0; i < 64; i++) { foreach (int k in new[] { 0, 1, 2, 4, 5 }) v1.Add(cur[pos + k]); pos += 9; } // type, side, buff (low byte), armor, stun out of 9 bytes per cell
+            for (int i = 0; i < 64; i++) { foreach (int k in new[] { 0, 1, 2, 4, 5 }) v1.Add(cur[pos + k]); pos += 10; } // type, side, buff (low byte), armor, stun out of 9 bytes per cell
             for (int k = 0; k < 16; k++) v1.Add(cur[pos + k]); // boulders + mystery
             pos += 16 + 8 + 1 + 64;
-            // the rest of the state, minus the effect and card bytes added in v6 and v7, then the 4-byte history count
-            for (; pos < cur.Length - 4 - 98; pos++) v1.Add(cur[pos]);
+            // the rest of the state, minus the effect, card, mars and missile bytes added in v6 to v8 and the snapshot count, then the 4-byte history count
+            for (; pos < cur.Length - 4 - 1 - 98 - 7; pos++) v1.Add(cur[pos]);
             for (pos = cur.Length - 4; pos < cur.Length; pos++) v1.Add(cur[pos]);
 
             GameState s2;

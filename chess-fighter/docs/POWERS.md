@@ -58,8 +58,8 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | Nuh-uh | Cancel the other player's card. Prompted whenever a card is activated. | reaction |
 | Take back | Undo 1 round of moves. | at will |
 
-**Built:** Place a boulder, Smash boulder, You get a promotion!, Role reversal, Horse Sacrifice, No more powers, Summon Caissa and Nuh-uh.
-**Planned:** World turned upside down, Hit restart, Missile Strike, Summon Mars, Summon Shiva, Dragon Strike, Take back.
+**All fifteen cards are built:** Place a boulder, Smash boulder, You get a promotion!, Role reversal, Horse Sacrifice, No more powers, Summon Caissa,
+Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World turned upside down and Missile Strike.
 
 ## Assumptions made while building (change any of these)
 
@@ -82,6 +82,19 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
   and it always answers with Nuh-uh when it holds one.
 - **Nuh-uh and check:** if you play a card to get out of check and it is cancelled, you are still in check at the end of your turn, which
   is **checkmate**. Change this if you would rather the cancelled card just fail.
+- **Take back** returns the board to the start of your previous turn (so your move and the rival's reply are both undone, and pieces lost in
+  that round come back). Your bag, the rival's bag and the random sequence are **not** undone. It needs at least three turns of history.
+- **Summon Mars** shows the best move automatically at the start of your next 3 turns (free, no XP penalty). It does not stack.
+- **Dragon Strike** burns every piece on rows 3 to 6 that has no king on it, both colors, except armored pieces. Boulders and powerup squares stay.
+- **Summon Shiva** strikes up to 3 random rival pieces (never kings, never armored), skipping any whose removal would leave your own king in check.
+- **Hit restart** sends each piece to the square it started the game on (a promoted pawn returns to the pawn's square; a stolen piece keeps its
+  origin; a piece with no known origin, such as one Caissa brought back, stays put). Boulders, powerup squares and teleporters on a landing
+  square are cleared. Unplayable only if it would leave your own king in check.
+- **World turned upside down** rotates the board 180 degrees and swaps every piece's color, so you keep your seat and command the army that was
+  facing you. Castling rights are gone, and each side's lost pieces go with the army. Unplayable only if it would leave your own king in check.
+- **Missile Strike** picks one of the four 4x4 quadrants. It lands after 10 moves (5 turns each). Everything in the quadrant is destroyed except
+  kings and armored pieces; a king still there **loses the game**, both kings there is a draw. Only one missile at a time. The AI treats the zone
+  as danger and heads for the nearest edge.
 - **Role reversal, Horse Sacrifice and Promotion never touch kings;** promotion never touches queens.
 - **Caissa** places the piece on any free square (no powerup square, boulder or teleporter, and no pawn on a back rank). The sacrificed
   knight of Horse Sacrifice counts as lost, so Caissa can bring it back.

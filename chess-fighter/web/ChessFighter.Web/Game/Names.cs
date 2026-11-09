@@ -140,6 +140,13 @@ public static class Names
         CardKind.SmashBoulder => "Smash Boulder",
         CardKind.SummonCaissa => "Summon Caissa",
         CardKind.NuhUh => "Nuh-uh",
+        CardKind.TakeBack => "Take Back",
+        CardKind.SummonMars => "Summon Mars",
+        CardKind.DragonStrike => "Dragon Strike",
+        CardKind.SummonShiva => "Summon Shiva",
+        CardKind.HitRestart => "Hit Restart",
+        CardKind.WorldUpsideDown => "World Turned Upside Down",
+        CardKind.MissileStrike => "Missile Strike",
         _ => "",
     };
 
@@ -153,6 +160,13 @@ public static class Names
         CardKind.SmashBoulder => "Smash",
         CardKind.SummonCaissa => "Caissa",
         CardKind.NuhUh => "Nuh-uh",
+        CardKind.TakeBack => "Take Back",
+        CardKind.SummonMars => "Mars",
+        CardKind.DragonStrike => "Dragon",
+        CardKind.SummonShiva => "Shiva",
+        CardKind.HitRestart => "Restart",
+        CardKind.WorldUpsideDown => "World",
+        CardKind.MissileStrike => "Missile",
         _ => "",
     };
 
@@ -166,6 +180,13 @@ public static class Names
         CardKind.SmashBoulder => "Remove one boulder. At will.",
         CardKind.SummonCaissa => "Bring one of your captured pieces back, on any free square. At will.",
         CardKind.NuhUh => "Cancel the card your rival just played. Used as a reaction, never on your own turn.",
+        CardKind.TakeBack => "Undo a round of moves: the board returns to the start of your previous turn. At will.",
+        CardKind.SummonMars => "Mars shows you the best move at the start of your next 3 turns. At will.",
+        CardKind.DragonStrike => "A dragon burns every piece on one row (rows 3 to 6, not a row holding a king). At will.",
+        CardKind.SummonShiva => "Shiva strikes up to 3 random rival pieces with falling weapons. Never kings. At will.",
+        CardKind.HitRestart => "Every piece goes back to its starting square and keeps its powers. Captured pieces stay captured. Used straight away.",
+        CardKind.WorldUpsideDown => "The board flips 180 degrees and you command the other army. Used straight away.",
+        CardKind.MissileStrike => "Pick a quadrant. In 10 moves a missile destroys everything there. A king still inside loses the game. At will.",
         _ => "",
     };
 
@@ -179,6 +200,13 @@ public static class Names
         CardKind.SmashBoulder => "hammer",
         CardKind.SummonCaissa => "spark",
         CardKind.NuhUh => "hand",
+        CardKind.TakeBack => "rewind",
+        CardKind.SummonMars => "star",
+        CardKind.DragonStrike => "hadouken",
+        CardKind.SummonShiva => "bolt",
+        CardKind.HitRestart => "history",
+        CardKind.WorldUpsideDown => "portal",
+        CardKind.MissileStrike => "bigbomb",
         _ => "card",
     };
 

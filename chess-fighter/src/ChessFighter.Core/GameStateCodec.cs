@@ -9,7 +9,7 @@ namespace ChessFighter.Core
     /// </summary>
     public static class GameStateCodec
     {
-        const byte Version = 7;
+        const byte Version = 8;
         const int MaxHistory = 5000;
 
         public static string EncodeGame(GameState current, GameHistory history)
@@ -19,6 +19,12 @@ namespace ChessFighter.Core
             {
                 w.Write(Version);
                 WriteState(w, current);
+                // The last three turn-start snapshots (oldest first) so Take back survives a reload.
+                var snaps = current.TurnStarts;
+                int have = 0;
+                if (snaps != null) for (int i = 0; i < 3; i++) if (snaps[i] != null) have++;
+                w.Write((byte)have);
+                if (snaps != null) for (int i = 0; i < 3; i++) if (snaps[i] != null) { w.Write((byte)i); WriteState(w, snaps[i]); }
                 w.Write(history.Count);
                 for (int i = 0; i < history.Count; i++)
                 {
@@ -46,8 +52,20 @@ namespace ChessFighter.Core
                 using (var r = new BinaryReader(ms))
                 {
                     byte version = r.ReadByte();
-                    if (version < 1 || version > 7) return false; // version 1 saves predate revealed squares
+                    if (version < 1 || version > 8) return false; // version 1 saves predate revealed squares
                     var state = ReadState(r, config, version);
+                    if (version >= 8)
+                    {
+                        int have = r.ReadByte();
+                        if (have > 3) return false;
+                        if (have > 0) state.TurnStarts = new GameState[3];
+                        for (int i = 0; i < have; i++)
+                        {
+                            int slot = r.ReadByte();
+                            if (slot > 2) return false;
+                            state.TurnStarts[slot] = ReadState(r, config, version);
+                        }
+                    }
                     int count = r.ReadInt32();
                     if (count < 0 || count > MaxHistory) return false;
                     var h = new GameHistory();
@@ -83,6 +101,7 @@ namespace ChessFighter.Core
                 w.Write(p.GhostTurns);
                 w.Write(p.Tier);
                 w.Write(p.PoisonTurns);
+                w.Write(p.Origin);
             }
             w.Write(Pack(s.Boulders));
             w.Write(Pack(s.Mystery));
@@ -112,6 +131,10 @@ namespace ChessFighter.Core
             w.Write(s.RespAux);
             w.Write(s.NoSpawnUntilPly);
             w.Write((sbyte)s.LostSide);
+            w.Write(s.LostWhy);
+            w.Write(s.Mars);
+            w.Write((short)s.MissileLeft);
+            w.Write((short)s.MissileAnchor);
         }
 
         static GameState ReadState(BinaryReader r, GameConfig config, byte version)
@@ -131,7 +154,9 @@ namespace ChessFighter.Core
                     GhostTurns = version >= 3 ? r.ReadByte() : (byte)0,
                     Tier = version >= 4 ? r.ReadByte() : (byte)0,
                     PoisonTurns = version >= 5 ? r.ReadByte() : (byte)0,
+                    Origin = version >= 8 ? r.ReadByte() : (byte)0,
                 };
+                if (piece.Origin > 64) throw new InvalidDataException("bad origin");
                 // Saves from before poison wore off: give an existing poison a full fuse.
                 if (version < 5 && piece.Has(Buff.Poison)) piece.PoisonTurns = 5;
                 s.Cells[i] = piece;
@@ -187,7 +212,7 @@ namespace ChessFighter.Core
                 Array.Copy(lost, s.Captured, 16);
                 var pending = r.ReadByte();
                 var resp = r.ReadByte();
-                if (pending > (byte)CardKind.NuhUh || resp > (byte)CardKind.NuhUh) throw new InvalidDataException("bad card");
+                if (pending > (byte)CardKind.MissileStrike || resp > (byte)CardKind.MissileStrike) throw new InvalidDataException("bad card");
                 s.PendingCard = (CardKind)pending;
                 s.RespCard = (CardKind)resp;
                 s.RespFrom = CheckSquare(r.ReadInt16());
@@ -197,6 +222,16 @@ namespace ChessFighter.Core
                 var loser = r.ReadSByte();
                 if (loser < -1 || loser > 1) throw new InvalidDataException("bad lost side");
                 s.LostSide = loser;
+            }
+            if (version >= 8)
+            {
+                s.LostWhy = r.ReadByte();
+                var mars = r.ReadBytes(2);
+                if (mars.Length != 2) throw new InvalidDataException("bad mars");
+                Array.Copy(mars, s.Mars, 2);
+                s.MissileLeft = r.ReadInt16();
+                s.MissileAnchor = CheckSquare(r.ReadInt16());
+                if (s.MissileLeft < 0 || s.MissileLeft > 11) throw new InvalidDataException("bad missile");
             }
             return s;
         }

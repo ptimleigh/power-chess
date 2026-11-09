@@ -122,6 +122,8 @@ namespace ChessFighter.Core
         public byte Tier;
         /// <summary>Owner turns of poison left; the poison fades when it reaches 0.</summary>
         public byte PoisonTurns;
+        /// <summary>The square this piece started the game on, plus one (0 = unknown). Hit restart sends pieces back to it.</summary>
+        public byte Origin;
 
         public Piece(PieceType type, Side side)
         {
@@ -133,6 +135,7 @@ namespace ChessFighter.Core
             GhostTurns = 0;
             Tier = 0;
             PoisonTurns = 0;
+            Origin = 0;
         }
 
         public bool IsEmpty { get { return Type == PieceType.None; } }
@@ -287,6 +290,20 @@ namespace ChessFighter.Core
         PieceRestored,
         /// <summary>No more powers wiped every power and powerup square.</summary>
         PowersCleared,
+        /// <summary>World turned upside down: the board rotated 180 degrees and every piece changed sides.</summary>
+        BoardFlipped,
+        /// <summary>Hit restart: pieces went back to their starting squares.</summary>
+        BoardRestarted,
+        /// <summary>Take back undid a round of moves.</summary>
+        TurnRewound,
+        /// <summary>Dragon Strike scorched a row: From and To are its two ends.</summary>
+        DragonFire,
+        /// <summary>Summon Shiva struck a piece.</summary>
+        ShivaStrike,
+        /// <summary>A missile was launched at a quadrant (From is its corner square).</summary>
+        MissileLaunched,
+        /// <summary>The missile landed.</summary>
+        MissileStruck,
     }
 
     /// <summary>Describes what happened so the view layer can animate it. The engine itself never reads these.</summary>

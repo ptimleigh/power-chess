@@ -66,7 +66,7 @@
     }
 
     <div class="board-frame">
-        <div class="board @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">
+        <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">
             @for (int rank = 7; rank >= 0; rank--)
             {
                 for (int file = 0; file < 8; file++)
@@ -1308,6 +1308,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (sq == S.HintFrom || sq == S.HintTo) c += " hint";
         if (S.EffectPending && S.HumanTurn && S.EffectTargets.Contains(sq)) c += " aim";
         if (cardAim.Contains(sq)) c += " aim";
+        if (missileZone.Contains(sq)) c += " missile";
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;
@@ -1323,11 +1324,13 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     }
 
     HashSet<int> cardAim = new();
+    HashSet<int> missileZone = new();
 
     /// <summary>Called once per render, before the board is drawn, so every tile can ask whether a card wants it tapped.</summary>
     string PrepCardAim()
     {
         cardAim = S.CardTargets.ToHashSet();
+        missileZone = S.MissileZone;
         return S.ActiveCard == CardKind.None ? "" : S.ActiveCard.ToString();
     }
 

@@ -177,12 +177,25 @@ public sealed class GameSession
     public async Task Hint()
     {
         if (!HintAvailable || HintsLeft == 0) return;
+        await ShowHint("", true);
+    }
+
+    /// <summary>Summon Mars: the best move is shown automatically at the start of each of the owner's turns. Free, and no XP penalty.</summary>
+    async Task MaybeMars()
+    {
+        if (GameOver || Reviewing || Puzzle != null || !HumanTurn) return;
+        if (State.Mars[(int)State.Decider] == 0 || State.RespCard != CardKind.None || PickupPending) return;
+        await ShowHint("Mars: ", false);
+    }
+
+    async Task ShowHint(string prefix, bool counts)
+    {
         HintThinking = true;
         ClearSelection();
         Changed?.Invoke();
         await Task.Delay(60); // let the UI paint before the (synchronous) search
         GameAction act = Hints.Suggest(State);
-        HintsUsed++;
+        if (counts) HintsUsed++;
         switch (act.Kind)
         {
             case ActionKind.Move:
@@ -202,7 +215,7 @@ public sealed class GameSession
             default:
                 HintFrom = HintTo = -1; break;
         }
-        HintText = Hints.Describe(State, act);
+        HintText = prefix + Hints.Describe(State, act);
         HintThinking = false;
         Sfx?.Invoke("pickup");
         Changed?.Invoke();
@@ -621,6 +634,10 @@ public sealed class GameSession
     public Side Decider => State.Decider;
 
     /// <summary>A card was just activated and the rival may cancel it with Nuh-uh.</summary>
+    /// <summary>True for a moment after the board flips, for the CSS rotation.</summary>
+    public bool Flipping { get; private set; }
+    bool rebuildViews;
+
     public bool Responding => State.RespCard != CardKind.None && !GameOver;
 
     /// <summary>The bag card the player picked to play, or None.</summary>
@@ -667,13 +684,27 @@ public sealed class GameSession
         return CardStep.None;
     }
 
+    /// <summary>The squares to highlight for the current step. A row or quadrant card lights the whole row or quadrant.</summary>
     public IEnumerable<int> CardTargets
     {
         get
         {
             var step = NextCardStep(out var squares, out _);
-            return step == CardStep.Square ? squares : Enumerable.Empty<int>();
+            if (step != CardStep.Square) return Enumerable.Empty<int>();
+            if (ActiveCard == CardKind.DragonStrike)
+                return squares.SelectMany(a => Enumerable.Range(0, 8).Select(f => Sq.Make(f, Sq.Rank(a))));
+            if (ActiveCard == CardKind.MissileStrike)
+                return squares.SelectMany(a => Enumerable.Range(0, 16).Select(i => Sq.Make(Sq.File(a) + i % 4, Sq.Rank(a) + i / 4)));
+            return squares;
         }
+    }
+
+    /// <summary>A tap anywhere in a row or quadrant selects its anchor square, which is what the engine's action carries.</summary>
+    static int CardAnchor(CardKind card, int sq)
+    {
+        if (card == CardKind.DragonStrike) return Sq.Make(0, Sq.Rank(sq));
+        if (card == CardKind.MissileStrike) return Sq.Make(Sq.File(sq) / 4 * 4, Sq.Rank(sq) / 4 * 4);
+        return sq;
     }
 
     void ResetCardChoice()
@@ -734,6 +765,7 @@ public sealed class GameSession
     async Task CardTap(int sq)
     {
         var step = NextCardStep(out var squares, out _);
+        sq = CardAnchor(ActiveCard, sq);
         if (step != CardStep.Square || !squares.Contains(sq)) { Sfx?.Invoke("click"); return; }
         var acts = CardRemaining();
         if (acts.All(a => a.From == a.To)) { cardFrom = sq; cardTo = sq; }
@@ -768,6 +800,8 @@ public sealed class GameSession
             case CardKind.RoleReversal: return second ? "Role reversal: tap the piece to swap with" : "Role reversal: tap the first piece";
             case CardKind.HorseSacrifice: return second ? "Horse sacrifice: tap the piece that becomes a rook" : "Horse sacrifice: tap the knight to sacrifice";
             case CardKind.SummonCaissa: return "Caissa: tap an empty square";
+            case CardKind.DragonStrike: return "Dragon: tap a row to burn";
+            case CardKind.MissileStrike: return "Missile: tap the quadrant to strike";
             default: return name;
         }
     }
@@ -1142,6 +1176,7 @@ public sealed class GameSession
         Busy = false;
         AutoSelectForced();
         Changed?.Invoke();
+        await MaybeMars();
     }
 
     async Task Play(GameAction a)
@@ -1162,6 +1197,14 @@ public sealed class GameSession
         Moves++;
         tracker?.Observe(ev);
         Process(ev);
+        if (rebuildViews)
+        {
+            // Everything moved at once (restart, flip, take back): draw the board afresh instead of animating each piece away.
+            rebuildViews = false;
+            Pieces.Clear();
+            for (int sq = 0; sq < 64; sq++)
+                if (!State.Cells[sq].IsEmpty) Pieces.Add(new PieceView { Id = nextId++, Square = sq });
+        }
         SyncViews();
         Refresh();
         Changed?.Invoke();
@@ -1231,7 +1274,30 @@ public sealed class GameSession
         InCheck = Geometry.IsKingAttacked(State, State.ToMove);
     }
 
+    /// <summary>The squares a missile in flight will hit.</summary>
+    public HashSet<int> MissileZone
+    {
+        get
+        {
+            var zone = new HashSet<int>();
+            if (State.MissileLeft <= 0 || State.MissileAnchor < 0) return zone;
+            for (int i = 0; i < 16; i++) zone.Add(Sq.Make(Sq.File(State.MissileAnchor) + i % 4, Sq.Rank(State.MissileAnchor) + i / 4));
+            return zone;
+        }
+    }
+
     public string Status
+    {
+        get
+        {
+            string core = StatusCore;
+            if (State.MissileLeft > 0 && !GameOver && !Reviewing && core != "")
+                core += $" - MISSILE in {State.MissileLeft} {(State.MissileLeft == 1 ? "move" : "moves")}!";
+            return core;
+        }
+    }
+
+    string StatusCore
     {
         get
         {
@@ -1580,6 +1646,52 @@ public sealed class GameSession
                     AddToast("NO MORE POWERS", "Every power and powerup square is gone", "stun", "ban");
                     Sfx?.Invoke("bomb");
                     break;
+                case EventKind.TurnRewound:
+                    rebuildViews = true;
+                    AddToast("TAKE BACK", "A round of moves is undone", "stun", "rewind");
+                    Shake();
+                    Sfx?.Invoke("thud");
+                    break;
+                case EventKind.BoardRestarted:
+                    rebuildViews = true;
+                    AddToast("HIT RESTART", "Everything goes home", "gold", "history");
+                    Shake(2);
+                    Sfx?.Invoke("bomb");
+                    break;
+                case EventKind.BoardFlipped:
+                    rebuildViews = true;
+                    Flipping = true;
+                    Later(1000, () => Flipping = false);
+                    AddToast("THE WORLD TURNS", "You command the other army", "stun", "portal");
+                    Shake(2);
+                    Sfx?.Invoke("stun");
+                    break;
+                case EventKind.DragonFire:
+                    AddFx("beam", e.From, e.To, css: "dragon");
+                    AddToast("DRAGON STRIKE!", "A row burns", "fire", "hadouken");
+                    Shake(2);
+                    Sfx?.Invoke("fire");
+                    break;
+                case EventKind.ShivaStrike:
+                    AddFx("ring", e.From, radius: 1, css: "gold");
+                    AddFx("burst", e.From, css: "steal");
+                    AddFx("callout", e.From, css: "heavy", text: "SMITE!");
+                    Sfx?.Invoke("slash");
+                    break;
+                case EventKind.MissileLaunched:
+                    AddToast("MISSILE INCOMING", "It lands in 10 moves. Clear the zone!", "fire", "bigbomb");
+                    Sfx?.Invoke("fire");
+                    break;
+                case EventKind.MissileStruck:
+                {
+                    int ax = Sq.File(e.From), ay = Sq.Rank(e.From);
+                    AddFx("ring", Sq.Make(ax + 1, ay + 1), radius: 2, css: "boom");
+                    AddFx("flash", Sq.Make(ax + 1, ay + 1), radius: 2, css: "boom");
+                    AddToast("MISSILE STRIKE!", "The quadrant is gone", "boom", "bigbomb");
+                    Shake(2);
+                    Sfx?.Invoke("bomb");
+                    break;
+                }
                 case EventKind.ZapFired:
                     AddFx("beam", e.From, e.To, css: "zap");
                     AddToast("ZAP!", "", "stun", "bolt");

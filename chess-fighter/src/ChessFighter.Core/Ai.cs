@@ -306,6 +306,26 @@ namespace ChessFighter.Core
         }
 
         /// <summary>Static score from the side-to-move's point of view.</summary>
+        /// <summary>Moves a piece needs to leave the missile's quadrant by the nearest edge that is not the board's edge. A gradient so the search heads for the exit.</summary>
+        static int MissileExitSteps(GameState s, int sq)
+        {
+            int f0 = Sq.File(s.MissileAnchor), r0 = Sq.Rank(s.MissileAnchor);
+            int f = Sq.File(sq), r = Sq.Rank(sq);
+            int best = 8;
+            if (f0 > 0) best = System.Math.Min(best, f - f0 + 1);
+            if (f0 + 4 <= 7) best = System.Math.Min(best, f0 + 4 - f);
+            if (r0 > 0) best = System.Math.Min(best, r - r0 + 1);
+            if (r0 + 4 <= 7) best = System.Math.Min(best, r0 + 4 - r);
+            return best;
+        }
+
+        static bool InMissileZone(GameState s, int sq)
+        {
+            if (s.MissileAnchor < 0) return false;
+            int df = Sq.File(sq) - Sq.File(s.MissileAnchor), dr = Sq.Rank(sq) - Sq.Rank(s.MissileAnchor);
+            return df >= 0 && df < 4 && dr >= 0 && dr < 4;
+        }
+
         public static int Evaluate(GameState s) { return Evaluate(s, false); }
 
         public static int Evaluate(GameState s, bool full)
@@ -354,6 +374,9 @@ namespace ChessFighter.Core
                 if (p.Has(Buff.BigBomb)) v += 110;
                 if (p.IsStunned) v -= (PieceValue[(int)p.Type] / 6) * p.StunTurns / 3 + 10;
 
+                // A missile in flight: whatever is still in its quadrant when it lands is lost, and a king there loses the game.
+                if (s.MissileLeft > 0 && s.MissileLeft <= 8 && InMissileZone(s, sq) && (p.Type == PieceType.King || !p.Has(Buff.Armor)))
+                    v -= p.Type == PieceType.King ? 4000 + 150 * MissileExitSteps(s, sq) : v + 10 * MissileExitSteps(s, sq);
                 score += p.Side == Side.White ? v : -v;
             }
 

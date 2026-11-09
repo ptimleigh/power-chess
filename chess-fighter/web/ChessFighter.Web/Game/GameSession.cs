@@ -391,12 +391,18 @@ public sealed class GameSession
 
     }
 
-    /// <summary>1 for the first game, counting up each time a new game starts. Drives the ROUND n banner.</summary>
+    static int roundCounter;
+
+    /// <summary>Counts up across the page's lifetime, each time any game starts. Drives the ROUND n banner (and replays it).</summary>
     public int GameSerial { get; private set; }
+
+    /// <summary>True for a freshly started game, false when a saved game was restored (no intro when resuming).</summary>
+    public bool RoundIntro { get; private set; }
 
     public void NewGame()
     {
-        GameSerial++;
+        GameSerial = ++roundCounter;
+        RoundIntro = true;
         var cfg = BuildConfig();
 
         if (opt.Puzzle != null) SetupPuzzle();
@@ -508,6 +514,7 @@ public sealed class GameSession
             Inspect = -1;
             Refresh();
             AddToast("Game restored", "Picked up where you left off", "gold", "history");
+            RoundIntro = false;
             Changed?.Invoke();
             Save();
             return true;

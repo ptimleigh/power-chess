@@ -56,10 +56,13 @@
         </section>
     }
 
-    <div class="round-banner" @key="S.GameSerial" aria-hidden="true">
-        <div class="rb-round">ROUND @S.GameSerial</div>
-        <div class="rb-fight">FIGHT!</div>
-    </div>
+    @if (S.RoundIntro)
+    {
+        <div class="round-banner" @key="S.GameSerial" aria-hidden="true">
+            <div class="rb-round">ROUND @S.GameSerial</div>
+            <div class="rb-fight">FIGHT!</div>
+        </div>
+    }
 
     <div class="board-frame">
         <div class="board @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">

@@ -380,23 +380,37 @@ html, body {
     paint-order: stroke fill;
 }
 .rb-round {
-    font-size: 26px;
+    font-size: 24px;
     color: #ffe23a;
     text-shadow: 4px 4px 0 #000, 0 0 0 #000;
-    animation: rbround 1.3s steps(1, end) both;
+    animation: rbround .8s linear forwards;
 }
 .rb-fight {
-    font-size: 46px;
+    font-size: 42px;
     color: #ff3b2f;
     background: linear-gradient(180deg, #fff6a8 0 25%, #ffd23f 25% 55%, #ff3b2f 55% 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(5px 5px 0 #000);
-    animation: rbfight 1.2s 1.3s steps(1, end) both;
+    animation: rbfight .75s .8s linear forwards; /* forwards, not both: FIGHT! must stay hidden (base opacity 0) while ROUND shows */
 }
-@keyframes rbround { 0% { opacity: 1; transform: scale(2.4); } 15% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes rbfight { 0% { opacity: 1; transform: scale(3); } 15% { transform: scale(1); } 30% { transform: scale(1.12); } 45% { transform: scale(1); } 90% { opacity: 1; } 100% { opacity: 0; } }
+/* Each word slams in over 3 quick pixel steps, holds, then is gone. The per-keyframe step timing is what snaps it; a
+   whole-animation steps(1) would hold the zoomed-in size for the first stretch. */
+@keyframes rbround {
+    0% { opacity: 1; transform: scale(1.8); animation-timing-function: steps(3, end); }
+    10% { opacity: 1; transform: scale(1); }
+    85% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+}
+@keyframes rbfight {
+    0% { opacity: 1; transform: scale(2); animation-timing-function: steps(3, end); }
+    10% { opacity: 1; transform: scale(1); animation-timing-function: steps(1, end); }
+    20% { transform: scale(1.1); animation-timing-function: steps(1, end); }
+    30% { transform: scale(1); }
+    85% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+}
 @media (prefers-reduced-motion: reduce) { .round-banner { display: none; } }
 
 /* result card: big arcade title */

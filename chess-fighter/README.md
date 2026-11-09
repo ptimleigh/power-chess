@@ -1,0 +1,46 @@
+# Chess Fighter
+
+A mobile/web chess game with a **16-bit arcade fighter** look. Board squares hold powerups, and each player gets buffs from
+randomly drawn cards. It is a sibling of [Power Chess](../README.md) in this repository: same proven chess engine and app
+shell, new theme, and a reworked set of powers.
+
+- Design notes and the plan for powers and cards: [docs/DESIGN.md](docs/DESIGN.md)
+
+## Status
+
+Scaffold. The engine, AI, tests, PWA and web shell are copied from Power Chess and renamed. The visual identity is new
+(pixel sprites, arcade HUD, scanlines). **The powerups are still the Power Chess ones, as placeholders** until the new
+powers are designed, and the card-buff system does not exist yet.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `src/ChessFighter.Core` | Rules engine: pure C#, no UI references. Namespace `ChessFighter.Core`. |
+| `tests/ChessFighter.Core.Tests` | NUnit tests (perft, powerups, simulations, AI). |
+| `web/ChessFighter.Web` | Blazor WebAssembly app. |
+| `web/ChessFighter.Web/wwwroot/css/app.css` | Layout and components inherited from Power Chess. |
+| `web/ChessFighter.Web/wwwroot/css/fighter.css` | **The 16-bit theme.** Loaded after `app.css` and overrides it. |
+| `web/ChessFighter.Web/Game/Sprites.cs` | 12x12 pixel-art piece sprites as text grids. |
+
+## Run
+
+```bash
+dotnet test chess-fighter/tests/ChessFighter.Core.Tests
+dotnet run --project chess-fighter/web/ChessFighter.Web
+```
+
+The debug URL options and the tap-the-logo-five-times debug panel work as described in the Power Chess README.
+
+## The look
+
+- Pixel font: Press Start 2P (SIL OFL, bundled in `wwwroot/fonts`, so the PWA works offline). Body text uses a monospace stack.
+- Pieces: P1 ice-steel vs P2 crimson, drawn as 12x12 sprites (edit the grids in `Sprites.cs`; legend is in the file).
+- HUD: P1 / CPU tags and a health bar that drains with the material a side has lost (the rival's bar drains toward the centre).
+- Effects: hard offset shadows instead of glows, stepped animation, scanline + vignette overlay (`body::after`).
+
+## Known gaps
+
+- `wwwroot/js/clip.js` (replay-clip video) and `wwwroot/js/fx.js` still draw with the old neon look.
+- App icons in `wwwroot/icons` are still the Power Chess icons.
+- No deploy workflow yet: GitHub Pages for this repo already serves Power Chess at `/power-chess/`.

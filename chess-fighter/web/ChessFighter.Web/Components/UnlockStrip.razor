@@ -1,0 +1,70 @@
+@* Preview cards for things a level unlocks: a looping demo, a name and a line of text. Step through with Next. *@
+@if (Items.Count > 0)
+{
+    var it = Items[idx];
+    <div class="unlock-strip" data-testid="unlock-strip" data-count="@Items.Count">
+        <div class="us-head"><b>@Heading</b><small>@(idx + 1) of @Items.Count</small></div>
+        <div class="us-card" data-unlock="@Key(it)">
+            @if (it.Type == UnlockType.Powerup || it.Type == UnlockType.Transforms)
+            {
+                <DemoBoard @key="@Key(it)" Kind="it.Kind" />
+            }
+            else if (it.Type == UnlockType.Teleporters)
+            {
+                <DemoBoard @key="@Key(it)" Teleporter="true" />
+            }
+            else
+            {
+                <div class="us-badge">@Icons.Svg(it.Type == UnlockType.Preset ? "spark" : "dice")</div>
+            }
+            <div class="us-name">@NameOf(it) <em>Level @it.Level</em></div>
+            <div class="us-text">@TextOf(it)</div>
+            @if (it.Type == UnlockType.Preset && OnTry.HasDelegate)
+            {
+                <button class="btn small" data-action="try-preset" @onclick="() => OnTry.InvokeAsync(it.PresetId!)">Try it</button>
+            }
+        </div>
+        @if (Items.Count > 1)
+        {
+            <div class="us-nav">
+                <button class="btn ghost small" data-action="unlock-prev" disabled="@(idx == 0)" @onclick="() => idx--">Back</button>
+                <span class="us-dots">@for (int i = 0; i < Items.Count; i++) { <i class="@(i == idx ? "on" : "")"></i> }</span>
+                <button class="btn ghost small" data-action="unlock-next" disabled="@(idx == Items.Count - 1)" @onclick="Next">Next</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<UnlockItem> Items { get; set; } = new();
+    [Parameter] public string Heading { get; set; } = "New unlocks";
+    [Parameter] public EventCallback<string> OnTry { get; set; }
+    /// <summary>Raised when the last card has been shown.</summary>
+    [Parameter] public EventCallback OnSeenAll { get; set; }
+
+    int idx;
+
+    protected override void OnParametersSet()
+    {
+        if (idx >= Items.Count) idx = Math.Max(0, Items.Count - 1);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Items.Count > 0 && idx == Items.Count - 1 && OnSeenAll.HasDelegate && !notified)
+        {
+            notified = true;
+            await OnSeenAll.InvokeAsync();
+        }
+    }
+
+    bool notified;
+
+    void Next() { if (idx < Items.Count - 1) idx++; }
+
+    static string Key(UnlockItem it) => it.Type + ":" + (it.PresetId ?? it.Kind.ToString());
+
+    static string NameOf(UnlockItem it) => it.Type == UnlockType.Powerup ? Names.Name(it.Kind) : it.Name;
+
+    static string TextOf(UnlockItem it) => it.Type == UnlockType.Powerup ? Names.Desc(it.Kind) : it.Blurb;
+}

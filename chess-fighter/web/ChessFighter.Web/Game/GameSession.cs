@@ -1,0 +1,1490 @@
+using ChessFighter.Core;
+
+namespace ChessFighter.Web.Game;
+
+public enum PuzzleResult { None, Solved, Failed }
+
+public enum InputMode { Normal, Armed, FireAim, BombPreview, Promotion }
+
+/// <summary>What a debug tap does: give a piece a buff, drop a powerup square pair, drop teleporters, or clean up.</summary>
+public enum DebugTool { None, Buff, Square, Portal, Clear }
+
+/// <summary>A piece with a stable identity so CSS transitions can animate it as the engine state changes.</summary>
+public sealed class PieceView
+{
+    public int Id;
+    public PieceType Type;
+    public Side Side;
+    public int Square;
+    public Buff Buffs;
+    public int Stun;
+    public int Armor;
+    public int Ghost;
+    /// <summary>Briefly true after a teleport so the piece blinks across.</summary>
+    public bool Warping;
+    public bool Dying;
+    /// <summary>Destroyed by the engine but kept on the board until a fireball reaches it.</summary>
+    public bool PendingDeath;
+    /// <summary>Dies in flames (hit by a fireball) rather than just fading.</summary>
+    public bool Burning;
+    public int AnimSeq;
+}
+
+public sealed class FxItem
+{
+    public int Id;
+    public string Kind = "";
+    public int Sq;
+    public int To = -1;
+    public int Radius;
+    /// <summary>Flight time for projectile effects (fireball), in milliseconds.</summary>
+    public int DurMs;
+    public string Css = "";
+    /// <summary>Words for a callout effect.</summary>
+    public string Text = "";
+}
+
+public sealed class Toast
+{
+    public int Id;
+    public string Title = "";
+    public string Text = "";
+    public string Css = "";
+    public string Icon = "";
+}
+
+/// <summary>
+/// Owns the engine state and turns engine events into animation state. The engine stays the single source of
+/// truth; after every action the view pieces are reconciled against it.
+/// </summary>
+public sealed class GameSession
+{
+    readonly GameOptions opt;
+    readonly Random rnd = new();
+    Ai ai;
+    int nextId = 1;
+    int lastFireMs;
+
+    // Position history for the move viewer and the Rewind perk. viewHistory[i] holds the piece views at position i
+    // (the position before action i), so stepping through the past animates with the same piece identities.
+    readonly GameHistory history = new();
+    readonly List<List<PieceView>> viewHistory = new();
+    int reviewIndex = -1; // -1 = live game
+
+    public GameState State { get; private set; } = null!;
+    public List<PieceView> Pieces { get; } = new();
+    public List<FxItem> Effects { get; } = new();
+    public List<Toast> Toasts { get; } = new();
+    public List<GameAction> Legal { get; private set; } = new();
+    public GameResult Result { get; private set; }
+    public string ResultReason { get; private set; } = "";
+
+    public bool Busy { get; private set; }
+    public bool Thinking { get; private set; }
+    public bool Shaking { get; private set; }
+    /// <summary>1 = light, 2 = heavy. Scales with the value of what was just destroyed.</summary>
+    public int ShakeLevel { get; private set; } = 1;
+    /// <summary>Hit-stop: animations hold for a beat on a heavy strike.</summary>
+    public bool Frozen { get; private set; }
+    /// <summary>A brief zoom punch on the biggest strikes.</summary>
+    public bool Punch { get; private set; }
+    public InputMode Mode { get; private set; }
+    public ActionKind ArmedKind { get; private set; }
+    public int Selected { get; private set; } = -1;
+    public HashSet<int> Targets { get; } = new();
+    /// <summary>Extra pieces a queen's fireball would also destroy along the aimed lines (preview only).</summary>
+    public HashSet<int> Doomed { get; } = new();
+    /// <summary>Bomb preview: pieces inside the blast that survive (kings, armored pieces).</summary>
+    public HashSet<int> Spared { get; } = new();
+    /// <summary>Bomb preview: every square inside the blast.</summary>
+    public HashSet<int> BlastArea { get; } = new();
+    public int BombOwnLosses { get; private set; }
+    public int BombEnemyLosses { get; private set; }
+    /// <summary>Square of the powered-up piece whose info card is open, or -1.</summary>
+    public int Inspect { get; private set; } = -1;
+    /// <summary>Square of the powerup square whose info card is open, or -1.</summary>
+    public int InspectSquare { get; private set; } = -1;
+    public List<GameAction> PromoChoices { get; private set; } = new();
+    public int LastFrom { get; private set; } = -1;
+    public int LastTo { get; private set; } = -1;
+    public bool InCheck { get; private set; }
+    public int Moves { get; private set; }
+
+    public bool Reviewing => reviewIndex >= 0 && reviewIndex <= history.Count;
+    public int HistoryCount => history.Count;
+    public GameHistory History => history;
+    /// <summary>Position being shown while reviewing (0 = start, <see cref="HistoryCount"/> = the final position). Equals <see cref="HistoryCount"/> when live.</summary>
+    public int ReviewPosition => Reviewing ? reviewIndex : history.Count;
+    /// <summary>What the board shows: the live game, or a past position while reviewing.</summary>
+    public GameState View => Reviewing && reviewIndex < history.Count ? history[reviewIndex].Before : State;
+    public List<PieceView> ViewPieces => Reviewing && reviewIndex < history.Count ? viewHistory[reviewIndex] : Pieces;
+    public int ViewLastFrom => Reviewing ? LastOf(reviewIndex).from : LastFrom;
+    public int ViewLastTo => Reviewing ? LastOf(reviewIndex).to : LastTo;
+    public bool CanReview => history.Count > 0 && !Busy && !PickupPending;
+    public bool CanRewind => HumanTurn && !Reviewing && history.CanRewind(State, Me);
+    /// <summary>The side the player controls: White vs the AI, otherwise whoever is to move.</summary>
+    public Side Me => VsAi ? Side.White : State.ToMove;
+
+    public Action? Changed;
+    public Action<string>? Sfx;
+    /// <summary>Called with a save string after every completed action, or null when there is nothing to resume (game over).</summary>
+    public Action<string?>? Persist;
+
+    // ---------- progression ----------
+    MatchTracker? tracker;
+    bool endReported;
+    bool rewardable = true;
+    public bool DebugUsed { get; private set; }
+
+    // ---------- daily puzzle ----------
+    public PuzzleDef? Puzzle { get; private set; }
+    /// <summary>White actions spent so far in the puzzle.</summary>
+    public int PuzzleMoves { get; private set; }
+    public PuzzleResult PuzzleOutcome { get; private set; }
+    /// <summary>Called once when a puzzle is solved.</summary>
+    public Action<PuzzleDef, int>? PuzzleSolved;
+    /// <summary>Called once when the game ends, with what happened, so the page can award XP.</summary>
+    public Action<MatchSummary>? GameEnded;
+    /// <summary>Whether finishing this game should pay XP: not a scenario, training board or debug-assisted game.</summary>
+    public bool Rewardable => rewardable && !DebugUsed && Puzzle == null;
+
+    // ---------- hints ----------
+
+    public int HintsUsed { get; private set; }
+    /// <summary>Extra hints earned this game (a rewarded ad in the native app).</summary>
+    public int HintBonus { get; private set; }
+    public int HintFrom { get; private set; } = -1;
+    public int HintTo { get; private set; } = -1;
+    public string HintText { get; private set; } = "";
+    public bool HintThinking { get; private set; }
+    public int HintsLeft => HintPolicy.Remaining(HintsUsed, HintBonus);
+    /// <summary>A hint is offered on your turn against the AI, never in a puzzle or while reviewing.</summary>
+    public bool HintAvailable => HumanTurn && VsAi && Puzzle == null && !HintThinking && !Thinking;
+
+    public void ClearHint()
+    {
+        HintFrom = HintTo = -1;
+        HintText = "";
+    }
+
+    public void AddHintBonus() { HintBonus++; }
+
+    /// <summary>Finds the best move for you and highlights it. Costs one of the free hints.</summary>
+    public async Task Hint()
+    {
+        if (!HintAvailable || HintsLeft == 0) return;
+        HintThinking = true;
+        ClearSelection();
+        Changed?.Invoke();
+        await Task.Delay(60); // let the UI paint before the (synchronous) search
+        GameAction act = Hints.Suggest(State);
+        HintsUsed++;
+        switch (act.Kind)
+        {
+            case ActionKind.Move:
+            case ActionKind.Fireball:
+            case ActionKind.Steal:
+            case ActionKind.Swap:
+                HintFrom = act.From; HintTo = act.To; break;
+            case ActionKind.Detonate:
+                HintFrom = act.From; HintTo = -1; break;
+            case ActionKind.Stun:
+            case ActionKind.PlaceBoulder:
+            case ActionKind.ClearBoulder:
+                HintFrom = -1; HintTo = act.To; break;
+            default:
+                HintFrom = HintTo = -1; break;
+        }
+        HintText = Hints.Describe(State, act);
+        HintThinking = false;
+        Sfx?.Invoke("pickup");
+        Changed?.Invoke();
+    }
+
+    void ResetTracker(bool eligible)
+    {
+        HintsUsed = 0;
+        HintBonus = 0;
+        ClearHint();
+        tracker = new MatchTracker(Side.White, opt.Ai);
+        endReported = false;
+        rewardable = eligible;
+        DebugUsed = false;
+    }
+
+    public GameSession(GameOptions options, TutorialState? tutorials = null)
+    {
+        opt = options;
+        Tut = tutorials ?? new TutorialState();
+        ai = Ai.ForLevel(opt.Ai);
+        NewGame();
+    }
+
+    // ---------- powerup tutorials ----------
+
+    public const string TrainingFen = "r3k3/pppp4/8/8/8/8/4PPPP/4K2R w - - 0 1";
+
+    public TutorialState Tut { get; }
+    /// <summary>The powerup whose tutorial sheet is open, if any.</summary>
+    public PowerupKind? Tutorial { get; private set; }
+    /// <summary>Bound to the "don't show tutorials again" checkbox.</summary>
+    public bool DontShowAgain { get; set; }
+    /// <summary>Called with the serialised <see cref="TutorialState"/> whenever it changes.</summary>
+    public Action<string>? TutorialsChanged;
+
+    void MaybeTutorial(PowerupKind kind)
+    {
+        if (!opt.Tutorials || !Tut.ShouldShow(kind)) return;
+        Tutorial = Tutorials.Normalize(kind);
+        DontShowAgain = false;
+    }
+
+    /// <summary>Open a tutorial on request ("Watch demo"), whether or not it has been seen.</summary>
+    public void ShowTutorial(PowerupKind kind)
+    {
+        if (!Tutorials.Has(kind)) return;
+        Tutorial = Tutorials.Normalize(kind);
+        DontShowAgain = false;
+        Changed?.Invoke();
+    }
+
+    public void DismissTutorial()
+    {
+        if (Tutorial is PowerupKind k) Tut.MarkSeen(k);
+        if (DontShowAgain) Tut.Off = true;
+        Tutorial = null;
+        DontShowAgain = false;
+        TutorialsChanged?.Invoke(Tut.Serialize());
+        Changed?.Invoke();
+    }
+
+    public void ResetTutorials()
+    {
+        Tut.Reset();
+        Tutorial = null;
+        TutorialsChanged?.Invoke(Tut.Serialize());
+        Changed?.Invoke();
+    }
+
+    /// <summary>The pickup modal embeds the demo when this is true.</summary>
+    public bool PickupTutorial => PickupPending && opt.Tutorials && Tut.ShouldShow(State.PendingKind);
+
+    void AcknowledgePickupTutorial()
+    {
+        if (!PickupTutorial) return;
+        Tut.MarkSeen(State.PendingKind);
+        if (DontShowAgain) Tut.Off = true;
+        DontShowAgain = false;
+        TutorialsChanged?.Invoke(Tut.Serialize());
+    }
+
+    /// <summary>The Rewind button: explain it the first time, then use it.</summary>
+    public void RewindClick()
+    {
+        if (opt.Tutorials && Tut.ShouldShow(PowerupKind.Rewind))
+        {
+            MaybeTutorial(PowerupKind.Rewind);
+            Changed?.Invoke();
+            return;
+        }
+        UseRewind();
+    }
+
+    public bool VsAi => opt.Ai > 0;
+    public bool GameOver => Result != GameResult.Ongoing;
+    bool AiToMove => VsAi && !GameOver && State.ToMove == Side.Black;
+    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.ToMove == Side.White);
+    public bool PickupPending => State.PendingSquare >= 0;
+    public Side Turn => State.ToMove;
+
+    // ---------- setup ----------
+
+    GameConfig BuildConfig()
+    {
+        var cfg = new GameConfig { StartRerolls = opt.Rerolls };
+        if (opt.Pairs >= 0) cfg.InitialPairs = opt.Pairs;
+        if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
+        if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
+        cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
+        cfg.SwapAllowed[(int)Side.Black] = !VsAi; // nor Swap
+        bool tele = opt.Level < 0 || opt.Level >= Progression.TeleporterLevel;
+        if (opt.Level > 0 && opt.Only.Count == 0) cfg.Pool = Progression.PoolFor(opt.Level);
+        cfg.PortalChance = opt.Portals && tele ? 0.12 : 0;
+        cfg.Squares = opt.Mode;
+        cfg.MysteryChance = opt.HiddenChance;
+        if (opt.Only.Count == 0 && opt.Puzzle == null && !opt.Training)
+        {
+            int spawn = opt.Spawn;
+            Presets.Apply(cfg, opt.Preset, opt.Freq, opt.Custom, opt.Level);
+            if (spawn >= 0) cfg.SpawnInterval = spawn;
+            if (!tele && cfg.PortalChance > 0) cfg.PortalChance = 0;
+            if (!opt.Portals) cfg.PortalChance = 0;
+        }
+        return cfg;
+    }
+
+    void SetupPuzzle()
+    {
+        var def = opt.Puzzle!;
+        State = def.NewState(PuzzleDef.Config());
+        State.Rng = new Rng(opt.Seed);
+        ai = Ai.ForLevel(2);
+        Puzzle = def;
+        PuzzleMoves = 0;
+        PuzzleOutcome = PuzzleResult.None;
+    }
+
+    void SetupNormal(GameConfig cfg)
+    {
+        Puzzle = null;
+        PuzzleOutcome = PuzzleResult.None;
+        string? fen = opt.Training ? TrainingFen : opt.Fen;
+        if (opt.Training)
+        {
+            // A small first game: a rook and pawns each, and two mystery squares in the middle holding friendly powerups.
+            cfg.InitialPairs = 0;
+            cfg.PortalChance = 0;
+            cfg.Pool = new[] { PowerupKind.Fireball, PowerupKind.SpikedArmor, PowerupKind.Poison, PowerupKind.Steal, PowerupKind.SmallBomb }
+                .Select(k => new WeightedKind(k, 1)).ToList();
+        }
+
+        if (fen == null)
+        {
+            State = GameState.NewGame(cfg, opt.Seed);
+        }
+        else
+        {
+            State = GameState.FromFen(fen, cfg);
+            State.Rng = new Rng(opt.Seed);
+            State.AddPerk(Side.White, PowerupKind.Reroll, cfg.StartRerolls);
+            State.AddPerk(Side.Black, PowerupKind.Reroll, cfg.StartRerolls);
+            for (int i = 0; i < cfg.InitialPairs; i++) Rules.TrySpawnPair(State, null, false);
+        }
+
+        foreach (var (side, kind, n) in opt.Perks) State.AddPerk(side, kind, n);
+        foreach (var (sq, kind) in opt.Buffs)
+        {
+            int i = Sq.Parse(sq);
+            if (!State.Cells[i].IsEmpty) Rules.ApplyPickup(State, State.Cells[i].Side, i, kind, null);
+        }
+        foreach (var sq in opt.Mystery) State.Mystery[Sq.Parse(sq)] = true;
+        foreach (var sq in opt.PortalAt)
+        {
+            State.Portal[Sq.Parse(sq)] = true;
+            State.Portal[Sq.Mirror(Sq.Parse(sq))] = true;
+        }
+        foreach (var (sq, kind) in opt.Reveal)
+        {
+            State.Mystery[Sq.Parse(sq)] = true;
+            State.Content[Sq.Parse(sq)] = (byte)kind;
+        }
+        if (opt.Training)
+        {
+            // Two revealed fireball squares in the middle: the flagship powerup, visible from move one.
+            foreach (var sq in new[] { "d4", "e5" })
+            {
+                State.Mystery[Sq.Parse(sq)] = true;
+                State.Content[Sq.Parse(sq)] = (byte)PowerupKind.Fireball;
+            }
+            ai = Ai.ForLevel(1);
+        }
+
+    }
+
+    public void NewGame()
+    {
+        var cfg = BuildConfig();
+
+        if (opt.Puzzle != null) SetupPuzzle();
+        else SetupNormal(cfg);
+
+        ResetTracker(!opt.Training && (opt.Fen == null || opt.Rewards));
+        Pieces.Clear();
+        Effects.Clear();
+        Toasts.Clear();
+        history.Clear();
+        viewHistory.Clear();
+        reviewIndex = -1;
+        for (int sq = 0; sq < 64; sq++)
+        {
+            var c = State.Cells[sq];
+            if (!c.IsEmpty) Pieces.Add(new PieceView { Id = nextId++, Square = sq });
+        }
+        SyncViews();
+        LastFrom = LastTo = -1;
+        Moves = 0;
+        Busy = false;
+        Thinking = false;
+        ClearSelection();
+        Refresh();
+        Changed?.Invoke();
+        Save();
+    }
+
+    public void Restart() => NewGame();
+
+    // ---------- save / resume ----------
+
+    /// <summary>Serialise the game (engine state, history and piece identities) so a reload can pick up where it left off.</summary>
+    public string SaveString()
+    {
+        var ids = new List<byte>();
+        void AddIds(List<PieceView> views)
+        {
+            var map = new ushort[64];
+            foreach (var v in views) if (!v.Dying) map[v.Square] = (ushort)v.Id;
+            foreach (var id in map) { ids.Add((byte)(id & 255)); ids.Add((byte)(id >> 8)); }
+        }
+        foreach (var views in viewHistory) AddIds(views);
+        AddIds(Pieces);
+        return string.Join("|", GameStateCodec.EncodeGame(State, history), nextId, opt.Ai, Convert.ToBase64String(ids.ToArray()), opt.Mode == SquareMode.Revealed ? "r" : "m");
+    }
+
+    /// <summary>Restore a saved game. Returns false (leaving the current game untouched) if the save is not usable.</summary>
+    public bool Restore(string saved)
+    {
+        try
+        {
+            var parts = saved.Split('|');
+            if (parts.Length != 4 && parts.Length != 5) return false;
+            int savedNextId = int.Parse(parts[1]);
+            int savedAi = int.Parse(parts[2]);
+            var idBytes = Convert.FromBase64String(parts[3]);
+
+            int oldAi = opt.Ai;
+            var oldMode = opt.Mode;
+            opt.Ai = Math.Clamp(savedAi, 0, 5);
+            opt.Mode = parts.Length == 5 && parts[4] == "r" ? SquareMode.Revealed : SquareMode.Mystery; // older saves were all mystery
+            GameState state;
+            GameHistory hist;
+            if (!GameStateCodec.TryDecodeGame(parts[0], BuildConfig(), out state, out hist) || idBytes.Length != (hist.Count + 1) * 128)
+            {
+                opt.Ai = oldAi;
+                opt.Mode = oldMode;
+                return false;
+            }
+
+            List<PieceView> ViewsFor(GameState at, int index)
+            {
+                var list = new List<PieceView>();
+                for (int sq = 0; sq < 64; sq++)
+                {
+                    int id = idBytes[index * 128 + sq * 2] | (idBytes[index * 128 + sq * 2 + 1] << 8);
+                    var c = at.Cells[sq];
+                    if (c.IsEmpty) continue;
+                    if (id == 0) throw new InvalidOperationException("missing piece id");
+                    list.Add(new PieceView { Id = id, Type = c.Type, Side = c.Side, Square = sq, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns });
+                }
+                return list;
+            }
+
+            var newViews = new List<List<PieceView>>();
+            for (int i = 0; i < hist.Count; i++) newViews.Add(ViewsFor(hist[i].Before, i));
+            var live = ViewsFor(state, hist.Count);
+
+            history.Clear();
+            for (int i = 0; i < hist.Count; i++) history.Record(hist[i].Before, hist[i].Action);
+            viewHistory.Clear();
+            viewHistory.AddRange(newViews);
+            Pieces.Clear();
+            Pieces.AddRange(live);
+            State = state;
+            ResetTracker(true);
+            nextId = Math.Max(savedNextId, 1);
+            ai = Ai.ForLevel(opt.Ai);
+            Effects.Clear();
+            Toasts.Clear();
+            reviewIndex = -1;
+            Busy = false;
+            Thinking = false;
+            var (lf, lt) = LastOf(history.Count);
+            LastFrom = lf;
+            LastTo = lt;
+            ClearSelection();
+            Inspect = -1;
+            Refresh();
+            AddToast("Game restored", "Picked up where you left off", "gold", "history");
+            Changed?.Invoke();
+            Save();
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>After a restore, let the AI move if it is its turn.</summary>
+    public async Task ResumeAi()
+    {
+        await AiLoop();
+    }
+
+    void Save()
+    {
+        if (Persist == null) return;
+        Persist(GameOver ? null : SaveString());
+    }
+
+    // ---------- input ----------
+
+    public int Perk(Side side, PowerupKind kind) => State.Perks(side, kind);
+
+    public bool CanUse(ActionKind kind) => HumanTurn && !PickupPending && State.ForcedMover < 0 && Legal.Any(a => a.Kind == kind);
+
+    public bool HasDetonate => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Detonate && a.From == Selected);
+
+    /// <summary>Show exactly what the selected bomber would destroy, then wait for a confirm.</summary>
+    public void PreviewBomb()
+    {
+        if (!HasDetonate) return;
+        int bomber = Selected;
+        var piece = State.Cells[bomber];
+        Mode = InputMode.BombPreview;
+        Targets.Clear();
+        Doomed.Clear();
+        Spared.Clear();
+        BlastArea.Clear();
+        BombOwnLosses = BombEnemyLosses = 0;
+        var area = new List<int>();
+        Geometry.AreaAround(bomber, Geometry.BombRadius(piece), area);
+        foreach (int sq in area)
+        {
+            BlastArea.Add(sq);
+            var c = State.Cells[sq];
+            if (Geometry.IsVulnerableToBomb(c))
+            {
+                Doomed.Add(sq);
+                if (c.Side == piece.Side) BombOwnLosses++; else BombEnemyLosses++;
+            }
+            else if (State.Boulders[sq]) Doomed.Add(sq);
+            else if (!c.IsEmpty) Spared.Add(sq);
+        }
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    /// <summary>The selected piece earned a fireball and has at least one enemy in line.</summary>
+    public bool HasFireball => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Fireball && a.From == Selected);
+
+    /// <summary>Step 2 of firing: show the directions this piece can hit and let the player tap one.</summary>
+    public void StartFire()
+    {
+        if (!HasFireball) return;
+        Mode = InputMode.FireAim;
+        Targets.Clear();
+        Doomed.Clear();
+        foreach (var c in Legal.Where(a => a.Kind == ActionKind.Fireball && a.From == Selected))
+        {
+            Targets.Add(c.To);
+            var line = new List<int>();
+            Geometry.FireballVictims(State, c.From, c.Aux, line);
+            foreach (int v in line) if (v != c.To) Doomed.Add(v);
+        }
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    public void ClearSelection()
+    {
+        Selected = -1;
+        Targets.Clear();
+        Doomed.Clear();
+        Spared.Clear();
+        BlastArea.Clear();
+        Mode = InputMode.Normal;
+        PromoChoices = new List<GameAction>();
+    }
+
+    public void CloseInspect()
+    {
+        Inspect = -1;
+        InspectSquare = -1;
+        Changed?.Invoke();
+    }
+
+    public bool IsPowered(int sq)
+    {
+        var c = State.Cells[sq];
+        return !c.IsEmpty && (c.Buffs != Buff.None || c.IsStunned);
+    }
+
+    public void Cancel()
+    {
+        Inspect = -1;
+        InspectSquare = -1;
+        ClearSelection();
+        AutoSelectForced();
+        Changed?.Invoke();
+    }
+
+    void AutoSelectForced()
+    {
+        if (State.ForcedMover >= 0 && HumanTurn) SelectPiece(State.ForcedMover);
+    }
+
+    public void Arm(ActionKind kind)
+    {
+        if (!CanUse(kind) && !(Mode == InputMode.Armed && ArmedKind == kind)) return;
+        if (Mode == InputMode.Armed && ArmedKind == kind)
+        {
+            Cancel();
+            return;
+        }
+        ClearSelection();
+        Mode = InputMode.Armed;
+        ArmedKind = kind;
+        MaybeTutorial(kind switch
+        {
+            ActionKind.Steal => PowerupKind.Steal,
+            ActionKind.Stun => PowerupKind.Stun,
+            ActionKind.PlaceBoulder => PowerupKind.Boulder,
+            ActionKind.Swap => PowerupKind.Swap,
+            _ => PowerupKind.Reroll,
+        });
+        foreach (var a in Legal.Where(a => a.Kind == kind))
+        {
+            Targets.Add(a.To);
+            if (kind == ActionKind.Swap) Targets.Add(a.From); // swap is two taps: any piece with a partner first
+        }
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    void SelectPiece(int sq)
+    {
+        ClearSelection();
+        bool mine = !State.Cells[sq].IsEmpty && State.Cells[sq].Side == State.ToMove;
+        if (!mine) return;
+        var acts = Legal.Where(a => a.From == sq && a.Kind == ActionKind.Move).ToList();
+        bool special = Legal.Any(a => (a.Kind == ActionKind.Detonate || a.Kind == ActionKind.Fireball) && a.From == sq);
+        if (acts.Count == 0 && !special) return;
+        Selected = sq;
+        foreach (var a in acts) Targets.Add(a.To);
+        Sfx?.Invoke("click");
+        var held = State.Cells[sq];
+        foreach (var flag in new[] { Buff.Fireball, Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
+        {
+            if (!held.Has(flag)) continue;
+            var kind = flag == Buff.Armor ? PowerupKind.SpikedArmor : Names.ForBuff(flag);
+            if (opt.Tutorials && Tut.ShouldShow(kind)) { MaybeTutorial(kind); break; }
+        }
+    }
+
+    // ---------- debug tools (for trying powerups on demand) ----------
+
+    public DebugTool DebugArmed { get; private set; }
+    public PowerupKind DebugKind { get; private set; }
+
+    /// <summary>Give the player (the human, or whoever is to move) one of a perk.</summary>
+    public void DebugGivePerk(PowerupKind kind)
+    {
+        if (Busy) return;
+        DebugUsed = true;
+        State.AddPerk(Me, kind, 1);
+        Sfx?.Invoke("pickup");
+        Refresh();
+        Save();
+        Changed?.Invoke();
+    }
+
+    public void DebugArm(DebugTool tool, PowerupKind kind = PowerupKind.None)
+    {
+        ClearSelection();
+        Inspect = -1;
+        InspectSquare = -1;
+        bool same = DebugArmed == tool && DebugKind == kind;
+        DebugArmed = same ? DebugTool.None : tool;
+        DebugKind = same ? PowerupKind.None : kind;
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    public void DebugDisarm()
+    {
+        DebugArmed = DebugTool.None;
+        DebugKind = PowerupKind.None;
+        Changed?.Invoke();
+    }
+
+    public string DebugHint => DebugArmed switch
+    {
+        DebugTool.Buff => $"Debug: tap a piece to give it {Names.Name(DebugKind)}",
+        DebugTool.Square => DebugKind == PowerupKind.None ? "Debug: tap an empty square for a mystery pair" : $"Debug: tap an empty square for a {Names.Name(DebugKind)} pair",
+        DebugTool.Portal => "Debug: tap an empty square for a teleporter pair",
+        DebugTool.Clear => "Debug: tap a powerup square, teleporter or boulder to remove it",
+        _ => "",
+    };
+
+    void DebugTap(int sq)
+    {
+        var cell = State.Cells[sq];
+        int mirror = Sq.Mirror(sq);
+        bool free = cell.IsEmpty && !State.Boulders[sq] && !State.Mystery[sq] && !State.Portal[sq];
+        bool mirrorFree = State.Cells[mirror].IsEmpty && !State.Boulders[mirror] && !State.Mystery[mirror] && !State.Portal[mirror];
+        switch (DebugArmed)
+        {
+            case DebugTool.Buff:
+            {
+                if (cell.IsEmpty) return;
+                if (Rules.KingIncompatible(cell, DebugKind)) { AddToast("King can't use " + Names.Name(DebugKind), "Kings can't be poisoned or transformed. Pick another piece.", "gold", "crown"); break; }
+                var ev = new List<GameEvent>();
+                DebugUsed = true;
+                Rules.ApplyPickup(State, cell.Side, sq, DebugKind, ev);
+                Process(ev);
+                SyncViews();
+                break;
+            }
+            case DebugTool.Square:
+                if (!free) return;
+                DebugUsed = true;
+                State.Mystery[sq] = true;
+                State.Content[sq] = (byte)DebugKind;
+                if (mirrorFree && mirror != sq)
+                {
+                    State.Mystery[mirror] = true;
+                    State.Content[mirror] = (byte)DebugKind;
+                }
+                AddFx("ping", sq, css: "gold");
+                break;
+            case DebugTool.Portal:
+                if (!free || !mirrorFree || mirror == sq) return;
+                DebugUsed = true;
+                State.Portal[sq] = true;
+                State.Portal[mirror] = true;
+                AddFx("ping", sq, css: "portal");
+                AddFx("ping", mirror, css: "portal");
+                break;
+            case DebugTool.Clear:
+                if (State.Mystery[sq]) { State.Mystery[sq] = false; State.Content[sq] = 0; }
+                else if (State.Portal[sq]) { State.Portal[sq] = false; State.Portal[mirror] = false; }
+                else if (State.Boulders[sq]) State.Boulders[sq] = false;
+                else return;
+                break;
+        }
+        Refresh();
+        Save();
+        Changed?.Invoke();
+    }
+
+    public async Task TapSquare(int sq)
+    {
+        if (DebugArmed != DebugTool.None && !Busy && !Reviewing)
+        {
+            DebugTap(sq);
+            return;
+        }
+        if (!HumanTurn || PickupPending || Mode == InputMode.Promotion) return;
+
+        if (Mode == InputMode.BombPreview)
+        {
+            Cancel(); // tapping the board backs out; the Confirm button is the only way to detonate
+            return;
+        }
+
+        if (Mode == InputMode.Armed)
+        {
+            if (!Targets.Contains(sq)) { Cancel(); return; }
+            if (ArmedKind == ActionKind.Swap)
+            {
+                if (Selected == sq) { Arm(ActionKind.Swap); return; } // tapping the first piece again backs out
+                if (Selected < 0)
+                {
+                    Selected = sq;
+                    Targets.Clear();
+                    foreach (var a in Legal.Where(a => a.Kind == ActionKind.Swap))
+                    {
+                        if (a.From == sq) Targets.Add(a.To);
+                        else if (a.To == sq) Targets.Add(a.From);
+                    }
+                    Sfx?.Invoke("click");
+                    Changed?.Invoke();
+                    return;
+                }
+                var pair = Legal.First(a => a.Kind == ActionKind.Swap && ((a.From == Selected && a.To == sq) || (a.From == sq && a.To == Selected)));
+                await Human(pair);
+                return;
+            }
+            var cands = Legal.Where(a => a.Kind == ArmedKind && a.To == sq).ToList();
+            await Human(cands[0]);
+            return;
+        }
+
+        if (Mode == InputMode.FireAim)
+        {
+            if (!Targets.Contains(sq)) { Cancel(); return; }
+            await Human(Legal.First(a => a.Kind == ActionKind.Fireball && a.From == Selected && a.To == sq));
+            return;
+        }
+
+        // A king that cannot use a teleporter (its exit would leave it in check) gets an explanation instead of silence.
+        if (Selected >= 0 && State.Portal[sq] && !Targets.Contains(sq) && State.Cells[Selected].Type == PieceType.King
+            && MoveGen.HasPseudoMove(State, Selected, sq))
+        {
+            int exit = Sq.Mirror(sq);
+            AddToast("Teleporter blocked", $"Your king would land on {Sq.Name(exit)} and be in check there.", "portal", "portal");
+            Sfx?.Invoke("click");
+            Changed?.Invoke();
+            return;
+        }
+
+        if (Selected >= 0 && Targets.Contains(sq))
+        {
+            var moves = Legal.Where(a => a.Kind == ActionKind.Move && a.From == Selected && a.To == sq).ToList();
+            if (moves.Count > 1)
+            {
+                Mode = InputMode.Promotion;
+                PromoChoices = moves;
+                Changed?.Invoke();
+                return;
+            }
+            await Human(moves[0]);
+            return;
+        }
+
+        // Tapping a powered-up piece (either side) opens its info card; tapping it again closes it.
+        bool wasInspected = Inspect == sq;
+        bool wasSquareInspected = InspectSquare == sq;
+        Inspect = -1;
+        InspectSquare = -1;
+        if (Selected == sq && State.ForcedMover < 0)
+        {
+            ClearSelection();
+        }
+        else
+        {
+            if (State.ForcedMover < 0) SelectPiece(sq);
+            if (IsPowered(sq) && !wasInspected) Inspect = sq;
+            // An empty powerup square: tap it to read what it is (and what it holds, when revealed).
+            if ((State.Mystery[sq] || State.Portal[sq]) && State.Cells[sq].IsEmpty && !wasSquareInspected && Selected < 0) InspectSquare = sq;
+        }
+        Changed?.Invoke();
+    }
+
+    public async Task Choose(GameAction a) => await Human(a);
+
+    /// <summary>Confirm step of the bomb preview: actually detonate the selected bomber.</summary>
+    public async Task Detonate()
+    {
+        if (Mode != InputMode.BombPreview || Selected < 0) return;
+        var action = Legal.FirstOrDefault(a => a.Kind == ActionKind.Detonate && a.From == Selected);
+        if (action.Kind != ActionKind.Detonate) return;
+        await Human(action);
+    }
+
+    public async Task KeepPickup()
+    {
+        if (!HumanTurn || !PickupPending) return;
+        AcknowledgePickupTutorial();
+        await Human(Legal.First(a => a.Kind == ActionKind.KeepPickup));
+    }
+
+    public async Task RerollPickup()
+    {
+        if (!HumanTurn || !PickupPending) return;
+        AcknowledgePickupTutorial();
+        var a = Legal.FirstOrDefault(x => x.Kind == ActionKind.RerollPickup);
+        if (a.Kind == ActionKind.RerollPickup) await Human(a);
+    }
+
+    async Task Human(GameAction a)
+    {
+        await Play(a);
+        await AiLoop();
+    }
+
+    // ---------- turn flow ----------
+
+    async Task AiLoop()
+    {
+        while (AiToMove)
+        {
+            Thinking = true;
+            Busy = true;
+            Changed?.Invoke();
+            await Task.Delay(550); // let the UI paint before the (synchronous) search
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            GameAction act = ai.Choose(State);
+            Console.WriteLine($"[ai] {Ai.LevelName(opt.Ai)} chose {act} in {sw.ElapsedMilliseconds} ms");
+            Thinking = false;
+            await Play(act);
+        }
+        Busy = false;
+        AutoSelectForced();
+        Changed?.Invoke();
+    }
+
+    async Task Play(GameAction a)
+    {
+        Busy = true;
+        Inspect = -1;
+        InspectSquare = -1;
+        reviewIndex = -1;
+        ClearHint();
+        ClearSelection();
+        Side mover = State.ToMove;
+        history.Record(State, a);
+        viewHistory.Add(SnapshotViews());
+        var ev = new List<GameEvent>();
+        lastFireMs = 0;
+        Rules.Apply(State, a, ev);
+        Moves++;
+        tracker?.Observe(ev);
+        Process(ev);
+        SyncViews();
+        Refresh();
+        Changed?.Invoke();
+
+        bool big = ev.Any(e => e.Kind == EventKind.Detonated || e.Kind == EventKind.FireballFired);
+        bool hit = ev.Any(e => e.Kind == EventKind.Captured || e.Kind == EventKind.Destroyed || e.Kind == EventKind.Converted);
+        int wait = big ? 1000 : hit ? 700 : 450;
+        if (opt.Drama && ev.Any(e => e.Kind == EventKind.Captured)) wait += 330; // room for the strike beat
+        if (opt.Drama && !GameOver && InCheck && !Reviewing)
+        {
+            bool struck = ev.Any(e => e.Kind == EventKind.Captured);
+            Later(struck ? 700 : 150, () => AddFx("callout", State.ToMove == Side.White ? 3 : 59, css: "check", text: "CHECK!"));
+        }
+        if (opt.Drama && GameOver && Result != GameResult.Draw)
+        {
+            Later(ev.Any(e => e.Kind == EventKind.Captured) ? 650 : 150, () => { Freeze(420, true); AddFx("callout", 28, css: "heavy mate", text: "FINAL BLOW"); Shake(2); });
+            wait += 500;
+        }
+        if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn
+        await Task.Delay(wait);
+
+        if (Puzzle != null && PuzzleOutcome == PuzzleResult.None)
+        {
+            if (mover == Side.White) PuzzleMoves++;
+            if (GameOver)
+            {
+                PuzzleOutcome = Result == GameResult.WhiteWins && PuzzleMoves <= Puzzle.MaxMoves ? PuzzleResult.Solved : PuzzleResult.Failed;
+                if (PuzzleOutcome == PuzzleResult.Solved) PuzzleSolved?.Invoke(Puzzle, PuzzleMoves);
+            }
+            else if (PuzzleMoves >= Puzzle.MaxMoves)
+            {
+                PuzzleOutcome = PuzzleResult.Failed; // out of moves without a mate
+            }
+        }
+
+        if (GameOver)
+        {
+            if (!endReported && tracker != null && Puzzle == null)
+            {
+                endReported = true;
+                var summary = tracker.Finish(Result, ResultReason);
+                summary.XpScale = Presets.XpScale(opt.Preset, opt.Freq, opt.Level);
+                summary.HintsUsed = HintsUsed;
+                GameEnded?.Invoke(summary);
+            }
+            Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == Side.Black ? "lose" : "win"));
+        }
+        Busy = false;
+        Save();
+        Changed?.Invoke();
+    }
+
+    public Side? Winner() => Result switch
+    {
+        GameResult.WhiteWins => Side.White,
+        GameResult.BlackWins => Side.Black,
+        _ => null,
+    };
+
+    void Refresh()
+    {
+        string reason;
+        Result = Rules.GetResult(State, out reason);
+        ResultReason = reason;
+        Legal = Result == GameResult.Ongoing ? MoveGen.LegalActions(State) : new List<GameAction>();
+        InCheck = Geometry.IsKingAttacked(State, State.ToMove);
+    }
+
+    public string Status
+    {
+        get
+        {
+            if (GameOver && !Reviewing) return ResultReason == "" ? "Game over" : ResultReason;
+            if (Reviewing) return "Reviewing past moves. Nothing here changes the game.";
+            if (Thinking) return "Opponent is thinking...";
+            if (Busy) return "";
+            if (PickupPending) return "You found a powerup!";
+            if (Mode == InputMode.Armed)
+                return ArmedKind switch
+                {
+                    ActionKind.Fireball => "Fireball: pick one of your pieces to fire from",
+                    ActionKind.Steal => "Steal: pick the enemy piece to convert",
+                    ActionKind.Stun => "Stun: pick any enemy piece to freeze for 3 turns",
+                    ActionKind.PlaceBoulder => "Boulder: pick an empty square",
+                    ActionKind.ClearBoulder => "Reroll: pick a boulder to smash",
+                    _ => "",
+                };
+            if (Mode == InputMode.FireAim) return "Fireball: tap an enemy to choose the direction";
+            if (Mode == InputMode.BombPreview)
+                return $"Bomb: destroys {BombOwnLosses} of your pieces and {BombEnemyLosses} of theirs. Confirm or cancel.";
+            if (Mode == InputMode.Promotion) return "Promote to...";
+            if (State.ForcedMover >= 0) return (State.MultiLeft >= 2 ? "Triple Move! " : "Double Move! ") + "Move that piece again";
+            string who = VsAi ? "Your move" : (State.ToMove == Side.White ? "White to move" : "Black to move");
+            return InCheck ? who + " - you are in check!" : who;
+        }
+    }
+
+    // ---------- review (read-only) and Rewind (take back) ----------
+
+    List<PieceView> SnapshotViews() => Pieces.Where(p => !p.Dying).Select(Copy).ToList();
+
+    static PieceView Copy(PieceView p) => new()
+    {
+        Id = p.Id, Type = p.Type, Side = p.Side, Square = p.Square, Buffs = p.Buffs,
+        Stun = p.Stun, Armor = p.Armor, Ghost = p.Ghost, AnimSeq = 0,
+    };
+
+    (int from, int to) LastOf(int position)
+    {
+        if (position <= 0 || position > history.Count) return (-1, -1);
+        var a = history[position - 1].Action;
+        switch (a.Kind)
+        {
+            case ActionKind.Move:
+            case ActionKind.Fireball:
+            case ActionKind.Steal:
+            case ActionKind.Swap:
+                return (a.From, a.To);
+            case ActionKind.Detonate: return (a.From, a.From);
+            case ActionKind.Stun:
+            case ActionKind.PlaceBoulder:
+            case ActionKind.ClearBoulder: return (a.To, a.To);
+            default: return (-1, -1);
+        }
+    }
+
+    /// <summary>Move the review position by <paramref name="delta"/>. Stepping past the newest position returns to the live game.</summary>
+    public void ReviewStep(int delta)
+    {
+        if (Reviewing && ReviewPosition + delta > history.Count) ExitReview();
+        else ReviewTo(ReviewPosition + delta);
+    }
+
+    public void ReviewTo(int position)
+    {
+        if (!CanReview && !Reviewing) return;
+        ClearSelection();
+        Inspect = -1;
+        position = Math.Clamp(position, 0, history.Count);
+        ClearHint();
+        reviewIndex = position;
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    public void ExitReview()
+    {
+        if (!Reviewing) return;
+        reviewIndex = -1;
+        ClearSelection();
+        Inspect = -1;
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    /// <summary>Short description of the action that led into the position being shown.</summary>
+    public string ReviewLabel
+    {
+        get
+        {
+            int p = ReviewPosition;
+            if (p <= 0) return "Start of game";
+            return Describe(history[p - 1]);
+        }
+    }
+
+    string Describe(GameHistory.Entry e)
+    {
+        string who = VsAi ? (e.Mover == Side.White ? "You" : "Rival") : (e.Mover == Side.White ? "White" : "Black");
+        var a = e.Action;
+        string text = a.Kind switch
+        {
+            ActionKind.Move => $"{e.Before.Cells[a.From].Type} {Sq.Name(a.From)} to {Sq.Name(a.To)}"
+                + (!e.Before.Cells[a.To].IsEmpty ? " (capture)" : ""),
+            ActionKind.Fireball => $"Fireball from {Sq.Name(a.From)}",
+            ActionKind.Stun => $"Stun on {Sq.Name(a.To)}",
+            ActionKind.Steal => $"Steal on {Sq.Name(a.To)}",
+            ActionKind.PlaceBoulder => $"Boulder on {Sq.Name(a.To)}",
+            ActionKind.ClearBoulder => $"Smashed boulder on {Sq.Name(a.To)}",
+            ActionKind.Detonate => $"Bomb on {Sq.Name(a.From)}",
+            ActionKind.KeepPickup => "Kept the powerup",
+            ActionKind.RerollPickup => "Rerolled the powerup",
+            _ => a.Kind.ToString(),
+        };
+        return $"{who}: {text}";
+    }
+
+    /// <summary>Take back the player's last turn (and the reply to it), spending one Rewind.</summary>
+    public void UseRewind()
+    {
+        if (!CanRewind) return;
+        int index;
+        var restored = history.Rewind(State, Me, out index);
+        var views = viewHistory[index];
+        viewHistory.RemoveRange(index, viewHistory.Count - index);
+
+        State = restored;
+        Pieces.Clear();
+        foreach (var v in views) Pieces.Add(Copy(v));
+        Effects.Clear();
+        var (lf, lt) = LastOf(index);
+        LastFrom = lf;
+        LastTo = lt;
+        ClearSelection();
+        Inspect = -1;
+        Refresh();
+        AddToast("REWOUND", "Your last turn was taken back", "gold", "rewind");
+        Sfx?.Invoke("rewind");
+        Save();
+        Changed?.Invoke();
+    }
+
+    // ---------- events -> views and effects ----------
+
+    PieceView? At(int sq) => Pieces.FirstOrDefault(p => !p.Dying && p.Square == sq);
+
+    void Process(List<GameEvent> events)
+    {
+        int movedId = -1;
+        int fireFrom = -1;
+        var fireDelay = new Dictionary<int, int>();
+        for (int ei = 0; ei < events.Count; ei++)
+        {
+            var e = events[ei];
+            switch (e.Kind)
+            {
+                case EventKind.Moved:
+                {
+                    var v = At(e.From);
+                    if (v != null)
+                    {
+                        v.Square = e.To;
+                        v.AnimSeq++;
+                        movedId = v.Id;
+                    }
+                    LastFrom = e.From;
+                    LastTo = e.To;
+                    if (opt.Drama && ei + 1 < events.Count && events[ei + 1].Kind == EventKind.Captured)
+                        AddFx("streak", e.From, e.To);
+                    Sfx?.Invoke("move");
+                    break;
+                }
+                case EventKind.Castled:
+                {
+                    var rook = At(e.From);
+                    if (rook != null) { rook.Square = e.To; rook.AnimSeq++; }
+                    break;
+                }
+                case EventKind.Captured:
+                {
+                    var victim = Pieces.FirstOrDefault(p => !p.Dying && p.Square == e.To && p.Id != movedId);
+                    if (opt.Drama && victim != null && movedId >= 0)
+                    {
+                        Strike(victim, e);
+                        break;
+                    }
+                    if (victim != null) Kill(victim);
+                    AddFx("burst", e.To, css: Heat(e.Side));
+                    Shake();
+                    Sfx?.Invoke("capture");
+                    break;
+                }
+                case EventKind.Promoted:
+                {
+                    var v = Pieces.FirstOrDefault(p => p.Id == movedId);
+                    if (v != null) v.Type = e.Piece;
+                    AddFx("ring", e.To, radius: 1, css: "gold");
+                    AddToast("Promotion!", Names.Name(PowerupKind.TransformQueen).Replace("Become ", ""), "gold", "spark");
+                    Sfx?.Invoke("pickup");
+                    break;
+                }
+                case EventKind.PoisonTriggered:
+                {
+                    var v = Pieces.FirstOrDefault(p => p.Id == movedId);
+                    if (v != null) Kill(v);
+                    AddFx("burst", e.From, css: "poison");
+                    AddToast("POISON!", "The capturer is destroyed too", "poison", "skull");
+                    Shake();
+                    Sfx?.Invoke("poison");
+                    break;
+                }
+                case EventKind.Destroyed:
+                {
+                    var v = At(e.From);
+                    if (fireFrom >= 0 && v != null && fireDelay.TryGetValue(e.From, out var wait))
+                    {
+                        // Stays on the board until the ball reaches it, then ignites.
+                        v.PendingDeath = true;
+                        Later(wait, () => { v.PendingDeath = false; Ignite(v); });
+                    }
+                    else
+                    {
+                        if (v != null) Kill(v);
+                        AddFx("burst", e.From, css: "boom");
+                    }
+                    break;
+                }
+                case EventKind.FireballFired:
+                {
+                    // Look ahead at what this shot destroys so the ball can fly to the farthest victim and each
+                    // piece ignites at the moment the ball reaches it (a queen's ball rolls the whole line).
+                    var victims = new List<int>();
+                    for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++) victims.Add(events[j].From);
+                    int far = 1;
+                    int target = e.From;
+                    foreach (int v in victims)
+                    {
+                        int d = Distance(e.From, v);
+                        if (d >= far) { far = d; target = v; }
+                    }
+                    int dur = Math.Max(350, far * 110);
+                    lastFireMs = dur;
+                    AddFx("fireball", e.From, target, css: "fire", durMs: dur);
+                    foreach (int v in victims) fireDelay[v] = (int)(dur * (double)Distance(e.From, v) / far);
+                    fireFrom = e.From;
+                    AddToast("FIREBALL!", "", "fire", "fire");
+                    Sfx?.Invoke("fire");
+                    break;
+                }
+                case EventKind.Detonated:
+                {
+                    int r = e.Powerup == PowerupKind.BigBomb ? 2 : 1;
+                    AddFx("ring", e.From, radius: r, css: "boom");
+                    AddFx("flash", e.From, radius: r, css: "boom");
+                    AddToast(r == 2 ? "BIG BOMB!" : "BOOM!", "", "boom", r == 2 ? "bigbomb" : "bomb");
+                    Shake();
+                    Sfx?.Invoke("bomb");
+                    break;
+                }
+                case EventKind.Converted:
+                {
+                    var v = At(e.To);
+                    if (v != null) v.Side = e.Side;
+                    AddFx("ring", e.To, radius: 1, css: "steal");
+                    AddFx("beam", e.From, e.To, css: "steal");
+                    AddToast("STOLEN!", "", "steal", "steal");
+                    Sfx?.Invoke("steal");
+                    break;
+                }
+                case EventKind.StunStruck:
+                    AddFx("stars", e.To, css: "stun");
+                    AddToast("STUNNED!", "Frozen for 3 turns", "stun", "star");
+                    Shake();
+                    Sfx?.Invoke("stun");
+                    break;
+                case EventKind.Transformed:
+                    AddFx("ring", e.From, radius: 1, css: "gold");
+                    AddToast(Names.Name(e.Powerup), Names.Desc(e.Powerup), "gold", "spark");
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.BuffGained:
+                    AddFx("ring", e.From, radius: 1, css: "gold");
+                    AddToast(Names.Name(e.Powerup), Names.Desc(e.Powerup), "gold", Names.Icon(e.Powerup));
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.PerkGained:
+                    AddFx("ring", e.From, radius: 1, css: "gold");
+                    AddToast("+1 " + Names.Name(e.Powerup), Names.Desc(e.Powerup), "gold", Names.Icon(e.Powerup));
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.PickupFound:
+                    AddFx("ring", e.To, radius: 1, css: "gold");
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.PickupRerolled:
+                    AddToast("Rerolled!", "", "gold", "dice");
+                    break;
+                case EventKind.BoulderPlaced:
+                    AddFx("burst", e.To, css: "rock");
+                    Sfx?.Invoke("thud");
+                    break;
+                case EventKind.BoulderCleared:
+                    AddFx("burst", e.To, css: "rock");
+                    Sfx?.Invoke("capture");
+                    break;
+                case EventKind.SquareSpawned:
+                    AddFx("ping", e.From, css: "gold");
+                    AddFx("ping", e.To, css: "gold");
+                    Sfx?.Invoke("spawn");
+                    break;
+                case EventKind.PortalSpawned:
+                    AddFx("ping", e.From, css: "portal");
+                    AddFx("ping", e.To, css: "portal");
+                    AddToast("Teleporters!", "Land on one to jump to its twin", "portal", "portal");
+                    Sfx?.Invoke("spawn");
+                    break;
+                case EventKind.Teleported:
+                {
+                    var v = Pieces.FirstOrDefault(p => p.Id == movedId);
+                    if (v != null)
+                    {
+                        v.Square = e.To;
+                        v.Warping = true;
+                        v.AnimSeq++;
+                        Later(700, () => v.Warping = false);
+                    }
+                    AddFx("ring", e.From, radius: 1, css: "portal");
+                    AddFx("ring", e.To, radius: 1, css: "portal");
+                    AddToast("WARP!", "", "portal", "portal");
+                    Sfx?.Invoke("warp");
+                    break;
+                }
+                case EventKind.Swapped:
+                {
+                    var a = At(e.From);
+                    var b = At(e.To);
+                    if (a != null) { a.Square = e.To; a.AnimSeq++; }
+                    if (b != null) { b.Square = e.From; b.AnimSeq++; }
+                    AddFx("ring", e.From, radius: 1, css: "steal");
+                    AddFx("ring", e.To, radius: 1, css: "steal");
+                    AddToast("SWAP!", "", "steal", "swap");
+                    Sfx?.Invoke("steal");
+                    break;
+                }
+                case EventKind.PickupRejected:
+                    AddFx("burst", e.To, css: "rock");
+                    AddToast("King can't use " + Names.Name(e.Powerup), PowerupInfo.IsTransform(e.Powerup) ? "A king can never change type. The square is used up." : "A king can't be poisoned. The square is used up.", "gold", "crown");
+                    Sfx?.Invoke("thud");
+                    break;
+                case EventKind.TeleportBlocked:
+                    AddFx("ping", e.From, css: "portal");
+                    AddToast("Exit blocked", "The twin teleporter was occupied, so nothing happened. Both are used up.", "portal", "portal");
+                    break;
+                case EventKind.GhostFaded:
+                    AddFx("ping", e.From, css: "steal");
+                    break;
+                case EventKind.DoubleMoveForfeited:
+                    AddToast("Check!", "Second move forfeited", "gold", "x2");
+                    break;
+                case EventKind.ArmorExpired:
+                    AddFx("ping", e.From, css: "steal");
+                    break;
+            }
+        }
+    }
+
+    static string Heat(Side s) => s == Side.White ? "boom" : "steal";
+
+    /// <summary>Copies buffs/types from the engine so the view can never drift from the rules.</summary>
+    void SyncViews()
+    {
+        foreach (var v in Pieces.Where(p => !p.Dying && !p.PendingDeath).ToList())
+        {
+            var c = State.Cells[v.Square];
+            if (c.IsEmpty) { Kill(v); continue; }
+            v.Type = c.Type;
+            v.Side = c.Side;
+            v.Buffs = c.Buffs;
+            v.Stun = c.StunTurns;
+            v.Armor = c.ArmorTurns;
+            v.Ghost = c.GhostTurns;
+        }
+        for (int sq = 0; sq < 64; sq++)
+        {
+            if (!State.Cells[sq].IsEmpty && At(sq) == null)
+            {
+                var c = State.Cells[sq];
+                Pieces.Add(new PieceView { Id = nextId++, Square = sq, Type = c.Type, Side = c.Side, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns });
+            }
+        }
+    }
+
+    void Kill(PieceView v)
+    {
+        v.Dying = true;
+        Later(650, () => Pieces.Remove(v));
+    }
+
+    /// <summary>A fireball reaches this piece: it bursts into flame and burns away.</summary>
+    void Ignite(PieceView v)
+    {
+        v.Burning = true;
+        Kill(v);
+        AddFx("burst", v.Square, css: "fire");
+        AddFx("flash", v.Square, radius: 0, css: "boom");
+        Shake();
+        Sfx?.Invoke("capture");
+    }
+
+    static int Distance(int a, int b) => Math.Max(Math.Abs(Sq.File(a) - Sq.File(b)), Math.Abs(Sq.Rank(a) - Sq.Rank(b)));
+
+    void AddFx(string kind, int sq, int to = -1, int radius = 0, string css = "", int durMs = 0, string text = "")
+    {
+        var fx = new FxItem { Id = nextId++, Kind = kind, Sq = sq, To = to, Radius = radius, Css = css, DurMs = durMs, Text = text };
+        Effects.Add(fx);
+        Later(Math.Max(1100, durMs + 500), () => Effects.Remove(fx));
+    }
+
+    void AddToast(string title, string text, string css, string icon)
+    {
+        var t = new Toast { Id = nextId++, Title = title, Text = text, Css = css, Icon = icon };
+        Toasts.Add(t);
+        if (Toasts.Count > 3) Toasts.RemoveAt(0);
+        Later(2200, () => Toasts.Remove(t));
+    }
+
+    void Shake(int level = 1)
+    {
+        ShakeLevel = level;
+        Shaking = true;
+        Later(level > 1 ? 520 : 380, () => Shaking = false);
+    }
+
+    void Freeze(int ms, bool punch)
+    {
+        Frozen = true;
+        Punch = punch;
+        Later(ms, () => { Frozen = false; });
+        if (punch) Later(ms + 350, () => Punch = false);
+    }
+
+    /// <summary>A capture with drama: the attacker lands, the world holds for a beat under a slash, then the victim goes.</summary>
+    void Strike(PieceView victim, GameEvent e)
+    {
+        const int travel = 230;
+        int hit = victim.Type switch
+        {
+            PieceType.Pawn => 60,
+            PieceType.Knight or PieceType.Bishop => 120,
+            PieceType.Rook => 150,
+            PieceType.Queen => 240,
+            _ => 100,
+        };
+        string word = victim.Type switch
+        {
+            PieceType.Knight or PieceType.Bishop => "STRIKE!",
+            PieceType.Rook => "CRUSHED!",
+            PieceType.Queen => "SLAIN!",
+            _ => "",
+        };
+        bool heavy = victim.Type is PieceType.Queen or PieceType.Rook;
+        victim.PendingDeath = true;
+        int sq = e.To;
+        Later(travel, () =>
+        {
+            Freeze(hit, victim.Type == PieceType.Queen || GameOver);
+            AddFx("slash", sq, css: sq % 2 == 0 ? "a" : "b");
+            if (word != "" && !GameOver) AddFx("callout", sq, css: heavy ? "heavy" : "", text: word);
+            Sfx?.Invoke("slash");
+        });
+        Later(travel + hit, () =>
+        {
+            victim.PendingDeath = false;
+            Kill(victim);
+            AddFx("burst", sq, css: Heat(e.Side));
+            Shake(heavy ? 2 : 1);
+            Sfx?.Invoke("capture");
+        });
+    }
+
+    async void Later(int ms, Action act)
+    {
+        await Task.Delay(ms);
+        act();
+        Changed?.Invoke();
+    }
+}

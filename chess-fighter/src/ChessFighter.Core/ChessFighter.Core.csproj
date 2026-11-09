@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The rules engine: pure C#, no UI references. Shared by the web app, tests and a future server. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>ChessFighter.Core</RootNamespace>
+    <AssemblyName>ChessFighter.Core</AssemblyName>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+</Project>

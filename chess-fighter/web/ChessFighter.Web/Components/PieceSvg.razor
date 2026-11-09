@@ -1,0 +1,13 @@
+@* Pixel-art chess pieces: 12x12 sprites drawn as crisp SVG rects. Colours come from fighter.css. *@
+@using ChessFighter.Web.Game
+<svg viewBox="0 0 12 12" class="piece-svg @(Side == Side.White ? "w" : "b")" shape-rendering="crispEdges" aria-hidden="true">
+    @foreach (var r in Sprites.Runs(Type))
+    {
+        <rect x="@r.X" y="@r.Y" width="@r.W" height="1" class="px-@r.C" />
+    }
+</svg>
+
+@code {
+    [Parameter] public PieceType Type { get; set; }
+    [Parameter] public Side Side { get; set; }
+}

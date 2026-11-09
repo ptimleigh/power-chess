@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#07061a" />
+    <title>Chess Fighter</title>
+    <base href="/" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Chess Fighter" />
+    <link rel="preload" href="fonts/press-start-2p-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/fighter.css" />
+</head>
+
+<body>
+    <div id="app">
+        <div class="boot">
+            <div class="boot-logo">CHESS<span>FIGHTER</span></div>
+            <div class="boot-bar"><i></i></div>
+            <div class="boot-press">LOADING...</div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Something went wrong.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">x</a>
+    </div>
+    <script src="js/ads.js"></script>
+    <script src="js/fx.js"></script>
+    <script src="js/clip.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        // Installable and offline-capable in the browser; the native shell serves the files itself.
+        if ('serviceWorker' in navigator && !window.Capacitor && !/[?&]nosw=1/.test(location.search)) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => { }));
+        }
+    </script>
+</body>
+
+</html>

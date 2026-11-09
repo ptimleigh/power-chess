@@ -20,6 +20,8 @@ public sealed class PieceView
     public int Stun;
     public int Armor;
     public int Ghost;
+    /// <summary>Tier of the banked move on this piece (0 none, 1 = I, 2 = II).</summary>
+    public int Tier;
     /// <summary>Briefly true after a teleport so the piece blinks across.</summary>
     public bool Warping;
     public bool Dying;
@@ -301,14 +303,14 @@ public sealed class GameSession
 
     GameConfig BuildConfig()
     {
-        var cfg = new GameConfig { StartRerolls = opt.Rerolls };
+        var cfg = new GameConfig { StartRerolls = opt.Rerolls, Pool = GameConfig.FighterPool() };
         if (opt.Pairs >= 0) cfg.InitialPairs = opt.Pairs;
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
         cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
         cfg.SwapAllowed[(int)Side.Black] = !VsAi; // nor Swap
         bool tele = opt.Level < 0 || opt.Level >= Progression.TeleporterLevel;
-        if (opt.Level > 0 && opt.Only.Count == 0) cfg.Pool = Progression.PoolFor(opt.Level);
+        // Chess Fighter ignores account-level unlocks for now: every power is in the pool from the first game.
         cfg.PortalChance = opt.Portals && tele ? 0.12 : 0;
         cfg.Squares = opt.Mode;
         cfg.MysteryChance = opt.HiddenChance;
@@ -483,7 +485,7 @@ public sealed class GameSession
                     var c = at.Cells[sq];
                     if (c.IsEmpty) continue;
                     if (id == 0) throw new InvalidOperationException("missing piece id");
-                    list.Add(new PieceView { Id = id, Type = c.Type, Side = c.Side, Square = sq, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns });
+                    list.Add(new PieceView { Id = id, Type = c.Type, Side = c.Side, Square = sq, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns, Tier = c.Tier });
                 }
                 return list;
             }
@@ -1037,7 +1039,7 @@ public sealed class GameSession
             if (Mode == InputMode.BombPreview)
                 return $"Bomb: destroys {BombOwnLosses} of your pieces and {BombEnemyLosses} of theirs. Confirm or cancel.";
             if (Mode == InputMode.Promotion) return "Promote to...";
-            if (State.ForcedMover >= 0) return (State.MultiLeft >= 2 ? "Triple Move! " : "Double Move! ") + "Move that piece again";
+            if (State.ForcedMover >= 0) return $"Combo! {State.MultiLeft} more {(State.MultiLeft == 1 ? "move" : "moves")} with that piece";
             string who = VsAi ? "Your move" : (State.ToMove == Side.White ? "White to move" : "Black to move");
             return InCheck ? who + " - you are in check!" : who;
         }
@@ -1050,7 +1052,7 @@ public sealed class GameSession
     static PieceView Copy(PieceView p) => new()
     {
         Id = p.Id, Type = p.Type, Side = p.Side, Square = p.Square, Buffs = p.Buffs,
-        Stun = p.Stun, Armor = p.Armor, Ghost = p.Ghost, AnimSeq = 0,
+        Stun = p.Stun, Armor = p.Armor, Ghost = p.Ghost, Tier = p.Tier, AnimSeq = 0,
     };
 
     (int from, int to) LastOf(int position)
@@ -1298,8 +1300,19 @@ public sealed class GameSession
                     break;
                 case EventKind.BuffGained:
                     AddFx("ring", e.From, radius: 1, css: "gold");
-                    AddToast(Names.Name(e.Powerup), Names.Desc(e.Powerup), "gold", Names.Icon(e.Powerup));
+                    AddToast(Names.TierName(e.Powerup, 1), Names.Desc(e.Powerup, 1), "gold", Names.Icon(e.Powerup));
                     Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.PowerUpgraded:
+                    AddFx("ring", e.From, radius: 1, css: "gold");
+                    AddFx("burst", e.From, css: "fire");
+                    AddToast(Names.TierName(e.Powerup, 2) + "!", Names.Desc(e.Powerup, 2), "gold", Names.Icon(e.Powerup));
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.PowerMaxed:
+                    AddFx("ping", e.From, css: "steal");
+                    AddToast("Already maxed", "This piece already has the top tier. The square is used up.", "gold", Names.Icon(e.Powerup));
+                    Sfx?.Invoke("thud");
                     break;
                 case EventKind.PerkGained:
                     AddFx("ring", e.From, radius: 1, css: "gold");
@@ -1397,13 +1410,14 @@ public sealed class GameSession
             v.Stun = c.StunTurns;
             v.Armor = c.ArmorTurns;
             v.Ghost = c.GhostTurns;
+            v.Tier = c.Tier;
         }
         for (int sq = 0; sq < 64; sq++)
         {
             if (!State.Cells[sq].IsEmpty && At(sq) == null)
             {
                 var c = State.Cells[sq];
-                Pieces.Add(new PieceView { Id = nextId++, Square = sq, Type = c.Type, Side = c.Side, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns });
+                Pieces.Add(new PieceView { Id = nextId++, Square = sq, Type = c.Type, Side = c.Side, Buffs = c.Buffs, Stun = c.StunTurns, Armor = c.ArmorTurns, Ghost = c.GhostTurns, Tier = c.Tier });
             }
         }
     }

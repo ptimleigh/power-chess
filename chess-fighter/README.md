@@ -4,13 +4,14 @@ A mobile/web chess game with a **16-bit arcade fighter** look. Board squares hol
 randomly drawn cards. It is a sibling of [Power Chess](../README.md) in this repository: same proven chess engine and app
 shell, new theme, and a reworked set of powers.
 
-- Design notes and the plan for powers and cards: [docs/DESIGN.md](docs/DESIGN.md)
+- Design notes: [docs/DESIGN.md](docs/DESIGN.md)
+- **Powers and cards spec, with build status:** [docs/POWERS.md](docs/POWERS.md)
 
 ## Status
 
-Scaffold. The engine, AI, tests, PWA and web shell are copied from Power Chess and renamed. The visual identity is new
-(pixel sprites, arcade HUD, scanlines). **The powerups are still the Power Chess ones, as placeholders** until the new
-powers are designed, and the card-buff system does not exist yet.
+Early build. The engine, AI, tests, PWA and web shell come from Power Chess; the visual identity is new (32x32 sprites,
+arcade HUD, scanlines). **Built so far:** Fireball I/II, Bomb tiers, Combo +2/+4 and the one-banked-move-per-piece rule
+(see [docs/POWERS.md](docs/POWERS.md)). The rest of the powers and the whole card system are still to come.
 
 ## Layout
 

@@ -71,6 +71,8 @@ namespace ChessFighter.Core
                             if (d < 4 && p.Type == PieceType.Rook) return true;
                             if (d >= 4 && p.Type == PieceType.Bishop) return true;
                             if (first && p.Type == PieceType.King) return true;
+                            // A banked Fireball threatens along its lines like a rook (I) or a queen (II): the first piece it meets is hit.
+                            if (p.Has(Buff.Fireball) && d <= FireballMaxDir(p)) return true;
                         }
                         break;
                     }
@@ -157,27 +159,32 @@ namespace ChessFighter.Core
             }
         }
 
+        /// <summary>Highest direction index a Fireball can fire along: Fireball I is orthogonal only (0-3), Fireball II all 8 (0-7).</summary>
+        public static int FireballMaxDir(Piece p)
+        {
+            return p.Tier >= 2 ? 7 : 3;
+        }
+
         /// <summary>
-        /// Enemy pieces a Fireball fired from <paramref name="from"/> in direction <paramref name="dir"/> (0-7, see
-        /// <see cref="DirFile"/>) would destroy. Any piece can fire in any of the 8 directions with unlimited range.
-        /// Most pieces destroy only the first piece on the line, and only if it is a vulnerable enemy. A queen's
-        /// fireball destroys every vulnerable enemy on the whole line and flies over its own pieces, kings and armored
-        /// pieces. Boulders stop it either way.
+        /// The enemy piece a Fireball fired from <paramref name="from"/> in direction <paramref name="dir"/> (see
+        /// <see cref="DirFile"/>) would destroy: the first piece on the line, and only if it is a vulnerable enemy. A friendly
+        /// piece, a king, an armored piece or a boulder stops the shot without destroying anything. Directions beyond the
+        /// piece's tier fire nothing.
         /// </summary>
         public static void FireballVictims(GameState s, int from, int dir, List<int> result)
         {
             var shooter = s.Cells[from];
-            bool pierce = shooter.Type == PieceType.Queen;
+            if (dir > FireballMaxDir(shooter)) return;
             int cf = Sq.File(from) + DirFile[dir], cr = Sq.Rank(from) + DirRank[dir];
             while (Sq.OnBoard(cf, cr))
             {
                 int idx = Sq.Make(cf, cr);
-                if (s.Boulders[idx]) break;
+                if (s.Boulders[idx]) return;
                 var p = s.Cells[idx];
                 if (!p.IsEmpty)
                 {
                     if (IsVulnerable(p, shooter.Side)) result.Add(idx);
-                    if (!pierce) break;
+                    return;
                 }
                 cf += DirFile[dir];
                 cr += DirRank[dir];

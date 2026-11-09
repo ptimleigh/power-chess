@@ -106,6 +106,26 @@ namespace ChessFighter.Core
             };
         }
 
+        /// <summary>
+        /// The Chess Fighter pool: banked moves (Fireball, Poison, Bomb, Ghost), instant moves (Combo +2 and +4, Stun, Steal)
+        /// and Armor. This grows as the new powers are built; the Power Chess pool above is kept for its tests and unlock table.
+        /// </summary>
+        public static List<WeightedKind> FighterPool()
+        {
+            return new List<WeightedKind>
+            {
+                new WeightedKind(PowerupKind.Fireball, 12),
+                new WeightedKind(PowerupKind.Poison, 6),
+                new WeightedKind(PowerupKind.SmallBomb, 8),
+                new WeightedKind(PowerupKind.Ghost, 8),
+                new WeightedKind(PowerupKind.Combo2, 8),
+                new WeightedKind(PowerupKind.Combo4, 3),
+                new WeightedKind(PowerupKind.Stun, 8),
+                new WeightedKind(PowerupKind.Steal, 8),
+                new WeightedKind(PowerupKind.SpikedArmor, 7),
+            };
+        }
+
         /// <summary>Plain chess: no mystery squares and no starting perks. Used by perft tests.</summary>
         public static GameConfig Classic()
         {

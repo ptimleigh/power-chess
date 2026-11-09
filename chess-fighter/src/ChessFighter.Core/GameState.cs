@@ -39,6 +39,9 @@ namespace ChessFighter.Core
         /// <summary>Forced follow-up moves still owed by the ForcedMover (Double Move: 1, Triple Move: 2 after the first).</summary>
         public int MultiLeft;
         public bool ClockReset;
+        /// <summary>Extra moves a Combo pickup just granted, and the square of the piece that gets them. Resolved in Rules.Finish.</summary>
+        public int ComboGain;
+        public int ComboSquare = -1;
 
         /// <summary>AI lookahead: no random draws and no spawns, so search never peeks at hidden information.</summary>
         public bool SearchMode;
@@ -100,6 +103,8 @@ namespace ChessFighter.Core
             c.ForcedMover = ForcedMover;
             c.DoubleSquare = DoubleSquare;
             c.ClockReset = ClockReset;
+            c.ComboGain = ComboGain;
+            c.ComboSquare = ComboSquare;
             c.SearchMode = SearchMode;
             c.Probe = Probe;
             return c;

@@ -1,6 +1,10 @@
 @* One piece on a board: slides via CSS transitions when its square changes. Shared by the main board and demo boards. *@
 <div class="@Css" style="left:@(N(Sq.File(P.Square) * Size))%;top:@(N((Cols - 1 - Sq.Rank(P.Square)) * Size))%;width:@(N(Size))%;height:@(N(Size))%"
      @attributes="Attrs">
+    @if (P.Buffs.HasFlag(Buff.Fireball))
+    {
+        <div class="aura fb@(P.Tier >= 2 ? 2 : 1)" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    }
     <div class="piece-body land-@(P.AnimSeq % 2)">
         <PieceSvg Type="P.Type" Side="P.Side" />
     </div>
@@ -9,7 +13,7 @@
         @if (P.Buffs.HasFlag(Buff.TripleMove)) { <span class="badge dm" title="Triple Move">@Icons.Svg("x3")</span> }
         @if (P.Buffs.HasFlag(Buff.Ghost)) { <span class="badge gh" title="Ghost">@Icons.Svg("ghost")</span> }
         @if (P.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
-        @if (P.Buffs.HasFlag(Buff.Fireball)) { <span class="badge fb" title="Fireball">@Icons.Svg("fire")</span> }
+        @if (P.Buffs.HasFlag(Buff.Fireball)) { <span class="badge fb tier@(P.Tier >= 2 ? 2 : 1)" title="@Names.TierName(PowerupKind.Fireball, P.Tier)">@(P.Tier >= 2 ? "II" : "I")</span> }
         @if (P.Buffs.HasFlag(Buff.SmallBomb)) { <span class="badge bm" title="Small Bomb">@Icons.Svg("bomb")</span> }
         @if (P.Buffs.HasFlag(Buff.BigBomb)) { <span class="badge bb" title="Big Bomb">@Icons.Svg("bigbomb")</span> }
     </div>

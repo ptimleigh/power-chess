@@ -8,7 +8,7 @@ public static class Names
     {
         PowerupKind.DoubleMove => "Double Move",
         PowerupKind.Poison => "Poison",
-        PowerupKind.SpikedArmor => "Spiked Armor",
+        PowerupKind.SpikedArmor => "Armor",
         PowerupKind.Stun => "Stun",
         PowerupKind.SmallBomb => "Small Bomb",
         PowerupKind.BigBomb => "Big Bomb",
@@ -25,8 +25,26 @@ public static class Names
         PowerupKind.Ghost => "Ghost",
         PowerupKind.TripleMove => "Triple Move",
         PowerupKind.Swap => "Swap",
+        PowerupKind.Combo2 => "Combo +2",
+        PowerupKind.Combo4 => "Combo +4",
         _ => "",
     };
+
+    /// <summary>Name with its tier where the power has them: Fireball I / II, Bomb I / II.</summary>
+    public static string TierName(PowerupKind k, int tier) => k switch
+    {
+        PowerupKind.Fireball => tier >= 2 ? "Fireball II" : "Fireball I",
+        PowerupKind.SmallBomb => "Bomb I",
+        PowerupKind.BigBomb => "Bomb II",
+        _ => Name(k),
+    };
+
+    /// <summary>Description for a power at a given tier.</summary>
+    public static string Desc(PowerupKind k, int tier) => k == PowerupKind.Fireball
+        ? (tier >= 2
+            ? "Fireball II: fire along ranks, files and diagonals (like a queen). Destroys the first enemy in line instead of moving. Counts as a threat for check. Lost if the piece is destroyed."
+            : "Fireball I: fire along ranks and files (like a rook). Destroys the first enemy in line instead of moving. Counts as a threat for check. Land on another Fireball square to upgrade to II.")
+        : Desc(k);
 
     public static string Desc(PowerupKind k) => k switch
     {
@@ -34,9 +52,11 @@ public static class Names
         PowerupKind.Poison => "If this piece is captured, the capturer dies too.",
         PowerupKind.SpikedArmor => "Uncapturable and immune to effects for 3 turns. An armored king can't be checked, and may even stand next to the enemy king and check it.",
         PowerupKind.Stun => "Pick any enemy piece. It can't move for 3 turns (kings and armored pieces are immune).",
-        PowerupKind.SmallBomb => "Detonate instead of moving: destroys everything in the 3x3 around it (not kings).",
-        PowerupKind.BigBomb => "Detonate instead of moving: destroys everything in the 5x5 around it (not kings).",
-        PowerupKind.Fireball => "This piece can fire a fireball once, instead of moving: pick a direction and it destroys the first enemy in line. A Queen burns the whole line. Lost if the piece is destroyed.",
+        PowerupKind.SmallBomb => "Bomb I: detonate instead of moving to destroy everything in the 3x3 around it (not kings). Land on another Bomb square to upgrade to II (5x5).",
+        PowerupKind.BigBomb => "Bomb II: detonate instead of moving to destroy everything in the 5x5 around it (not kings).",
+        PowerupKind.Fireball => "Fireball I fires along ranks and files like a rook; land on another Fireball square for II, which also fires diagonally like a queen. It destroys the first enemy in line instead of moving, and counts as a threat for check. Lost if the piece is destroyed.",
+        PowerupKind.Combo2 => "Instant: this piece moves 2 more times in a row (3 moves in all). Giving check ends the combo. Landing on another Combo adds its moves.",
+        PowerupKind.Combo4 => "Instant: this piece moves 4 more times in a row (5 moves in all). Giving check ends the combo. Landing on another Combo adds its moves.",
         PowerupKind.Steal => "Convert an enemy piece that one of your pieces could capture. Your piece stays put.",
         PowerupKind.Boulder => "Place a boulder on an empty square. Nothing can enter or cross it.",
         PowerupKind.Reroll => "Re-draw a powerup you just found, or smash a boulder.",
@@ -55,7 +75,9 @@ public static class Names
         PowerupKind.Stun => "star",
         PowerupKind.SmallBomb => "bomb",
         PowerupKind.BigBomb => "bigbomb",
-        PowerupKind.Fireball => "fire",
+        PowerupKind.Fireball => "hadouken",
+        PowerupKind.Combo2 => "plus2",
+        PowerupKind.Combo4 => "plus4",
         PowerupKind.Steal => "steal",
         PowerupKind.Boulder => "rock",
         PowerupKind.Reroll => "dice",
@@ -82,12 +104,11 @@ public static class Names
         _ => PowerupKind.None,
     };
 
+    /// <summary>The powers listed in the help sheet, banked moves first, then instant moves.</summary>
     public static readonly PowerupKind[] Guide =
     {
-        PowerupKind.DoubleMove, PowerupKind.Poison, PowerupKind.SpikedArmor,
-        PowerupKind.SmallBomb, PowerupKind.BigBomb, PowerupKind.TransformQueen, PowerupKind.Fireball,
-        PowerupKind.Stun, PowerupKind.Steal, PowerupKind.Boulder, PowerupKind.Reroll, PowerupKind.Rewind,
-        PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.Swap,
+        PowerupKind.Fireball, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
+        PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.Stun, PowerupKind.Steal, PowerupKind.SpikedArmor,
     };
 
     public const string PortalDesc = "Teleporters come in matching pairs. Land on one and you are sent to its twin (if it is free); then both vanish.";

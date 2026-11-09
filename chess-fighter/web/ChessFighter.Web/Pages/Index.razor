@@ -279,12 +279,12 @@
                 <div class="inspect-row">
                     <span class="gi buff">@Icons.Svg(Names.Icon(kind))</span>
                     <span>
-                        <b>@Names.Name(kind)</b>
+                        <b>@Names.TierName(kind, ip.Tier)</b>
                         @(flag == Buff.Armor
                             ? $"Immune to capture and effects for {ip.ArmorTurns} more opponent {(ip.ArmorTurns == 1 ? "turn" : "turns")}."
                             : flag == Buff.Ghost
                             ? $"Slides through pieces and boulders for {ip.GhostTurns} more of its owner's {(ip.GhostTurns == 1 ? "turn" : "turns")}."
-                            : Names.Desc(kind))
+                            : Names.Desc(kind, ip.Tier))
                     </span>
                     <button class="demo-btn" data-demo="@kind.ToString().ToLowerInvariant()" @onclick="() => S.ShowTutorial(kind)">Demo</button>
                 </div>
@@ -672,9 +672,9 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <ul class="guide">
                 @foreach (var k in Names.Guide)
                 {
-                    <li class="@(Progression.Unlocked(k, EffectiveLevel) ? "" : "locked")" data-guide="@k.ToString().ToLowerInvariant()">
+                    <li class="" data-guide="@k.ToString().ToLowerInvariant()">
                         <span class="gi @(PowerupInfo.IsPerk(k) ? "perk" : "buff")">@Icons.Svg(Names.Icon(k))</span>
-                        <span><b>@Names.Name(k)</b> @Names.Desc(k)@if (!Progression.Unlocked(k, EffectiveLevel)) { <em class="lockline"> Unlocks at level @Progression.UnlockLevel(k).</em> }</span>
+                        <span><b>@Names.Name(k)</b> @Names.Desc(k)</span>
                     </li>
                 }
             </ul>

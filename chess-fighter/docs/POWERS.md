@@ -1,0 +1,72 @@
+# Chess Fighter: powers and cards
+
+The design source of truth. Status: **Built** = in the engine, tested and playable. **Planned** = decided, not built.
+
+## Global rules
+
+- Powerup squares come in three families: **banked moves**, **instant moves** and **cards**. Teleporters are an environmental
+  effect (kept, not a power).
+- A banked move lives on a **piece** until used. A piece holds **one banked category at a time**. Landing on a different
+  category replaces it (the old one is lost) and the new one starts at tier I. Landing on the same category upgrades it to
+  tier II. At the top tier the square is used up and nothing changes. Powers with no tier II (Poison, Ghost) stay at I and the
+  square is used up.
+- Using a banked move **costs the turn** and the piece stays where it is.
+- A banked move counts as a **threat for check**, like the piece it imitates. Kings are never removed by an effect; if the
+  logic leaves a king with no way out, that is checkmate.
+- Names are plain: Fireball I, Fireball II. No account-level unlocks for now (every power is available from game one).
+- Cards: playing a card **costs the turn**. Cards come from **Draw Card squares** (a power-up square). Players' cards are
+  **visible to both**, no hand limit. When any card is activated, the rival is prompted to play **Nuh-uh** if they hold one.
+
+## Banked moves
+
+| Power | Tier I | Tier II | King rule | Status |
+|---|---|---|---|---|
+| **Fireball** | Fires along ranks and files like a rook at the first piece in line (enemy only). One use. | Also fires diagonally, like a queen. | Counts as a rook (I) or queen (II) for check and mate. A king can hold one. | **Built** |
+| **Poison** | If the piece is captured, the capturer is also lost. Lasts 5 of the owner's moves. | None. | A king cannot capture a poisoned piece. | Planned (old rule still in place) |
+| **Harpoon** | Fires a small bishop-shaped projectile on a rope along one diagonal at a rival piece and pulls it next to the shooter. If already adjacent, it stays and is stunned. | Fires on all four diagonals at once. | A king can be pulled. A king holding Harpoon cannot pull a piece that would give check to it; show an X where the option would be. | Planned |
+| **Bomb** | Detonate: destroys all pieces in the 3x3 around the piece, itself included. Chain-detonates other bomb pieces in the blast. | 5x5. | A king in the blast zone counts as in check (chains too; spell it out to the player). A king landing on a Bomb square gets nothing and the square is used up. A detonation that would destroy your own king is illegal. | **Built** (tiers, king rule); chain-check explanation planned |
+| **Ghost** | 3 moves as a ghost. The counter does not go down if the piece does not move. | None. | A ghost can threaten check and mate. | Partly built (still counts turns, not moves) |
+
+## Instant moves
+
+| Power | Effect | Status |
+|---|---|---|
+| **Combo +2** | The piece that lands moves 2 more times in a row: 3 moves in all. Giving check ends the combo. Landing on another Combo adds its moves. | **Built** (same piece only) |
+| **Combo +4** | Same with 4 more moves: 5 in all. | **Built** |
+| **Stun** | Immediately shoot a stun beam (lightning bolt) in any direction. The piece cannot move for 1 turn. A king stunned with no other way out of check is mate. | Planned (still the old perk) |
+| **Steal** | Steal any rival piece in the 3x3 around the power-up square. Not kings. | Planned (still the old perk) |
+| **Draw Card** | Draw a card, to use instantly or at will depending on the card. | Planned |
+| **Armor** | Use immediately. The piece cannot be captured for 3 turns, even if it never moves. Not spiked. | Built (as Spiked Armor, renamed in the UI) |
+
+## Cards
+
+| Card | Effect | Timing |
+|---|---|---|
+| No more powers | Removes all active buffs and resets the squares. New squares appear after 1 round of moves. | at will |
+| Role reversal | Switch any 2 of your pieces. | at will |
+| Horse Sacrifice | Sacrifice 1 knight to promote a pawn, bishop or knight to a rook. If you have no knight, hold the card. Kings cannot be turned into rooks. | at will |
+| World turned upside down | The board flips 180 degrees with all pieces in place; you now use the other pieces. Unplayable only if it would put yourself in check. | immediately |
+| You get a promotion! | Promote 1 piece by 1 level: Pawn to Knight or Bishop (choice), Knight or Bishop to Rook, Rook to Queen. | immediately |
+| Hit restart | All remaining pieces return to their starting squares and keep their powers. Captured pieces stay captured. A promoted piece returns to the pawn's start square. Unplayable only if it would put yourself in check. | immediately |
+| Place a boulder | Put a boulder on the board. Blocks moves. Destroyed only by bombs or Smash boulder. | immediately |
+| Smash boulder | Remove 1 boulder. Draw weight is the same as Place a boulder, but zero while the board has no boulder, so nobody hoards dead cards. | at will |
+| Missile Strike | Pick a quadrant. Each player has 5 turns (10 moves in all) to evacuate the highlighted zone, counting down. If the king cannot get out, the missile shows incoming and freezes before the strike to show the checkmate animation. | at will |
+| Summon Mars | Tells the player the best possible move for 3 turns. | at will |
+| Summon Caissa | Bring back 1 captured piece and place it anywhere on the board. | at will |
+| Summon Shiva | Strikes 3 random rival pieces with falling weapons, capturing them (never kings). | at will |
+| Dragon Strike | A dragon wipes out 1 row with dragonfire. Rows 3 to 6 only, and not a row occupied by a king. | at will |
+| Nuh-uh | Cancel the other player's card. Prompted whenever a card is activated. | reaction |
+| Take back | Undo 1 round of moves. | at will |
+
+All cards: **Planned**.
+
+## Not carried over from Power Chess
+
+Transform squares, Reroll, Rewind (now the Take back card), Swap (now Role reversal), the Boulder perk (now a card), Double Move
+and Triple Move (replaced by Combo), and the account-level unlock tiers (for now).
+
+## Open items
+
+- Combo assumes **the same piece** makes all the extra moves. Say so if any piece should be allowed.
+- The Power Chess level-up cards, unlock previews and rule presets still exist in the app and refer to the old powers.
+- Tutorials and the demo boards for the new powers are not written yet.

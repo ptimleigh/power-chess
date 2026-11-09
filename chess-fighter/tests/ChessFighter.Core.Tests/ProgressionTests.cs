@@ -57,14 +57,14 @@ namespace ChessFighter.Core.Tests
         [Test]
         public void The_tracker_counts_a_fireball_volley_and_a_bomb()
         {
-            var s = T.Fen("4k3/3p4/3p4/3p4/8/3P4/8/3QK3 w - - 0 1");
+            var s = T.Fen("4k3/3p4/3p4/3p4/8/8/8/3QK3 w - - 0 1");
             T.Give(s, "d1", Buff.Fireball);
             var tracker = new MatchTracker(Side.White, 2);
             var ev = T.Do(s, "Fireball d1->d5");
             tracker.Observe(ev);
-            Assert.AreEqual(3, tracker.Summary.BestFireballShot, "a queen's line burned all three");
-            Assert.AreEqual(3, tracker.Summary.FireballKills);
-            Assert.AreEqual(3, tracker.Summary.Captures);
+            Assert.AreEqual(1, tracker.Summary.BestFireballShot, "a fireball hits only the first piece on its line");
+            Assert.AreEqual(1, tracker.Summary.FireballKills);
+            Assert.AreEqual(1, tracker.Summary.Captures);
             Assert.AreEqual(0, tracker.Summary.PiecesLost);
 
             var s2 = T.Fen("4k3/8/8/2ppp3/2pNp3/2ppp3/8/4K3 w - - 0 1");

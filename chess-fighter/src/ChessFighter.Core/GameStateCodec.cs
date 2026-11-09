@@ -9,7 +9,7 @@ namespace ChessFighter.Core
     /// </summary>
     public static class GameStateCodec
     {
-        const byte Version = 3;
+        const byte Version = 4;
         const int MaxHistory = 5000;
 
         public static string EncodeGame(GameState current, GameHistory history)
@@ -46,7 +46,7 @@ namespace ChessFighter.Core
                 using (var r = new BinaryReader(ms))
                 {
                     byte version = r.ReadByte();
-                    if (version < 1 || version > 3) return false; // version 1 saves predate revealed squares
+                    if (version < 1 || version > 4) return false; // version 1 saves predate revealed squares
                     var state = ReadState(r, config, version);
                     int count = r.ReadInt32();
                     if (count < 0 || count > MaxHistory) return false;
@@ -81,6 +81,7 @@ namespace ChessFighter.Core
                 w.Write(p.ArmorTurns);
                 w.Write(p.StunTurns);
                 w.Write(p.GhostTurns);
+                w.Write(p.Tier);
             }
             w.Write(Pack(s.Boulders));
             w.Write(Pack(s.Mystery));
@@ -116,6 +117,7 @@ namespace ChessFighter.Core
                     ArmorTurns = r.ReadByte(),
                     StunTurns = r.ReadByte(),
                     GhostTurns = version >= 3 ? r.ReadByte() : (byte)0,
+                    Tier = version >= 4 ? r.ReadByte() : (byte)0,
                 };
             }
             Unpack(r.ReadUInt64(), s.Boulders);

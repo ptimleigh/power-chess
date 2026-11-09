@@ -91,13 +91,15 @@ namespace ChessFighter.Core.Tests
         // ---------- king powerups ----------
 
         [Test]
-        public void Kings_take_every_buff_except_poison_and_transform()
+        public void Kings_take_every_buff_except_poison_bombs_and_transform()
         {
             var s = T.Fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
             var king = T.At(s, "e1");
-            foreach (var k in new[] { PowerupKind.DoubleMove, PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.SpikedArmor, PowerupKind.Fireball, PowerupKind.SmallBomb, PowerupKind.BigBomb })
+            foreach (var k in new[] { PowerupKind.DoubleMove, PowerupKind.TripleMove, PowerupKind.Ghost, PowerupKind.SpikedArmor, PowerupKind.Fireball, PowerupKind.Combo2, PowerupKind.Combo4 })
                 Assert.IsTrue(Rules.Eligible(s, king, 4, k), k + " should be allowed on a king");
             Assert.IsFalse(Rules.Eligible(s, king, 4, PowerupKind.Poison));
+            Assert.IsFalse(Rules.Eligible(s, king, 4, PowerupKind.SmallBomb));
+            Assert.IsFalse(Rules.Eligible(s, king, 4, PowerupKind.BigBomb));
             Assert.IsFalse(Rules.Eligible(s, king, 4, PowerupKind.TransformQueen));
             Assert.IsTrue(Rules.Eligible(s, king, 4, PowerupKind.Steal), "perks still fine");
         }

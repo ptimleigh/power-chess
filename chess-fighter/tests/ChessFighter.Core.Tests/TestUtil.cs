@@ -26,6 +26,22 @@ namespace ChessFighter.Core.Tests
             s.Cells[i] = p;
         }
 
+        public static void Tier(GameState s, string sq, int tier)
+        {
+            int i = Sq.Parse(sq);
+            var p = s.Cells[i];
+            p.Tier = (byte)tier;
+            s.Cells[i] = p;
+        }
+
+        /// <summary>Puts a revealed powerup square on the board.</summary>
+        public static void Square(GameState s, string sq, PowerupKind kind)
+        {
+            int i = Sq.Parse(sq);
+            s.Mystery[i] = true;
+            s.Content[i] = (byte)kind;
+        }
+
         public static Piece At(GameState s, string sq) { return s.Cells[Sq.Parse(sq)]; }
 
         public static void Perk(GameState s, Side side, PowerupKind k, int n = 1) { s.AddPerk(side, k, n); }

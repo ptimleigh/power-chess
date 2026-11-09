@@ -73,10 +73,12 @@ namespace ChessFighter.Core
                 case ActionKind.Fireball:
                 {
                     var shooter = s.Cells[a.From];
-                    shooter.Buffs &= ~Buff.Fireball;
-                    s.Cells[a.From] = shooter;
+                    // Work out the hit before spending the fireball: the victims depend on the shooter's tier.
                     var victims = new List<int>(4);
                     Geometry.FireballVictims(s, a.From, a.Aux, victims);
+                    shooter.Buffs &= ~Buff.Fireball;
+                    shooter.Tier = 0;
+                    s.Cells[a.From] = shooter;
                     Emit(ev, EventKind.FireballFired, a.From, a.To, s.Cells[a.From].Type, me, PowerupKind.Fireball);
                     foreach (int v in victims) Destroy(s, v, ev);
                     s.ClockReset = true;
@@ -127,6 +129,7 @@ namespace ChessFighter.Core
                         }
                     }
                     bomber.Buffs &= ~(Buff.SmallBomb | Buff.BigBomb);
+                    bomber.Tier = 0;
                     s.Cells[a.From] = bomber;
                     s.ClockReset = true;
                     Finish(s, ev);
@@ -304,6 +307,15 @@ namespace ChessFighter.Core
         /// <summary>Everything that happens once an action and its pickup are fully resolved.</summary>
         static void Finish(GameState s, List<GameEvent> ev)
         {
+            if (s.ComboGain > 0)
+            {
+                // A Combo square: the piece that landed on it owes that many extra moves, added to any it already owed.
+                if (s.DoubleSquare != s.ComboSquare) { s.DoubleSquare = s.ComboSquare; s.MultiLeft = 0; }
+                s.MultiLeft += s.ComboGain;
+            }
+            s.ComboGain = 0;
+            s.ComboSquare = -1;
+
             if (s.DoubleSquare >= 0)
             {
                 int sq = s.DoubleSquare;
@@ -433,10 +445,11 @@ namespace ChessFighter.Core
             return PowerupKind.None;
         }
 
-        /// <summary>Kings take every powerup except Poison and Transform, which make no sense for them.</summary>
+        /// <summary>Kings take every powerup except Poison, Bombs and Transform, which make no sense for them. The square is used up.</summary>
         public static bool KingIncompatible(Piece p, PowerupKind kind)
         {
-            return p.Type == PieceType.King && (kind == PowerupKind.Poison || PowerupInfo.IsTransform(kind));
+            return p.Type == PieceType.King && (kind == PowerupKind.Poison || kind == PowerupKind.SmallBomb
+                || kind == PowerupKind.BigBomb || PowerupInfo.IsTransform(kind));
         }
 
         /// <summary>Can this piece receive this powerup right now? Kings only take perks, caps and duplicates apply.</summary>
@@ -453,10 +466,8 @@ namespace ChessFighter.Core
             }
             if (kind == PowerupKind.DoubleMove && (p.Has(Buff.DoubleMove) || p.Has(Buff.TripleMove))) return false;
             if (kind == PowerupKind.TripleMove && (p.Has(Buff.DoubleMove) || p.Has(Buff.TripleMove))) return false;
-            if (kind == PowerupKind.Ghost && p.Has(Buff.Ghost)) return false;
             if (kind == PowerupKind.SpikedArmor && p.Has(Buff.Armor)) return false;
             if (kind == PowerupKind.Swap && !s.Config.SwapAllowed[(int)p.Side]) return false;
-            if (kind == PowerupKind.Fireball && p.Has(Buff.Fireball)) return false;
             if (kind == PowerupKind.Rewind && !s.Config.RewindAllowed[(int)p.Side]) return false;
             return true;
         }
@@ -469,21 +480,63 @@ namespace ChessFighter.Core
                 case PowerupKind.DoubleMove: p.Buffs |= Buff.DoubleMove; break;
                 case PowerupKind.TripleMove: p.Buffs |= Buff.TripleMove; break;
                 case PowerupKind.Ghost:
+                    if (p.Has(Buff.Ghost)) { MaxOut(s, sq, p, kind, ev); return; }
+                    ClearBanked(ref p);
                     p.Buffs |= Buff.Ghost;
                     p.GhostTurns = (byte)s.Config.GhostTurns;
+                    p.Tier = 1;
                     break;
-                case PowerupKind.Poison: p.Buffs |= Buff.Poison; break;
-                case PowerupKind.Fireball: p.Buffs |= Buff.Fireball; break;
+                case PowerupKind.Poison:
+                    if (p.Has(Buff.Poison)) { MaxOut(s, sq, p, kind, ev); return; }
+                    ClearBanked(ref p);
+                    p.Buffs |= Buff.Poison;
+                    p.Tier = 1;
+                    break;
+                case PowerupKind.Fireball:
+                    if (p.Has(Buff.Fireball))
+                    {
+                        if (p.Tier >= 2) { MaxOut(s, sq, p, kind, ev); return; }
+                        p.Tier = 2;
+                        s.Cells[sq] = p;
+                        Emit(ev, EventKind.PowerUpgraded, sq, sq, p.Type, me, kind);
+                        return;
+                    }
+                    ClearBanked(ref p);
+                    p.Buffs |= Buff.Fireball;
+                    p.Tier = 1;
+                    break;
                 case PowerupKind.SpikedArmor:
                     p.Buffs |= Buff.Armor;
                     p.ArmorTurns = ArmorStartTurns;
                     break;
                 case PowerupKind.SmallBomb:
-                    if (!p.Has(Buff.BigBomb)) p.Buffs |= Buff.SmallBomb;
+                    if (p.Has(Buff.BigBomb)) { MaxOut(s, sq, p, kind, ev); return; }
+                    if (p.Has(Buff.SmallBomb))
+                    {
+                        // Landing on Bomb again upgrades it to the big blast.
+                        p.Buffs = (p.Buffs & ~Buff.SmallBomb) | Buff.BigBomb;
+                        p.Tier = 2;
+                        s.Cells[sq] = p;
+                        Emit(ev, EventKind.PowerUpgraded, sq, sq, p.Type, me, kind);
+                        return;
+                    }
+                    ClearBanked(ref p);
+                    p.Buffs |= Buff.SmallBomb;
+                    p.Tier = 1;
                     break;
                 case PowerupKind.BigBomb:
-                    p.Buffs &= ~Buff.SmallBomb;
+                    if (p.Has(Buff.BigBomb)) { MaxOut(s, sq, p, kind, ev); return; }
+                    ClearBanked(ref p);
                     p.Buffs |= Buff.BigBomb;
+                    p.Tier = 2;
+                    break;
+                case PowerupKind.Combo2:
+                    s.ComboGain += 2;
+                    s.ComboSquare = sq;
+                    break;
+                case PowerupKind.Combo4:
+                    s.ComboGain += 4;
+                    s.ComboSquare = sq;
                     break;
                 case PowerupKind.Rewind:
                 case PowerupKind.Swap:
@@ -506,6 +559,22 @@ namespace ChessFighter.Core
             }
             s.Cells[sq] = p;
             Emit(ev, EventKind.BuffGained, sq, sq, p.Type, me, kind);
+        }
+
+        const Buff BankedMask = Buff.Fireball | Buff.Poison | Buff.SmallBomb | Buff.BigBomb | Buff.Ghost;
+
+        /// <summary>A piece holds one banked move at a time, so taking a different one wipes the old one.</summary>
+        static void ClearBanked(ref Piece p)
+        {
+            p.Buffs &= ~BankedMask;
+            p.GhostTurns = 0;
+            p.Tier = 0;
+        }
+
+        /// <summary>Landed on a power the piece already holds at its top tier: the square is used up, nothing changes.</summary>
+        static void MaxOut(GameState s, int sq, Piece p, PowerupKind kind, List<GameEvent> ev)
+        {
+            Emit(ev, EventKind.PowerMaxed, sq, sq, p.Type, p.Side, kind);
         }
 
         /// <summary>Adds one mirrored pair of mystery squares on the middle ranks. Returns false if there is no room.</summary>

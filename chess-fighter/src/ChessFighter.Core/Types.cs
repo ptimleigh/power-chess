@@ -52,10 +52,23 @@ namespace ChessFighter.Core
         Ghost,
         TripleMove,
         Swap,
+        /// <summary>Instant: the piece that lands on it moves again, 2 more times in a row (3 moves in all). Stacks.</summary>
+        Combo2,
+        /// <summary>Instant: like Combo2 but 4 more moves (5 in all).</summary>
+        Combo4,
     }
 
     public static class PowerupInfo
     {
+        /// <summary>Banked moves live on a piece until used. A piece holds one category at a time; landing on a different one replaces it.</summary>
+        public static bool IsBanked(PowerupKind k)
+        {
+            return k == PowerupKind.Fireball || k == PowerupKind.Poison || k == PowerupKind.SmallBomb
+                || k == PowerupKind.BigBomb || k == PowerupKind.Ghost;
+        }
+
+        public static bool IsCombo(PowerupKind k) { return k == PowerupKind.Combo2 || k == PowerupKind.Combo4; }
+
         public static bool IsPerk(PowerupKind k)
         {
             return k == PowerupKind.Steal || k == PowerupKind.Stun || k == PowerupKind.Boulder
@@ -92,6 +105,8 @@ namespace ChessFighter.Core
         public byte StunTurns;
         /// <summary>Owner turns of ghosting left.</summary>
         public byte GhostTurns;
+        /// <summary>Tier of the banked move on this piece: 0 = none, 1 = I, 2 = II. Fireball I shoots like a rook, II like a queen.</summary>
+        public byte Tier;
 
         public Piece(PieceType type, Side side)
         {
@@ -101,6 +116,7 @@ namespace ChessFighter.Core
             ArmorTurns = 0;
             StunTurns = 0;
             GhostTurns = 0;
+            Tier = 0;
         }
 
         public bool IsEmpty { get { return Type == PieceType.None; } }
@@ -217,6 +233,10 @@ namespace ChessFighter.Core
         PickupRejected,
         /// <summary>A teleporter was used but its twin was blocked, so the piece stayed put and both squares vanished.</summary>
         TeleportBlocked,
+        /// <summary>A piece landed on a power it already holds at its top tier. The square is used up and nothing changes.</summary>
+        PowerMaxed,
+        /// <summary>A piece upgraded the banked move it already held (Fireball I to II, Bomb I to II).</summary>
+        PowerUpgraded,
     }
 
     /// <summary>Describes what happened so the view layer can animate it. The engine itself never reads these.</summary>

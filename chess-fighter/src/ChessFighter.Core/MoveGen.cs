@@ -291,10 +291,11 @@ namespace ChessFighter.Core
                 var p = s.Cells[sq];
                 if (p.IsEmpty || p.Side != me) continue;
 
-                if (p.Has(Buff.Fireball))
+                if (p.Has(Buff.Fireball) && !p.IsStunned)
                 {
-                    // The piece that earned the fireball can fire it in any of 8 directions; only offer shots that hit something.
-                    for (int dir = 0; dir < 8; dir++)
+                    // Fireball I fires along the 4 rook lines, II along all 8. Only offer shots that would hit something.
+                    int maxDir = Geometry.FireballMaxDir(p);
+                    for (int dir = 0; dir <= maxDir; dir++)
                     {
                         scratch.Clear();
                         Geometry.FireballVictims(s, sq, dir, scratch);

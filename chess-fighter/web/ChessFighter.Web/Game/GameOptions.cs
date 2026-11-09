@@ -15,7 +15,7 @@ public sealed class GameOptions
     public List<PowerupKind> Only = new();
     public int Pairs = -1;
     public int Spawn = -1;
-    public int Rerolls = 1;
+    public int Rerolls = 0; // Chess Fighter has no Reroll perk
     public List<(Side side, PowerupKind kind, int n)> Perks = new();
     public List<(string sq, PowerupKind kind)> Buffs = new();
     public List<string> Mystery = new();

@@ -176,7 +176,7 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Any_piece_can_fire_in_any_of_the_eight_directions()
+        public void Any_piece_can_fire_a_fireball_along_ranks_and_files()
         {
             // Pawn fires straight up its file, even though pawns do not attack that way.
             var pawn = T.Fen("4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1");
@@ -184,15 +184,10 @@ namespace ChessFighter.Core.Tests
             T.Do(pawn, "Fireball e2->e7");
             Assert.IsTrue(T.At(pawn, "e7").IsEmpty);
 
-            // Bishop fires along a rank; knight fires along a diagonal.
+            // A bishop fires along a rank.
             var bishop = T.Fen("4k3/8/8/8/3B2p1/8/8/4K3 w - - 0 1");
             T.Give(bishop, "d4", Buff.Fireball);
             Assert.IsTrue(T.IsLegal(bishop, "Fireball d4->g4"));
-
-            var knight = T.Fen("4k3/6r1/8/8/3N4/8/8/4K3 w - - 0 1");
-            T.Give(knight, "d4", Buff.Fireball);
-            T.Do(knight, "Fireball d4->g7");
-            Assert.IsTrue(T.At(knight, "g7").IsEmpty);
         }
 
         [Test]
@@ -210,17 +205,23 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Queen_fireball_clears_the_whole_line_but_only_hurts_enemies()
+        public void Even_a_queens_fireball_only_hits_the_first_piece()
         {
-            // d1 queen fires up the d-file over her own pawn on d3, past an armored pawn on d6.
-            var s = T.Fen("4k3/3p4/3p4/3p4/8/3P4/8/3QK3 w - - 0 1");
-            T.Give(s, "d6", Buff.Armor, 3);
+            // d1 queen fires up the d-file: the first enemy dies, the one behind it survives.
+            var s = T.Fen("4k3/3p4/8/3p4/8/8/8/3QK3 w - - 0 1");
             T.Give(s, "d1", Buff.Fireball);
             T.Do(s, "Fireball d1->d5");
             Assert.IsTrue(T.At(s, "d5").IsEmpty, "first enemy destroyed");
-            Assert.IsTrue(T.At(s, "d7").IsEmpty, "second enemy destroyed too");
-            Assert.AreEqual(PieceType.Pawn, T.At(s, "d6").Type, "armored pawn survives");
-            Assert.AreEqual(Side.White, T.At(s, "d3").Side, "own pawn survives");
+            Assert.AreEqual(PieceType.Pawn, T.At(s, "d7").Type, "the one behind survives");
+
+            // An own pawn or an armored pawn in front blocks the shot entirely.
+            var own = T.Fen("4k3/3p4/8/8/8/3P4/8/3QK3 w - - 0 1");
+            T.Give(own, "d1", Buff.Fireball);
+            Assert.IsFalse(T.IsLegal(own, "Fireball d1->d7"));
+            var armored = T.Fen("4k3/3p4/3p4/8/8/8/8/3QK3 w - - 0 1");
+            T.Give(armored, "d6", Buff.Armor, 3);
+            T.Give(armored, "d1", Buff.Fireball);
+            Assert.IsFalse(MoveGen.LegalActions(armored).Any(a => a.Kind == ActionKind.Fireball), "armor stops the shot and nothing is hit");
         }
 
         [Test]

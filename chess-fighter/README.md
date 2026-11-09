@@ -47,9 +47,9 @@ The debug URL options and the tap-the-logo-five-times debug panel work as descri
 ## Debug tools and URL options
 
 Tap the logo five times (or open `?debug=1`) for the debug panel: hand cards to you or the rival, give a piece any banked power at tier I or II
-(or strip or stun it), drop any powerup square, spawn a pair, clear every power, and the old progress buttons. Handy URL options for setting up a
+(or strip or stun it), drop any powerup square, spawn a pair, clear every power, **scramble the board** into a random mid-game position (Early, Middle or Late; it plays random legal actions from a fresh game, so the position is always legal), and the old progress buttons. Handy URL options for setting up a
 position: `fen=`, `seed=`, `ai=`, `buffs=e4:fireball,e4:fireball` (listing a power twice makes it tier II), `reveal=a3:combo2`,
-`cards=w:takeback,b:nuhuh`, `pending=placeboulder` (an immediate card to aim first), `perks=`, `mystery=`, `spawn=`, `pairs=`, `tut=`, `drama=`.
+`cards=w:takeback,b:nuhuh`, `pending=placeboulder` (an immediate card to aim first), `perks=`, `mystery=`, `spawn=`, `pairs=`, `tut=`, `drama=`, and `scramble=40` to start from a scrambled position.
 
 ## Replay clip
 

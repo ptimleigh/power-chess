@@ -20,6 +20,8 @@ public sealed class GameOptions
     /// <summary>Debug: cards put straight into a bag (cards=w:rolereversal,b:nuhuh:2) and an immediate card to aim first (pending=placeboulder).</summary>
     public List<(Side side, CardKind kind, int n)> Cards = new();
     public CardKind PendingCard = CardKind.None;
+    /// <summary>Debug: start from a random mid-game position this many plies in (scramble=40).</summary>
+    public int Scramble;
     public List<(string sq, PowerupKind kind)> Buffs = new();
     public List<string> Mystery = new();
     /// <summary>Show powerup tutorials the first time each is selected.</summary>
@@ -91,6 +93,7 @@ public sealed class GameOptions
                             o.Cards.Add((f[0].StartsWith("b") ? Side.Black : Side.White, ck, f.Length > 2 && int.TryParse(f[2], out var cn) ? cn : 1));
                     }
                     break;
+                case "scramble": if (int.TryParse(val, out var sc)) o.Scramble = Math.Clamp(sc, 0, 300); break;
                 case "pending": if (Enum.TryParse<CardKind>(val, true, out var pc)) o.PendingCard = pc; break;
                 case "buffs": // e4:smallbomb,d4:poison
                     foreach (var item in val.Split(',', StringSplitOptions.RemoveEmptyEntries))

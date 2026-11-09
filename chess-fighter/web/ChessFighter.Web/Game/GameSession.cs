@@ -238,6 +238,7 @@ public sealed class GameSession
         Tut = tutorials ?? new TutorialState();
         ai = Ai.ForLevel(opt.Ai);
         NewGame();
+        if (opt.Scramble > 0) DebugScramble(opt.Scramble);
     }
 
     // ---------- powerup tutorials ----------
@@ -460,6 +461,57 @@ public sealed class GameSession
     }
 
     public void Restart() => NewGame();
+
+    /// <summary>
+    /// Debug: jump to a random position that looks like the middle of a game. It starts a fresh game with the current options, plays
+    /// random legal actions (moves, powers, cards, Nuh-uh answers) until about <paramref name="plies"/> plies have passed, and stops on
+    /// the human's turn with nothing pending. Captured pieces, powers, powerup squares, card bags and Take back history all come from
+    /// real play, so the position is always a legal one. Games that end early are discarded and replayed.
+    /// </summary>
+    public void DebugScramble(int plies)
+    {
+        if (Busy || Puzzle != null || opt.Puzzle != null) return;
+        var rnd = new Random();
+        int budget = Math.Max(40, plies * 4);
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            NewGame();                                           // a clean setup that honours the options
+            State.Rng = new Rng((ulong)rnd.NextInt64() | 1UL);   // so powerup squares and draws differ every time
+            int steps = 0;
+            bool landed = false;
+            while (steps++ < budget)
+            {
+                if (Rules.GetResult(State) != GameResult.Ongoing) break;
+                var legal = MoveGen.LegalActions(State);
+                if (legal.Count == 0) break;
+                bool settled = State.PendingSquare < 0 && State.PendingCard == CardKind.None && State.EffectKind == PowerupKind.None
+                    && State.RespCard == CardKind.None && State.ForcedMover < 0;
+                if (State.Ply >= plies && settled && (!VsAi || State.ToMove == Side.White)) { landed = true; break; }
+                Rules.Apply(State, legal[rnd.Next(legal.Count)]);
+            }
+            if (!landed) continue;
+
+            Pieces.Clear();
+            for (int sq = 0; sq < 64; sq++)
+                if (!State.Cells[sq].IsEmpty) Pieces.Add(new PieceView { Id = nextId++, Square = sq });
+            SyncViews();
+            history.Clear();
+            viewHistory.Clear();
+            reviewIndex = -1;
+            LastFrom = LastTo = -1;
+            Moves = State.Ply;
+            RoundIntro = false;
+            DebugUsed = true;
+            ClearSelection();
+            Refresh();
+            AddToast("SCRAMBLED", $"A random position {State.Ply} plies in", "gold", "spark");
+            Changed?.Invoke();
+            Save();
+            return;
+        }
+        AddToast("Scramble failed", "Every random game ended too early. Try again.", "gold", "skull");
+        Changed?.Invoke();
+    }
 
     // ---------- save / resume ----------
 

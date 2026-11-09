@@ -304,6 +304,11 @@
                 <button class="dbtn" data-dboard="spawn" @onclick="S.DebugSpawn">Spawn pair</button>
                 <button class="dbtn warn" data-dboard="clear" @onclick="S.DebugClearBoard">Clear all powers</button>
             </div>
+            <div class="debug-row"><span>Scramble</span>
+                <button class="dbtn" data-dboard="scramble-early" @onclick="() => S.DebugScramble(16)">Early (16)</button>
+                <button class="dbtn" data-dboard="scramble-mid" @onclick="() => S.DebugScramble(40)">Middle (40)</button>
+                <button class="dbtn" data-dboard="scramble-late" @onclick="() => S.DebugScramble(80)">Late (80)</button>
+            </div>
             <div class="debug-row"><span>Progress</span>
                 <button class="dbtn" data-dprog="max" @onclick="() => DebugXp(Progression.XpForLevel(Progression.MaxLevel))">Max level</button>
                 <button class="dbtn" data-dprog="plus" @onclick="() => DebugXp(profile.Xp + 100)">+100 XP</button>
@@ -946,7 +951,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
         showDebug = uri.Query.Contains("debug=1", StringComparison.OrdinalIgnoreCase);
-        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "cards=", "pending=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=", "preset=", "freq=", "custom=" }
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "cards=", "pending=", "scramble=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=", "preset=", "freq=", "custom=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game

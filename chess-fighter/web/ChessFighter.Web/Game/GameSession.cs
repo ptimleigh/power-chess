@@ -391,8 +391,12 @@ public sealed class GameSession
 
     }
 
+    /// <summary>1 for the first game, counting up each time a new game starts. Drives the ROUND n banner.</summary>
+    public int GameSerial { get; private set; }
+
     public void NewGame()
     {
+        GameSerial++;
         var cfg = BuildConfig();
 
         if (opt.Puzzle != null) SetupPuzzle();
@@ -946,7 +950,7 @@ public sealed class GameSession
         }
         if (opt.Drama && GameOver && Result != GameResult.Draw)
         {
-            Later(ev.Any(e => e.Kind == EventKind.Captured) ? 650 : 150, () => { Freeze(420, true); AddFx("callout", 28, css: "heavy mate", text: "FINAL BLOW"); Shake(2); });
+            Later(ev.Any(e => e.Kind == EventKind.Captured) ? 650 : 150, () => { Freeze(420, true); AddFx("callout", 28, css: "heavy mate", text: "K.O.!"); Shake(2); });
             wait += 500;
         }
         if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn

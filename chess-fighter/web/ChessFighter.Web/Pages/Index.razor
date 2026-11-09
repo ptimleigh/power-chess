@@ -18,11 +18,25 @@
         </div>
     </header>
 
+    <section class="fight-hud" data-testid="fight-hud" aria-label="Health">
+        <div class="fh-side p1 @(S.Turn == Side.White && !S.GameOver ? "turn" : "")">
+            <div class="hp" title="Material left"><i style="width:@Hp(Side.White)%"></i></div>
+            <div class="fh-name">P1</div>
+        </div>
+        <div class="fh-center">
+            <div class="fh-ko">K.O.</div>
+            <div class="fh-move">@S.Moves.ToString("00")</div>
+        </div>
+        <div class="fh-side p2 @(S.Turn == Side.Black && !S.GameOver ? "turn" : "")">
+            <div class="hp" title="Material left"><i style="width:@Hp(Side.Black)%"></i></div>
+            <div class="fh-name">@(S.VsAi ? "CPU" : "P2")</div>
+        </div>
+    </section>
+
     <section class="player opp @(S.Turn == Side.Black && !S.GameOver ? "active" : "")">
         <div class="avatar b"></div>
         <div class="pinfo">
             <div class="pname"><span class="ptag">@(S.VsAi ? "CPU" : "P2")</span>@(S.VsAi ? "Rival" : "Black")</div>
-            <div class="hp" title="Material left"><i style="width:@Hp(Side.Black)%"></i></div>
         </div>
         <div class="chips">@InvChips(Side.Black)</div>
     </section>
@@ -41,6 +55,11 @@
             </div>
         </section>
     }
+
+    <div class="round-banner" @key="S.GameSerial" aria-hidden="true">
+        <div class="rb-round">ROUND @S.GameSerial</div>
+        <div class="rb-fight">FIGHT!</div>
+    </div>
 
     <div class="board-frame">
         <div class="board @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">
@@ -102,7 +121,6 @@
         <div class="avatar w"></div>
         <div class="pinfo">
             <div class="pname"><span class="ptag">P1</span>@(S.VsAi ? "You" : "White")@if (RulesLabel.Length > 0) { <span class="rules-badge" data-testid="rules-badge">@RulesLabel</span> }</div>
-            <div class="hp" title="Material left"><i style="width:@Hp(Side.White)%"></i></div>
         </div>
         <div class="chips">@InvChips(Side.White)</div>
     </section>
@@ -379,7 +397,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 {
     <div class="modal" data-testid="gameover">
         <div class="card pop result @ResultClass">
-            <div class="kicker">@S.Status</div>
+            <div class="kicker">@(Perfect ? "PERFECT!" : S.Status)</div>
             <h1>@ResultTitle</h1>
             <p>@ResultText</p>
             @if (reward is MatchReward rw)
@@ -487,7 +505,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 {
     <div class="modal" data-testid="newgame" @onclick="() => showNew = false">
         <div class="card newgame" @onclick:stopPropagation="true">
-            <div class="kicker">New game</div>
+            <div class="kicker">Choose your fight</div>
             <div class="opt-label">Powerup squares</div>
             <div class="seg">
                 <button class="@Seg(selMode == SquareMode.Revealed)" data-mode="revealed" @onclick="() => selMode = SquareMode.Revealed">
@@ -547,7 +565,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 </button>
             </div>
             <div class="row newgame-row">
-                <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">Start game</button>
+                <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">FIGHT!</button>
                 <button class="btn ghost" data-action="cancel-new" @onclick="() => showNew = false">Cancel</button>
             </div>
         </div>
@@ -1255,6 +1273,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     /// <summary>Fighting-game "health": the share of the starting material (39 points) a side still has.</summary>
     int Hp(Side side)
     {
+        // K.O.: the side that lost the game has an empty bar, whatever material it still had.
+        if (S.GameOver && S.Winner() is Side winner && winner != side) return 0;
         int total = 0;
         foreach (var p in S.ViewPieces)
         {
@@ -1290,12 +1310,31 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     string ResultClass => S.Result == GameResult.Draw ? "draw" : (S.VsAi && S.Winner() == Side.Black ? "lose" : "win");
 
     string ResultTitle => S.Result == GameResult.Draw
-        ? "DRAW"
-        : S.VsAi ? (S.Winner() == Side.White ? "VICTORY" : "DEFEATED")
-        : (S.Winner() == Side.White ? "WHITE WINS" : "BLACK WINS");
+        ? "DRAW GAME"
+        : S.VsAi ? (S.Winner() == Side.White ? "YOU WIN" : "YOU LOSE")
+        : (S.Winner() == Side.White ? "P1 WINS" : "P2 WINS");
+
+    static readonly string[] WinQuotes =
+    {
+        "Not bad! Your endgame is fierce.",
+        "A clean finish. The crowd goes wild!",
+        "That king never saw it coming.",
+        "Checkmate! What a K.O.!",
+    };
+
+    static readonly string[] LoseQuotes =
+    {
+        "You must tighten your defence to stand a chance!",
+        "Shake it off. The rematch is one tap away.",
+        "Learn from this one and come back stronger!",
+    };
 
     string ResultText => S.Result == GameResult.Draw
         ? DrawText
-        : S.VsAi ? (S.Winner() == Side.White ? "Nice. Checkmate!" : "The rival got you this time.")
-        : "Checkmate.";
+        : S.VsAi
+            ? (S.Winner() == Side.White ? WinQuotes[S.Moves % WinQuotes.Length] : LoseQuotes[S.Moves % LoseQuotes.Length])
+            : "Checkmate.";
+
+    /// <summary>"PERFECT!" when the winner finished with every point of material, like a no-damage round.</summary>
+    bool Perfect => S.Result != GameResult.Draw && S.Winner() is Side w && Hp(w) >= 100;
 }

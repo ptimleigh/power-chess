@@ -36,7 +36,9 @@ The debug URL options and the tap-the-logo-five-times debug panel work as descri
 
 - Pixel font: Press Start 2P (SIL OFL, bundled in `wwwroot/fonts`, so the PWA works offline). Body text uses a monospace stack.
 - Pieces: P1 ice-steel vs P2 crimson, drawn as 12x12 sprites (edit the grids in `Sprites.cs`; legend is in the file).
-- HUD: P1 / CPU tags and a health bar that drains with the material a side has lost (the rival's bar drains toward the centre).
+- HUD (Street Fighter II style): P1 and P2/CPU health bars across the top with a K.O. badge and move counter between them. A bar drains with the material a side has lost (yellow over red, the rival's drains toward the centre) and empties on checkmate.
+- Round flow: a ROUND n / FIGHT! banner on every new game, "K.O.!" on checkmate, YOU WIN / YOU LOSE with a short quote, and PERFECT! when the winner lost no material.
+- Stage: sunset sky behind the board.
 - Effects: hard offset shadows instead of glows, stepped animation, scanline + vignette overlay (`body::after`).
 
 ## Known gaps

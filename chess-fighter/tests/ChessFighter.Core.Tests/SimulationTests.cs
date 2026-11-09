@@ -50,7 +50,8 @@ namespace ChessFighter.Core.Tests
                 bool armored = kingSq >= 0 && s.Cells[kingSq].Has(Buff.Armor); // armor may lapse at the end of the turn
                 Rules.Apply(s, action);
                 AssertInvariants(s, "after " + action + " (seed " + seed + ")");
-                if (!armored)
+                // A card still waiting on the rival's answer has not happened yet, and a cancelled escape card is mate by rule.
+                if (!armored && s.RespCard == CardKind.None && s.LostSide < 0)
                     Assert.IsFalse(Geometry.IsKingAttacked(s, mover), "mover left own king in check after " + action + "\n" + s);
             }
             Assert.Fail("game did not terminate, seed " + seed);

@@ -30,6 +30,22 @@ namespace ChessFighter.Core
                 return result;
             }
 
+            if (s.RespCard != CardKind.None)
+            {
+                // A card was just activated: the rival answers it. The side to move is unchanged.
+                result.Add(new GameAction(ActionKind.AllowCard, 0, 0, 0));
+                if (s.CardCount(me.Opponent(), CardKind.NuhUh) > 0) result.Add(new GameAction(ActionKind.UseNuhUh, 0, 0, 0));
+                return result;
+            }
+
+            if (s.PendingCard != CardKind.None)
+            {
+                var aim = new List<GameAction>(16);
+                Cards.Generate(s, me, s.PendingCard, aim);
+                foreach (var a in aim) if (IsLegal(s, a)) result.Add(a);
+                return result;
+            }
+
             if (s.EffectKind != PowerupKind.None)
             {
                 GenEffect(s, result);
@@ -49,6 +65,7 @@ namespace ChessFighter.Core
                     if (!p.IsEmpty && p.Side == me) GenPiece(s, sq, pseudo, true);
                 }
                 GenSpecials(s, pseudo);
+                if (!s.SearchMode) GenCards(s, pseudo); // cards are not part of the AI's search
             }
 
             foreach (var a in pseudo)
@@ -319,6 +336,18 @@ namespace ChessFighter.Core
         {
             var rook = s.Cells[sq];
             return rook.Type == PieceType.Rook && rook.Side == me && !rook.IsStunned;
+        }
+
+        /// <summary>Cards in the bag, played at will (reactions are not). Each costs the turn.</summary>
+        static void GenCards(GameState s, List<GameAction> o)
+        {
+            Side me = s.ToMove;
+            for (int k = Cards.First; k <= Cards.Last; k++)
+            {
+                var kind = (CardKind)k;
+                if (CardInfo.IsReaction(kind) || s.CardCount(me, kind) == 0) continue;
+                Cards.Generate(s, me, kind, o);
+            }
         }
 
         /// <summary>Perk uses and bomb detonations. Each one is spent instead of a move.</summary>

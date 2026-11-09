@@ -484,3 +484,26 @@ html, body {
 
 /* ---------- Stun bolt: a jagged pixel lightning beam ---------- */
 .fx-beam.zap { height: 8px; margin-top: -4px; background: repeating-linear-gradient(90deg, #fff 0 5px, #ffe23a 5px 10px, #3df2ff 10px 15px); box-shadow: 0 0 0 2px #000, 0 0 12px #ffe23a; animation-timing-function: steps(6); }
+
+/* =====================================================================
+   Cards: a visible bag per side, and the prompts for aiming or answering one
+   ===================================================================== */
+.bag { width: calc(var(--b) + 12px); display: flex; flex-wrap: wrap; gap: 5px; }
+.card-item {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 7px;
+    font-family: var(--px); font-size: 7px; font-weight: 400; color: var(--text);
+    background: #1b2a8a;
+    border: 2px solid #000;
+    box-shadow: var(--bevel), 2px 2px 0 #000;
+}
+.card-item.react { background: #8a1b2a; }
+.card-item .ci { width: 14px; height: 14px; display: grid; }
+.card-item .ci svg { width: 100%; height: 100%; }
+.card-item .cc { background: #000a; padding: 2px 4px; }
+.card-item.on { background: var(--gold); color: #2a1a00; }
+.card-item:not(:disabled):active { transform: translate(2px, 2px); box-shadow: var(--bevel); }
+.card-item:disabled { opacity: 1; }
+.bag.opp .card-item { font-size: 6px; padding: 3px 5px; }
+.card-prompt { width: calc(var(--b) + 12px); display: grid; gap: 8px; justify-items: center; padding: 8px; background: #150e3cf2; border: 3px solid #000; box-shadow: 0 0 0 2px var(--gold), 4px 4px 0 #000; animation: pxpop .25s steps(4); }
+.cp-title { font-family: var(--px); font-size: 9px; color: var(--gold); text-shadow: 2px 2px 0 #000; text-align: center; line-height: 1.5; }

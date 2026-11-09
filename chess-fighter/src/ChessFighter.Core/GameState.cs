@@ -31,6 +31,32 @@ namespace ChessFighter.Core
         public int PendingSquare = -1;
         public PowerupKind PendingKind;
 
+        /// <summary>The card bag: counts indexed side * 32 + (int)CardKind. Visible to both players.</summary>
+        public readonly byte[] Bag = new byte[64];
+        /// <summary>Pieces each side has lost, indexed side * 8 + (int)PieceType (kings excluded). Summon Caissa draws on this.</summary>
+        public readonly byte[] Captured = new byte[16];
+        /// <summary>An immediate card just drawn that its owner must now aim.</summary>
+        public CardKind PendingCard;
+        /// <summary>A card just activated, waiting for the rival's answer (Nuh-uh or allow), with the activation's fields.</summary>
+        public CardKind RespCard;
+        public int RespFrom, RespTo, RespAux;
+        /// <summary>Powerup squares do not spawn before this ply (No more powers).</summary>
+        public int NoSpawnUntilPly;
+
+        /// <summary>The side (as an int, -1 for none) that ended its turn with its king still in check, after its only escape was cancelled by Nuh-uh. It loses.</summary>
+        public int LostSide = -1;
+
+        /// <summary>Whose decision the game is waiting for: normally the side to move, but the rival while a card awaits an answer.</summary>
+        public Side Decider { get { return RespCard != CardKind.None ? ToMove.Opponent() : ToMove; } }
+
+        public int CardCount(Side side, CardKind kind) { return Bag[(int)side * 32 + (int)kind]; }
+
+        public void AddCard(Side side, CardKind kind, int n)
+        {
+            int i = (int)side * 32 + (int)kind;
+            Bag[i] = (byte)Math.Max(0, Math.Min(255, Bag[i] + n));
+        }
+
         /// <summary>An instant targeted power (Stun, Steal) the mover must now aim, and the square of the piece that landed on it.</summary>
         public PowerupKind EffectKind;
         public int EffectSquare = -1;
@@ -105,6 +131,15 @@ namespace ChessFighter.Core
             c.PendingSquare = PendingSquare;
             c.PendingKind = PendingKind;
             c.EffectKind = EffectKind;
+            Array.Copy(Bag, c.Bag, 64);
+            Array.Copy(Captured, c.Captured, 16);
+            c.PendingCard = PendingCard;
+            c.RespCard = RespCard;
+            c.RespFrom = RespFrom;
+            c.RespTo = RespTo;
+            c.RespAux = RespAux;
+            c.NoSpawnUntilPly = NoSpawnUntilPly;
+            c.LostSide = LostSide;
             c.EffectSquare = EffectSquare;
             c.ForcedMover = ForcedMover;
             c.DoubleSquare = DoubleSquare;

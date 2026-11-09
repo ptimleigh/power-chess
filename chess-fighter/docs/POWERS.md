@@ -35,7 +35,7 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | **Combo +4** | Same with 4 more moves: 5 in all. | **Built** |
 | **Stun** | Immediately shoot a stun beam (lightning bolt) in any direction. The piece cannot move for 1 turn. A king stunned with no other way out of check is mate. | **Built** |
 | **Steal** | Steal any rival piece in the 3x3 around the power-up square. Not kings. | **Built** |
-| **Draw Card** | Draw a card, to use instantly or at will depending on the card. | Planned |
+| **Draw Card** | Draw a card, to use instantly or at will depending on the card. | **Built** |
 | **Armor** | Use immediately. The piece cannot be captured for 3 turns, even if it never moves. Not spiked. | Built (as Spiked Armor, renamed in the UI) |
 
 ## Cards
@@ -58,7 +58,8 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | Nuh-uh | Cancel the other player's card. Prompted whenever a card is activated. | reaction |
 | Take back | Undo 1 round of moves. | at will |
 
-All cards: **Planned**.
+**Built:** Place a boulder, Smash boulder, You get a promotion!, Role reversal, Horse Sacrifice, No more powers, Summon Caissa and Nuh-uh.
+**Planned:** World turned upside down, Hit restart, Missile Strike, Summon Mars, Summon Shiva, Dragon Strike, Take back.
 
 ## Assumptions made while building (change any of these)
 
@@ -75,6 +76,16 @@ All cards: **Planned**.
   legal target the power fizzles and the square is used up. A choice that would leave your own king in check is not offered.
   Stun hits the first enemy on any of 8 lines for 1 turn (a king can be hit; armored pieces are immune). Steal takes a non-king,
   non-armored rival in the 3x3 around the lander; the stolen piece stays put and loses its buffs.
+- **Cards:** an immediate card (boulder, promotion) is aimed right after it is drawn; if it has no legal use it goes into the bag instead.
+  Bag cards are played from the bag on your turn and cost it. A card that could never be used is never drawn (Smash needs a boulder on the
+  board, Caissa needs something you lost). The AI keeps cards out of its search: it plays one only when a one-ply look shows a clear gain,
+  and it always answers with Nuh-uh when it holds one.
+- **Nuh-uh and check:** if you play a card to get out of check and it is cancelled, you are still in check at the end of your turn, which
+  is **checkmate**. Change this if you would rather the cancelled card just fail.
+- **Role reversal, Horse Sacrifice and Promotion never touch kings;** promotion never touches queens.
+- **Caissa** places the piece on any free square (no powerup square, boulder or teleporter, and no pawn on a back rank). The sacrificed
+  knight of Horse Sacrifice counts as lost, so Caissa can bring it back.
+- **No more powers** also removes armor. Powerup squares stay away for one round. Teleporters stay.
 - **Ghost's three moves exclude the pickup move itself**, and a stunned ghost neither moves nor threatens.
 - The generated daily puzzles were regenerated under these rules (`tools/PuzzleGen`).
 

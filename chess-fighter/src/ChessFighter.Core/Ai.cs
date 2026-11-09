@@ -81,6 +81,18 @@ namespace ChessFighter.Core
             var actions = MoveGen.LegalActions(real);
             if (actions.Count == 0) throw new InvalidOperationException("No legal actions");
             if (real.PendingSquare >= 0) return ChoosePickup(real, actions);
+            if (real.RespCard != CardKind.None) return CardAi.Respond(real, actions);
+            if (real.PendingCard != CardKind.None) return CardAi.ChooseImmediate(real, actions);
+
+            // Cards stay out of the search: play one only when a one-ply look says it clearly helps.
+            var cardPlays = actions.FindAll(a => a.Kind == ActionKind.PlayCard);
+            if (cardPlays.Count > 0)
+            {
+                actions.RemoveAll(a => a.Kind == ActionKind.PlayCard);
+                GameAction play;
+                if (CardAi.TryPlay(real, cardPlays, out play)) return play;
+                if (actions.Count == 0) return cardPlays[0];
+            }
             if (RandomChance > 0 && rng.NextDouble() < RandomChance) return actions[rng.Next(actions.Count)];
 
             var root = real.Clone();
@@ -283,6 +295,7 @@ namespace ChessFighter.Core
                 case ActionKind.Fireball: return 500;
                 case ActionKind.Steal: return 450;
                 case ActionKind.StealPick: return 450;
+                case ActionKind.PlayCard: return 0;
                 case ActionKind.StunBeam: return 300;
                 case ActionKind.Harpoon: return 350;
                 case ActionKind.Stun: return 300;

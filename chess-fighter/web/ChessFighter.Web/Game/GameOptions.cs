@@ -17,6 +17,9 @@ public sealed class GameOptions
     public int Spawn = -1;
     public int Rerolls = 0; // Chess Fighter has no Reroll perk
     public List<(Side side, PowerupKind kind, int n)> Perks = new();
+    /// <summary>Debug: cards put straight into a bag (cards=w:rolereversal,b:nuhuh:2) and an immediate card to aim first (pending=placeboulder).</summary>
+    public List<(Side side, CardKind kind, int n)> Cards = new();
+    public CardKind PendingCard = CardKind.None;
     public List<(string sq, PowerupKind kind)> Buffs = new();
     public List<string> Mystery = new();
     /// <summary>Show powerup tutorials the first time each is selected.</summary>
@@ -80,6 +83,15 @@ public sealed class GameOptions
                             o.Perks.Add((f[0].StartsWith("b") ? Side.Black : Side.White, pk, f.Length > 2 && int.TryParse(f[2], out var n) ? n : 1));
                     }
                     break;
+                case "cards":
+                    foreach (var item in val.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var f = item.Split(':');
+                        if (f.Length >= 2 && Enum.TryParse<CardKind>(f[1], true, out var ck))
+                            o.Cards.Add((f[0].StartsWith("b") ? Side.Black : Side.White, ck, f.Length > 2 && int.TryParse(f[2], out var cn) ? cn : 1));
+                    }
+                    break;
+                case "pending": if (Enum.TryParse<CardKind>(val, true, out var pc)) o.PendingCard = pc; break;
                 case "buffs": // e4:smallbomb,d4:poison
                     foreach (var item in val.Split(',', StringSplitOptions.RemoveEmptyEntries))
                     {

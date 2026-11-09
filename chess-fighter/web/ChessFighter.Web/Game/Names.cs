@@ -30,6 +30,7 @@ public static class Names
         PowerupKind.Harpoon => "Harpoon",
         PowerupKind.StunBolt => "Stun",
         PowerupKind.StealGrab => "Steal",
+        PowerupKind.DrawCard => "Draw Card",
         _ => "",
     };
 
@@ -65,6 +66,7 @@ public static class Names
         PowerupKind.Fireball => "Fireball I fires along ranks and files like a rook; land on another Fireball square for II, which also fires diagonally like a queen. It destroys the first enemy in line instead of moving, and counts as a threat for check. Lost if the piece is destroyed.",
         PowerupKind.StunBolt => "Instant: right after landing, fire a stun bolt in any direction. It freezes the first enemy in line (a king too) for 1 turn. Armored pieces are immune. A stunned king with no other way out of check is checkmate.",
         PowerupKind.StealGrab => "Instant: right after landing, take over one rival piece in the 3x3 around this piece. Not kings, not armored pieces. It stays where it is.",
+        PowerupKind.DrawCard => "Instant: draw a card into your bag. Everyone can see the cards. Some cards fire straight away, the rest wait until you play them (which costs your turn).",
         PowerupKind.Combo2 => "Instant: this piece moves 2 more times in a row (3 moves in all). Giving check ends the combo. Landing on another Combo adds its moves.",
         PowerupKind.Combo4 => "Instant: this piece moves 4 more times in a row (5 moves in all). Giving check ends the combo. Landing on another Combo adds its moves.",
         PowerupKind.Steal => "Convert an enemy piece that one of your pieces could capture. Your piece stays put.",
@@ -89,6 +91,7 @@ public static class Names
         PowerupKind.Harpoon => "hook",
         PowerupKind.StunBolt => "bolt",
         PowerupKind.StealGrab => "steal",
+        PowerupKind.DrawCard => "card",
         PowerupKind.Combo2 => "plus2",
         PowerupKind.Combo4 => "plus4",
         PowerupKind.Steal => "steal",
@@ -122,7 +125,61 @@ public static class Names
     public static readonly PowerupKind[] Guide =
     {
         PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
-        PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.StunBolt, PowerupKind.StealGrab, PowerupKind.SpikedArmor,
+        PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.StunBolt, PowerupKind.StealGrab, PowerupKind.DrawCard, PowerupKind.SpikedArmor,
+    };
+
+    // ---------- cards ----------
+
+    public static string CardName(CardKind k) => k switch
+    {
+        CardKind.NoMorePowers => "No More Powers",
+        CardKind.RoleReversal => "Role Reversal",
+        CardKind.HorseSacrifice => "Horse Sacrifice",
+        CardKind.Promotion => "You Get a Promotion!",
+        CardKind.PlaceBoulder => "Okay, I'll Keep Boulders",
+        CardKind.SmashBoulder => "Smash Boulder",
+        CardKind.SummonCaissa => "Summon Caissa",
+        CardKind.NuhUh => "Nuh-uh",
+        _ => "",
+    };
+
+    public static string CardShort(CardKind k) => k switch
+    {
+        CardKind.NoMorePowers => "No Powers",
+        CardKind.RoleReversal => "Role Rev",
+        CardKind.HorseSacrifice => "Horse",
+        CardKind.Promotion => "Promote",
+        CardKind.PlaceBoulder => "Boulder",
+        CardKind.SmashBoulder => "Smash",
+        CardKind.SummonCaissa => "Caissa",
+        CardKind.NuhUh => "Nuh-uh",
+        _ => "",
+    };
+
+    public static string CardDesc(CardKind k) => k switch
+    {
+        CardKind.NoMorePowers => "Removes every active power from every piece and every powerup square. New squares return after a round. At will.",
+        CardKind.RoleReversal => "Switch any 2 of your pieces (not kings). At will.",
+        CardKind.HorseSacrifice => "Sacrifice a knight to turn a pawn, bishop or another knight into a rook. At will.",
+        CardKind.Promotion => "Promote one piece a level: pawn to knight or bishop, knight or bishop to rook, rook to queen. Used straight away.",
+        CardKind.PlaceBoulder => "Put a boulder on an empty square. Used straight away.",
+        CardKind.SmashBoulder => "Remove one boulder. At will.",
+        CardKind.SummonCaissa => "Bring one of your captured pieces back, on any free square. At will.",
+        CardKind.NuhUh => "Cancel the card your rival just played. Used as a reaction, never on your own turn.",
+        _ => "",
+    };
+
+    public static string CardIcon(CardKind k) => k switch
+    {
+        CardKind.NoMorePowers => "ban",
+        CardKind.RoleReversal => "swap",
+        CardKind.HorseSacrifice => "skull",
+        CardKind.Promotion => "crown",
+        CardKind.PlaceBoulder => "rock",
+        CardKind.SmashBoulder => "hammer",
+        CardKind.SummonCaissa => "spark",
+        CardKind.NuhUh => "hand",
+        _ => "card",
     };
 
     public const string PortalDesc = "Teleporters come in matching pairs. Land on one and you are sent to its twin (if it is free); then both vanish.";

@@ -6,7 +6,7 @@
 
 <PageTitle>Chess Fighter</PageTitle>
 
-<div class="app">
+<div class="app" data-cardstep="@PrepCardAim()">
     <header class="topbar">
         <div class="logo" data-action="logo" @onclick="LogoTap">CHESS<span>FIGHTER</span></div>
         <div class="controls">
@@ -40,6 +40,7 @@
         </div>
         <div class="chips">@InvChips(Side.Black)</div>
     </section>
+    @Bag(Side.Black)
 
     @if (S.Puzzle is PuzzleDef pz)
     {
@@ -127,8 +128,47 @@
         </div>
         <div class="chips">@InvChips(Side.White)</div>
     </section>
+    @Bag(Side.White)
 
     <section class="actions">
+        @if (S.Responding && S.HumanTurn)
+        {
+            <div class="card-prompt" data-testid="respond">
+                <div class="cp-title">@Names.CardName(S.State.RespCard)</div>
+                <div class="row">
+                    @if (S.CanRespondNuhUh)
+                    {
+                        <button class="btn primary" data-action="nuhuh" @onclick="() => S.Respond(true)">Nuh-uh!</button>
+                    }
+                    <button class="btn" data-action="allow" @onclick="() => S.Respond(false)">Allow</button>
+                </div>
+            </div>
+        }
+        else if (S.ActiveCard != CardKind.None && S.HumanTurn)
+        {
+            var cstep = S.NextCardStep(out _, out var cextras);
+            <div class="card-prompt" data-testid="card-step">
+                <div class="cp-title">@Names.CardName(S.ActiveCard)</div>
+                <div class="row">
+                    @if (cstep == GameSession.CardStep.Confirm)
+                    {
+                        <button class="btn primary" data-action="card-play" @onclick="S.ConfirmCard">Play</button>
+                    }
+                    @if (cstep == GameSession.CardStep.Extra)
+                    {
+                        @foreach (var ex in cextras)
+                        {
+                            var exv = ex;
+                            <button class="btn promo-btn" data-extra="@exv" @onclick="() => S.ChooseCardExtra(exv)"><PieceSvg Type="(PieceType)exv" Side="S.Turn" /></button>
+                        }
+                    }
+                    @if (S.State.PendingCard == CardKind.None)
+                    {
+                        <button class="btn ghost" data-action="card-cancel" @onclick="S.CancelCard">Cancel</button>
+                    }
+                </div>
+            </div>
+        }
         @if (S.Reviewing)
         {
             <div class="review" data-testid="review">
@@ -1267,6 +1307,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (sq == S.Selected) c += " selected";
         if (sq == S.HintFrom || sq == S.HintTo) c += " hint";
         if (S.EffectPending && S.HumanTurn && S.EffectTargets.Contains(sq)) c += " aim";
+        if (cardAim.Contains(sq)) c += " aim";
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;
@@ -1280,6 +1321,38 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (S.InCheck && !S.Reviewing && cell.Type == PieceType.King && cell.Side == S.Turn && !S.GameOver) c += " check";
         return c;
     }
+
+    HashSet<int> cardAim = new();
+
+    /// <summary>Called once per render, before the board is drawn, so every tile can ask whether a card wants it tapped.</summary>
+    string PrepCardAim()
+    {
+        cardAim = S.CardTargets.ToHashSet();
+        return S.ActiveCard == CardKind.None ? "" : S.ActiveCard.ToString();
+    }
+
+    static readonly CardKind[] CardKinds = Enumerable.Range(Cards.First, Cards.Last - Cards.First + 1).Select(i => (CardKind)i).ToArray();
+
+    /// <summary>One side's card bag, visible to both players. The side to move can tap an at-will card to play it.</summary>
+    RenderFragment Bag(Side side) => @<text>
+        @{ var held = CardKinds.Where(k => S.State.CardCount(side, k) > 0).ToList(); }
+        @if (held.Count > 0)
+        {
+            <section class="bag @(side == Side.Black ? "opp" : "me")" data-testid="bag-@side.ToString().ToLowerInvariant()">
+                @foreach (var k in held)
+                {
+                    var kind = k;
+                    bool mine = S.HumanTurn && S.Turn == side && (!S.VsAi || side == Side.White) && !CardInfo.IsReaction(kind);
+                    <button class="card-item @(CardInfo.IsReaction(kind) ? "react" : "will") @(S.SelectedCard == kind ? "on" : "")" disabled="@(!mine)"
+                            data-card="@kind.ToString().ToLowerInvariant()" title="@Names.CardDesc(kind)" @onclick="() => S.SelectCard(kind)">
+                        <span class="ci">@Icons.Svg(Names.CardIcon(kind))</span>
+                        <span class="cl">@Names.CardShort(kind)</span>
+                        <span class="cc">@S.State.CardCount(side, kind)</span>
+                    </button>
+                }
+            </section>
+        }
+    </text>;
 
     /// <summary>Fighting-game "health": the share of the starting material (39 points) a side still has.</summary>
     int Hp(Side side)

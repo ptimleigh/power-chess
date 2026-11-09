@@ -299,8 +299,8 @@ public sealed class GameSession
 
     public bool VsAi => opt.Ai > 0;
     public bool GameOver => Result != GameResult.Ongoing;
-    bool AiToMove => VsAi && !GameOver && State.ToMove == Side.Black;
-    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.ToMove == Side.White);
+    bool AiToMove => VsAi && !GameOver && State.Decider == Side.Black;
+    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.Decider == Side.White);
     public bool PickupPending => State.PendingSquare >= 0;
 
     /// <summary>A Stun or Steal square was just landed on and its target must be chosen now.</summary>
@@ -375,6 +375,8 @@ public sealed class GameSession
         }
 
         foreach (var (side, kind, n) in opt.Perks) State.AddPerk(side, kind, n);
+        foreach (var (side, card, n) in opt.Cards) State.AddCard(side, card, n);
+        if (opt.PendingCard != CardKind.None) State.PendingCard = opt.PendingCard;
         foreach (var (sq, kind) in opt.Buffs)
         {
             int i = Sq.Parse(sq);
@@ -613,6 +615,163 @@ public sealed class GameSession
         Changed?.Invoke();
     }
 
+    // ---------- cards ----------
+
+    /// <summary>Whose decision the game is waiting for (the rival while a card awaits a Nuh-uh answer).</summary>
+    public Side Decider => State.Decider;
+
+    /// <summary>A card was just activated and the rival may cancel it with Nuh-uh.</summary>
+    public bool Responding => State.RespCard != CardKind.None && !GameOver;
+
+    /// <summary>The bag card the player picked to play, or None.</summary>
+    public CardKind SelectedCard { get; private set; }
+
+    /// <summary>The card being aimed: an immediate card just drawn, else the one picked from the bag.</summary>
+    public CardKind ActiveCard => State.PendingCard != CardKind.None ? State.PendingCard : SelectedCard;
+
+    int cardFrom = -1, cardTo = -1, cardExtra = -1, cardInputs;
+
+    public enum CardStep { None, Square, Extra, Confirm }
+
+    List<GameAction> CardRemaining() => Legal.Where(a => a.Kind == ActionKind.PlayCard && Cards.KindOf(a.Aux) == ActiveCard
+        && (cardFrom < 0 || a.From == cardFrom) && (cardTo < 0 || a.To == cardTo) && (cardExtra < 0 || Cards.ExtraOf(a.Aux) == cardExtra)).ToList();
+
+    /// <summary>
+    /// What the active card needs next, worked out from the legal actions that are still possible: tap a square, choose a piece
+    /// type, or (for a bag card that needed no input at all) confirm. Caissa asks for the piece first, then the square.
+    /// </summary>
+    public CardStep NextCardStep(out List<int> squares, out List<int> extras)
+    {
+        squares = new List<int>();
+        extras = new List<int>();
+        if (ActiveCard == CardKind.None || !HumanTurn || Responding) return CardStep.None;
+        var acts = CardRemaining();
+        if (acts.Count == 0) return CardStep.None;
+        extras = acts.Select(a => Cards.ExtraOf(a.Aux)).Distinct().OrderBy(x => x).ToList();
+        if (ActiveCard == CardKind.SummonCaissa && cardExtra < 0 && extras.Count > 1) return CardStep.Extra;
+        bool samePos = acts.All(a => a.From == a.To);
+        if (samePos)
+        {
+            var pos = acts.Select(a => a.From).Distinct().ToList();
+            if (pos.Count > 1 && cardFrom < 0) { squares = pos; return CardStep.Square; }
+        }
+        else
+        {
+            var froms = acts.Select(a => a.From).Distinct().ToList();
+            if (froms.Count > 1 && cardFrom < 0) { squares = froms; return CardStep.Square; }
+            var tos = acts.Select(a => a.To).Distinct().ToList();
+            if (tos.Count > 1 && cardTo < 0) { squares = tos; return CardStep.Square; }
+        }
+        if (extras.Count > 1 && cardExtra < 0) return CardStep.Extra;
+        if (State.PendingCard == CardKind.None && cardInputs == 0) return CardStep.Confirm;
+        return CardStep.None;
+    }
+
+    public IEnumerable<int> CardTargets
+    {
+        get
+        {
+            var step = NextCardStep(out var squares, out _);
+            return step == CardStep.Square ? squares : Enumerable.Empty<int>();
+        }
+    }
+
+    void ResetCardChoice()
+    {
+        SelectedCard = CardKind.None;
+        cardFrom = cardTo = cardExtra = -1;
+        cardInputs = 0;
+    }
+
+    public async Task SelectCard(CardKind kind)
+    {
+        if (!HumanTurn || PickupPending || EffectPending || Responding || State.ForcedMover >= 0) return;
+        if (State.PendingCard != CardKind.None) return;
+        if (State.CardCount(Turn, kind) == 0) return;
+        ClearSelection();
+        ResetCardChoice();
+        SelectedCard = kind;
+        Sfx?.Invoke("click");
+        await AdvanceCard();
+    }
+
+    public void CancelCard()
+    {
+        if (State.PendingCard != CardKind.None) return; // an immediate card has to be used
+        ResetCardChoice();
+        Sfx?.Invoke("click");
+        Changed?.Invoke();
+    }
+
+    /// <summary>Plays the card as soon as nothing more is needed from the player.</summary>
+    async Task AdvanceCard()
+    {
+        var step = NextCardStep(out _, out _);
+        if (step == CardStep.None)
+        {
+            var acts = CardRemaining();
+            if (acts.Count == 0) { ResetCardChoice(); Changed?.Invoke(); return; }
+            await Human(acts[0]);
+            return;
+        }
+        Changed?.Invoke();
+    }
+
+    public async Task ConfirmCard()
+    {
+        if (NextCardStep(out _, out _) != CardStep.Confirm) return;
+        cardInputs++;
+        await AdvanceCard();
+    }
+
+    public async Task ChooseCardExtra(int extra)
+    {
+        cardExtra = extra;
+        cardInputs++;
+        await AdvanceCard();
+    }
+
+    async Task CardTap(int sq)
+    {
+        var step = NextCardStep(out var squares, out _);
+        if (step != CardStep.Square || !squares.Contains(sq)) { Sfx?.Invoke("click"); return; }
+        var acts = CardRemaining();
+        if (acts.All(a => a.From == a.To)) { cardFrom = sq; cardTo = sq; }
+        else if (cardFrom < 0 && acts.Select(a => a.From).Distinct().Count() > 1) cardFrom = sq;
+        else cardTo = sq;
+        cardInputs++;
+        await AdvanceCard();
+    }
+
+    /// <summary>Answer a card the rival just played: cancel it with Nuh-uh or let it through.</summary>
+    public async Task Respond(bool nuhUh)
+    {
+        if (!Responding || !HumanTurn) return;
+        var act = Legal.FirstOrDefault(a => a.Kind == (nuhUh ? ActionKind.UseNuhUh : ActionKind.AllowCard));
+        if (act.Kind != (nuhUh ? ActionKind.UseNuhUh : ActionKind.AllowCard)) return;
+        await Human(act);
+    }
+
+    public bool CanRespondNuhUh => Responding && State.CardCount(State.Decider, CardKind.NuhUh) > 0;
+
+    string CardPrompt(CardStep step)
+    {
+        string name = Names.CardName(ActiveCard);
+        if (step == CardStep.Confirm) return $"Play {name}? It costs your turn.";
+        if (step == CardStep.Extra) return ActiveCard == CardKind.SummonCaissa ? "Caissa: which piece comes back?" : $"{name}: choose what it becomes";
+        bool second = cardFrom >= 0;
+        switch (ActiveCard)
+        {
+            case CardKind.PlaceBoulder: return "Boulder: tap an empty square";
+            case CardKind.SmashBoulder: return "Smash: tap the boulder to remove";
+            case CardKind.Promotion: return "Promotion: tap the piece to promote";
+            case CardKind.RoleReversal: return second ? "Role reversal: tap the piece to swap with" : "Role reversal: tap the first piece";
+            case CardKind.HorseSacrifice: return second ? "Horse sacrifice: tap the piece that becomes a rook" : "Horse sacrifice: tap the knight to sacrifice";
+            case CardKind.SummonCaissa: return "Caissa: tap an empty square";
+            default: return name;
+        }
+    }
+
     /// <summary>The selected piece holds a Harpoon with a rival to hook.</summary>
     public bool HasHarpoon => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Harpoon && a.From == Selected);
 
@@ -821,6 +980,12 @@ public sealed class GameSession
         }
         if (!HumanTurn || PickupPending || Mode == InputMode.Promotion) return;
 
+        if (ActiveCard != CardKind.None && !EffectPending)
+        {
+            await CardTap(sq);
+            return;
+        }
+
         if (EffectPending)
         {
             // Aim the Stun bolt or pick the piece to steal. Nothing else can be done until it is resolved.
@@ -981,6 +1146,7 @@ public sealed class GameSession
 
     async Task Play(GameAction a)
     {
+        ResetCardChoice();
         Busy = true;
         Inspect = -1;
         InspectSquare = -1;
@@ -1073,6 +1239,15 @@ public sealed class GameSession
             if (Reviewing) return "Reviewing past moves. Nothing here changes the game.";
             if (Thinking) return "Opponent is thinking...";
             if (Busy) return "";
+            if (Responding)
+                return State.Decider == Side.White && VsAi || !VsAi
+                    ? $"{Names.CardName(State.RespCard)} was played! {(CanRespondNuhUh ? "Cancel it with Nuh-uh?" : "")}"
+                    : "";
+            if (ActiveCard != CardKind.None && HumanTurn)
+            {
+                var st = NextCardStep(out _, out _);
+                if (st != CardStep.None) return CardPrompt(st);
+            }
             if (EffectPending) return State.EffectKind == PowerupKind.StunBolt ? "Stun! Tap an enemy piece to zap it" : "Steal! Tap a rival piece next to you to take it";
             if (PickupPending) return "You found a powerup!";
             if (Mode == InputMode.Armed)
@@ -1375,6 +1550,35 @@ public sealed class GameSession
                     AddFx("beam", e.From, e.To, css: "rope");
                     AddToast("HARPOON!", "", "gold", "hook");
                     Sfx?.Invoke("steal");
+                    break;
+                case EventKind.CardDrawn:
+                    AddFx("ring", e.From, radius: 1, css: "gold");
+                    AddToast("CARD: " + Names.CardName(e.Card), Names.CardDesc(e.Card), "gold", Names.CardIcon(e.Card));
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.CardPlayed:
+                    AddToast(Names.CardName(e.Card), (e.Side == Side.White ? "White" : "Black") + " plays a card", "gold", Names.CardIcon(e.Card));
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.CardCancelled:
+                    AddFx("callout", 28, css: "heavy mate", text: "NUH-UH!");
+                    AddToast("NUH-UH!", Names.CardName(e.Card) + " was cancelled", "stun", Names.CardIcon(CardKind.NuhUh));
+                    Shake();
+                    Sfx?.Invoke("thud");
+                    break;
+                case EventKind.CardKept:
+                    AddToast("Card kept", Names.CardName(e.Card) + " had no legal use, so it went in the bag", "gold", Names.CardIcon(e.Card));
+                    break;
+                case EventKind.PieceRestored:
+                    AddFx("ring", e.From, radius: 1, css: "gold");
+                    AddFx("burst", e.From, css: "fire");
+                    AddToast("CAISSA!", "A piece returns", "gold", "spark");
+                    Sfx?.Invoke("pickup");
+                    break;
+                case EventKind.PowersCleared:
+                    Shake(2);
+                    AddToast("NO MORE POWERS", "Every power and powerup square is gone", "stun", "ban");
+                    Sfx?.Invoke("bomb");
                     break;
                 case EventKind.ZapFired:
                     AddFx("beam", e.From, e.To, css: "zap");

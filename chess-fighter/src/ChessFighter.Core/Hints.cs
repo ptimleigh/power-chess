@@ -61,6 +61,12 @@ namespace ChessFighter.Core
                     return "Stun the piece on " + Sq.Name(a.To);
                 case ActionKind.StealPick:
                     return "Steal the piece on " + Sq.Name(a.To);
+                case ActionKind.PlayCard:
+                    return "Play a card";
+                case ActionKind.UseNuhUh:
+                    return "Cancel their card with Nuh-uh";
+                case ActionKind.AllowCard:
+                    return "Let their card through";
                 case ActionKind.Detonate:
                     return "Detonate the bomb on " + Sq.Name(a.From);
                 case ActionKind.Stun:

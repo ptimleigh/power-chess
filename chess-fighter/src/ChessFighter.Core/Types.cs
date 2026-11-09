@@ -64,6 +64,8 @@ namespace ChessFighter.Core
         StunBolt,
         /// <summary>Instant: the lander immediately takes over a rival piece (not a king) in the 3x3 around it.</summary>
         StealGrab,
+        /// <summary>Instant: draw a card into your bag (immediate cards are used straight away).</summary>
+        DrawCard,
     }
 
     public static class PowerupInfo
@@ -170,6 +172,12 @@ namespace ChessFighter.Core
         StunBeam,
         /// <summary>Resolve a pending Steal square: From = the lander, To = the rival taken over.</summary>
         StealPick,
+        /// <summary>Play a card from the bag (or an immediate one just drawn). Aux packs the card and a choice, see Cards.Pack. Costs the turn.</summary>
+        PlayCard,
+        /// <summary>The rival cancels the card you just activated with a Nuh-uh.</summary>
+        UseNuhUh,
+        /// <summary>The rival lets the card you just activated through.</summary>
+        AllowCard,
     }
 
     public struct GameAction : IEquatable<GameAction>
@@ -267,6 +275,18 @@ namespace ChessFighter.Core
         ZapFired,
         /// <summary>An instant power had no legal target, so it was wasted.</summary>
         EffectFizzled,
+        /// <summary>A card was drawn from a Draw Card square.</summary>
+        CardDrawn,
+        /// <summary>A card was activated (before the rival's chance to cancel it).</summary>
+        CardPlayed,
+        /// <summary>A card was cancelled by Nuh-uh.</summary>
+        CardCancelled,
+        /// <summary>An immediate card had no legal use, so it went into the bag instead.</summary>
+        CardKept,
+        /// <summary>Summon Caissa brought a piece back.</summary>
+        PieceRestored,
+        /// <summary>No more powers wiped every power and powerup square.</summary>
+        PowersCleared,
     }
 
     /// <summary>Describes what happened so the view layer can animate it. The engine itself never reads these.</summary>
@@ -278,5 +298,7 @@ namespace ChessFighter.Core
         public PieceType Piece;
         public Side Side;
         public PowerupKind Powerup;
+        /// <summary>The card involved in a card event.</summary>
+        public CardKind Card;
     }
 }

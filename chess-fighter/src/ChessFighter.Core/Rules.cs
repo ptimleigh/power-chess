@@ -123,6 +123,33 @@ namespace ChessFighter.Core
                     return;
                 }
 
+                case ActionKind.PlayCard:
+                    ActivateCard(s, me, a, ev);
+                    return;
+
+                case ActionKind.UseNuhUh:
+                {
+                    // The rival (not the side to move) cancels the card.
+                    var cancelled = s.RespCard;
+                    Side rival = me.Opponent();
+                    s.AddCard(rival, CardKind.NuhUh, -1);
+                    s.RespCard = CardKind.None;
+                    Cards.Emit(ev, EventKind.CardCancelled, s.RespFrom, s.RespTo, rival, cancelled);
+                    // A card played to get out of check, then cancelled, leaves the king in check at the end of the turn: that is mate.
+                    if (!s.Probe && Geometry.IsKingAttacked(s, me)) s.LostSide = (int)me;
+                    Finish(s, ev);
+                    return;
+                }
+
+                case ActionKind.AllowCard:
+                {
+                    var through = new GameAction(ActionKind.PlayCard, s.RespFrom, s.RespTo, s.RespAux);
+                    s.RespCard = CardKind.None;
+                    Cards.Resolve(s, me, through, ev);
+                    Finish(s, ev);
+                    return;
+                }
+
                 case ActionKind.StunBeam:
                 {
                     var target = s.Cells[a.To];
@@ -212,7 +239,7 @@ namespace ChessFighter.Core
         }
 
         /// <summary>A pawn swapped onto the far rank becomes a Queen.</summary>
-        static void PromoteIfAtEnd(GameState s, int sq, List<GameEvent> ev, Side me)
+        internal static void PromoteIfAtEnd(GameState s, int sq, List<GameEvent> ev, Side me)
         {
             var p = s.Cells[sq];
             if (p.Type != PieceType.Pawn) return;
@@ -254,6 +281,7 @@ namespace ChessFighter.Core
                 int capSq = Sq.Make(Sq.File(a.To), Sq.Rank(a.From));
                 captured = s.Cells[capSq];
                 didCapture = true;
+                NoteLost(s, captured);
                 Remove(s, capSq);
                 Emit(ev, EventKind.Captured, capSq, capSq, captured.Type, me, PowerupKind.None);
             }
@@ -261,6 +289,7 @@ namespace ChessFighter.Core
             {
                 captured = target;
                 didCapture = true;
+                NoteLost(s, captured);
                 Emit(ev, EventKind.Captured, a.To, a.To, captured.Type, me, PowerupKind.None);
             }
 
@@ -296,6 +325,7 @@ namespace ChessFighter.Core
             bool alive = true;
             if (didCapture && captured.Has(Buff.Poison) && mover.Type != PieceType.King && !mover.Has(Buff.Armor))
             {
+                NoteLost(s, s.Cells[a.To]);
                 Remove(s, a.To);
                 alive = false;
                 Emit(ev, EventKind.PoisonTriggered, a.To, a.To, mover.Type, me, PowerupKind.Poison);
@@ -385,9 +415,22 @@ namespace ChessFighter.Core
             Finish(s, ev);
         }
 
-        /// <summary>Everything that happens once an action and its pickup are fully resolved.</summary>
-        static void Finish(GameState s, List<GameEvent> ev)
+        /// <summary>Everything that happens once an action and its pickup are fully resolved: pending aims are checked, then the turn ends.</summary>
+        public static void Finish(GameState s, List<GameEvent> ev)
         {
+            if (s.PendingCard != CardKind.None)
+            {
+                // An immediate card was drawn: its owner must aim it now. With no legal use it goes into the bag instead.
+                var card = s.PendingCard;
+                if (!s.Probe && MoveGen.LegalActions(s).Count > 0) return;
+                s.PendingCard = CardKind.None;
+                if (!s.Probe)
+                {
+                    s.AddCard(s.ToMove, card, 1);
+                    Cards.Emit(ev, EventKind.CardKept, 0, 0, s.ToMove, card);
+                }
+            }
+
             if (s.EffectKind != PowerupKind.None)
             {
                 // A Stun or Steal square: the mover must aim it now. With no legal target it fizzles.
@@ -478,7 +521,7 @@ namespace ChessFighter.Core
             s.Ply++;
             s.ToMove = me.Opponent();
 
-            if (!s.SearchMode && s.Config.SpawnInterval > 0 && s.Ply % s.Config.SpawnInterval == 0)
+            if (!s.SearchMode && s.Config.SpawnInterval > 0 && s.Ply % s.Config.SpawnInterval == 0 && s.Ply >= s.NoSpawnUntilPly)
                 TrySpawnPair(s, ev);
         }
 
@@ -503,15 +546,46 @@ namespace ChessFighter.Core
             Touch(s, sq);
         }
 
-        static void Place(GameState s, int sq, Piece p)
+        internal static void Place(GameState s, int sq, Piece p)
         {
             s.Cells[sq] = p;
             Touch(s, sq);
         }
 
-        static void Destroy(GameState s, int sq, List<GameEvent> ev)
+        /// <summary>
+        /// Activates a card: it leaves the bag (or, for an immediate card, stops being pending), the rival may cancel it with
+        /// Nuh-uh, and otherwise it resolves. Playing a card costs the turn. Legality probes skip the reaction window.
+        /// </summary>
+        static void ActivateCard(GameState s, Side me, GameAction a, List<GameEvent> ev)
+        {
+            var kind = Cards.KindOf(a.Aux);
+            if (s.PendingCard == kind) s.PendingCard = CardKind.None;
+            else s.AddCard(me, kind, -1);
+            Cards.Emit(ev, EventKind.CardPlayed, a.From, a.To, me, kind);
+            if (!s.Probe && kind != CardKind.NuhUh && s.CardCount(me.Opponent(), CardKind.NuhUh) > 0)
+            {
+                s.RespCard = kind;
+                s.RespFrom = a.From;
+                s.RespTo = a.To;
+                s.RespAux = a.Aux;
+                return;
+            }
+            Cards.Resolve(s, me, a, ev);
+            Finish(s, ev);
+        }
+
+        /// <summary>Records a lost piece (kings excluded) so Summon Caissa can bring it back.</summary>
+        internal static void NoteLost(GameState s, Piece p)
+        {
+            if (p.Type == PieceType.None || p.Type == PieceType.King) return;
+            int i = (int)p.Side * 8 + (int)p.Type;
+            if (s.Captured[i] < 255) s.Captured[i]++;
+        }
+
+        internal static void Destroy(GameState s, int sq, List<GameEvent> ev)
         {
             var p = s.Cells[sq];
+            NoteLost(s, p);
             Remove(s, sq);
             Emit(ev, EventKind.Destroyed, sq, sq, p.Type, p.Side, PowerupKind.None);
         }
@@ -654,6 +728,17 @@ namespace ChessFighter.Core
                     p.Buffs |= Buff.BigBomb;
                     p.Tier = 2;
                     break;
+                case PowerupKind.DrawCard:
+                {
+                    // No hidden draws in the AI's lookahead, and none in legality probes.
+                    if (s.SearchMode) break;
+                    var card = Cards.Draw(s, me);
+                    if (card == CardKind.None) break;
+                    Cards.Emit(ev, EventKind.CardDrawn, sq, sq, me, card);
+                    if (CardInfo.IsImmediate(card)) s.PendingCard = card;
+                    else s.AddCard(me, card, 1);
+                    break;
+                }
                 case PowerupKind.StunBolt:
                 case PowerupKind.StealGrab:
                     s.EffectKind = kind;
@@ -802,7 +887,12 @@ namespace ChessFighter.Core
         public static GameResult GetResult(GameState s, out string reason)
         {
             reason = "";
-            if (s.PendingSquare < 0 && s.ForcedMover < 0 && s.EffectKind == PowerupKind.None)
+            if (s.LostSide >= 0)
+            {
+                reason = "Checkmate";
+                return s.LostSide == (int)Side.White ? GameResult.BlackWins : GameResult.WhiteWins;
+            }
+            if (s.PendingSquare < 0 && s.ForcedMover < 0 && s.EffectKind == PowerupKind.None && s.PendingCard == CardKind.None && s.RespCard == CardKind.None)
             {
                 // Insufficient material: bare kings.
                 bool onlyKings = true;
@@ -842,7 +932,7 @@ namespace ChessFighter.Core
             return GameResult.Ongoing;
         }
 
-        static void Emit(List<GameEvent> ev, EventKind kind, int from, int to, PieceType piece, Side side, PowerupKind power)
+        internal static void Emit(List<GameEvent> ev, EventKind kind, int from, int to, PieceType piece, Side side, PowerupKind power)
         {
             if (ev == null) return;
             ev.Add(new GameEvent { Kind = kind, From = from, To = to, Piece = piece, Side = side, Powerup = power });

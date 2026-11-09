@@ -1422,6 +1422,9 @@ public sealed class GameSession
         InCheck = Geometry.IsKingAttacked(State, State.ToMove);
     }
 
+    public int MissileCountdown { get { return State.MissileLeft; } }
+    public int MissileAnchorSquare { get { return State.MissileLeft > 0 ? State.MissileAnchor : -1; } }
+
     /// <summary>The squares a missile in flight will hit.</summary>
     public HashSet<int> MissileZone
     {

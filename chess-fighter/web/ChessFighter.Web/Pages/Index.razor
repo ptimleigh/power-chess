@@ -72,7 +72,7 @@
                 for (int file = 0; file < 8; file++)
                 {
                     int sq = Sq.Make(file, rank);
-                    <div class="@TileClass(sq)" data-sq="@Sq.Name(sq)" data-content="@ContentName(sq)" @onclick="() => S.TapSquare(sq)">
+                    <div class="@TileClass(sq)" data-sq="@Sq.Name(sq)" data-content="@ContentName(sq)" data-mcount="@(missileZone.Contains(sq) && sq == S.MissileAnchorSquare ? S.MissileCountdown.ToString() : null)" @onclick="() => S.TapSquare(sq)">
                         @if (S.View.Mystery[sq])
                         {
                             <PowerupMark Kind="(PowerupKind)S.View.Content[sq]" />

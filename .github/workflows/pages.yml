@@ -1,8 +1,8 @@
-name: Deploy web prototype to GitHub Pages
+name: Deploy web apps to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/sharp-lovelace-pf9zw4]
+    branches: [main, claude/sharp-lovelace-pf9zw4, claude/sleepy-bohr-05rdnm]
   workflow_dispatch:
 
 permissions:
@@ -17,6 +17,8 @@ concurrency:
 env:
   # Project Pages are served from /<repo-name>/, so the Blazor base href must match.
   BASE_HREF: /power-chess/
+  # Chess Fighter is published as a sub-site of the same Pages site.
+  FIGHTER_BASE_HREF: /power-chess/fighter/
 
 jobs:
   build:
@@ -28,11 +30,17 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Stamp the build label
-        run: sed -i "s|Label = \"dev\"|Label = \"${GITHUB_SHA::7} $(date -u +%Y-%m-%d)\"|" web/PowerChess.Web/Game/BuildInfo.cs
+      - name: Stamp the build labels
+        run: |
+          LABEL="${GITHUB_SHA::7} $(date -u +%Y-%m-%d)"
+          sed -i "s|Label = \"dev\"|Label = \"${LABEL}\"|" web/PowerChess.Web/Game/BuildInfo.cs
+          sed -i "s|Label = \"dev\"|Label = \"${LABEL}\"|" chess-fighter/web/ChessFighter.Web/Game/BuildInfo.cs
 
       - name: Test engine
         run: dotnet test tests/PowerChess.Core.Tests
+
+      - name: Test Chess Fighter engine
+        run: dotnet test chess-fighter/tests/ChessFighter.Core.Tests
 
       - name: Publish web prototype
         run: dotnet publish web/PowerChess.Web -c Release -o out
@@ -43,6 +51,14 @@ jobs:
           grep -q "<base href=\"${BASE_HREF}\" />" out/wwwroot/index.html
           touch out/wwwroot/.nojekyll
           cp out/wwwroot/index.html out/wwwroot/404.html
+
+      - name: Publish Chess Fighter into /fighter
+        run: |
+          dotnet publish chess-fighter/web/ChessFighter.Web -c Release -o out-fighter
+          sed -i "s|<base href=\"/\" />|<base href=\"${FIGHTER_BASE_HREF}\" />|" out-fighter/wwwroot/index.html
+          grep -q "<base href=\"${FIGHTER_BASE_HREF}\" />" out-fighter/wwwroot/index.html
+          mkdir -p out/wwwroot/fighter
+          cp -r out-fighter/wwwroot/. out/wwwroot/fighter/
 
       - uses: actions/configure-pages@v5
 

@@ -191,21 +191,18 @@ body::after {
 
 /* ---------- pieces: pixel sprites ---------- */
 .piece { transition: left .3s steps(8), top .3s steps(8); }
-.piece-body { padding: 2% 6% 9%; filter: drop-shadow(0 3px 0 #000a); }
+.piece-body { padding: 0% 2% 4%; filter: drop-shadow(0 3px 0 #000a); }
 .piece-svg { image-rendering: pixelated; }
-.piece-svg .px-o { fill: #0a0420; }
-/* P1: ice-steel knights */
-.piece-svg.w .px-o { fill: #0b1a4a; }
-.piece-svg.w .px-b { fill: #dfe9ff; }
-.piece-svg.w .px-h { fill: #ffffff; }
-.piece-svg.w .px-s { fill: #6f95e0; }
-.piece-svg.w .px-e { fill: #2d6bff; }
-/* P2: crimson demons */
-.piece-svg.b .px-o { fill: #200308; }
-.piece-svg.b .px-b { fill: #d6283a; }
-.piece-svg.b .px-h { fill: #ff8f7a; }
-.piece-svg.b .px-s { fill: #7a0f22; }
-.piece-svg.b .px-e { fill: #ffe14a; }
+/* 16-bit palettes: a 5-step body ramp, a 4-step gold trim ramp, outline, highlight and eye. Same ramps in the sprite sheet. */
+.piece-svg .px-k { fill: var(--k); } .piece-svg .px-h { fill: var(--h); } .piece-svg .px-e { fill: var(--e); }
+.piece-svg .px-1 { fill: var(--c1); } .piece-svg .px-2 { fill: var(--c2); } .piece-svg .px-3 { fill: var(--c3); }
+.piece-svg .px-4 { fill: var(--c4); } .piece-svg .px-5 { fill: var(--c5); }
+.piece-svg .px-a { fill: var(--ga); } .piece-svg .px-b { fill: var(--gb); } .piece-svg .px-c { fill: var(--gc); } .piece-svg .px-d { fill: var(--gd); }
+.piece-svg { --ga: #6b4400; --gb: #b87a10; --gc: #ffd23f; --gd: #fff2a0; --h: #ffffff; }
+/* P1: steel-blue armour */
+.piece-svg.w { --k: #0a1230; --c1: #2a3a8a; --c2: #4f6bc8; --c3: #86a3ee; --c4: #c4d6ff; --c5: #f4f8ff; --e: #2d6bff; }
+/* P2: crimson demon hide */
+.piece-svg.b { --k: #1a0308; --c1: #5a0a1c; --c2: #9c1530; --c3: #d6283a; --c4: #ff6a55; --c5: #ffb8a0; --e: #ffe14a; }
 
 .piece.lifted .piece-body { transform: translateY(-10%); filter: drop-shadow(0 8px 0 #0008) drop-shadow(0 0 0 var(--gold)) drop-shadow(2px 0 0 var(--gold)) drop-shadow(-2px 0 0 var(--gold)); transition: none; }
 .piece-body.land-0 { animation: pxland0 .3s .24s steps(3) both; }

@@ -21,7 +21,8 @@ powers are designed, and the card-buff system does not exist yet.
 | `web/ChessFighter.Web` | Blazor WebAssembly app. |
 | `web/ChessFighter.Web/wwwroot/css/app.css` | Layout and components inherited from Power Chess. |
 | `web/ChessFighter.Web/wwwroot/css/fighter.css` | **The 16-bit theme.** Loaded after `app.css` and overrides it. |
-| `web/ChessFighter.Web/Game/Sprites.cs` | 12x12 pixel-art piece sprites as text grids. |
+| `web/ChessFighter.Web/Game/Sprites.cs`, `Sprites.Data.cs` | 32x32 piece sprites as text grids (`Sprites.Data.cs` is generated). |
+| `tools/make-sprites.py` | Builds the sprites from shape definitions: lighting, 5-step color ramps, dithering, gold trim, outlines. |
 
 ## Run
 
@@ -35,7 +36,7 @@ The debug URL options and the tap-the-logo-five-times debug panel work as descri
 ## The look
 
 - Pixel font: Press Start 2P (SIL OFL, bundled in `wwwroot/fonts`, so the PWA works offline). Body text uses a monospace stack.
-- Pieces: P1 ice-steel vs P2 crimson, drawn as 12x12 sprites (edit the grids in `Sprites.cs`; legend is in the file).
+- Pieces: steel-armour P1 vs crimson-demon P2, 32x32 sprites with shaded color ramps, dithering and gold trim. Change a shape or palette in `tools/make-sprites.py` and re-run it (`python3 chess-fighter/tools/make-sprites.py`), or hand-edit `Sprites.Data.cs`. Palettes are CSS variables in `fighter.css`.
 - HUD (Street Fighter II style): P1 and P2/CPU health bars across the top with a K.O. badge and move counter between them. A bar drains with the material a side has lost (yellow over red, the rival's drains toward the centre) and empties on checkmate.
 - Round flow: a ROUND n / FIGHT! banner on every new game, "K.O.!" on checkmate, YOU WIN / YOU LOSE with a short quote, and PERFECT! when the winner lost no material.
 - Stage: sunset sky behind the board.

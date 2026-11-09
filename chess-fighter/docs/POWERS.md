@@ -33,8 +33,8 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 |---|---|---|
 | **Combo +2** | The piece that lands moves 2 more times in a row: 3 moves in all. Giving check ends the combo. Landing on another Combo adds its moves. | **Built** (same piece only) |
 | **Combo +4** | Same with 4 more moves: 5 in all. | **Built** |
-| **Stun** | Immediately shoot a stun beam (lightning bolt) in any direction. The piece cannot move for 1 turn. A king stunned with no other way out of check is mate. | Planned (still the old perk) |
-| **Steal** | Steal any rival piece in the 3x3 around the power-up square. Not kings. | Planned (still the old perk) |
+| **Stun** | Immediately shoot a stun beam (lightning bolt) in any direction. The piece cannot move for 1 turn. A king stunned with no other way out of check is mate. | **Built** |
+| **Steal** | Steal any rival piece in the 3x3 around the power-up square. Not kings. | **Built** |
 | **Draw Card** | Draw a card, to use instantly or at will depending on the card. | Planned |
 | **Armor** | Use immediately. The piece cannot be captured for 3 turns, even if it never moves. Not spiked. | Built (as Spiked Armor, renamed in the UI) |
 
@@ -71,6 +71,10 @@ All cards: **Planned**.
   a king or an armored piece, and clears boulders. A detonation needs at least one other target, and a stunned bomber cannot detonate or
   threaten. Taking a Bomb square that would put your own king inside an enemy blast chain is refused and the square is used up.
   The chain follows bombs of either colour caught in the blast. The status line spells out a bomb check.
+- **Stun and Steal are aimed right after landing** (the lander picks the target, and nothing else can be done until then). With no
+  legal target the power fizzles and the square is used up. A choice that would leave your own king in check is not offered.
+  Stun hits the first enemy on any of 8 lines for 1 turn (a king can be hit; armored pieces are immune). Steal takes a non-king,
+  non-armored rival in the 3x3 around the lander; the stolen piece stays put and loses its buffs.
 - **Ghost's three moves exclude the pickup move itself**, and a stunned ghost neither moves nor threatens.
 - The generated daily puzzles were regenerated under these rules (`tools/PuzzleGen`).
 

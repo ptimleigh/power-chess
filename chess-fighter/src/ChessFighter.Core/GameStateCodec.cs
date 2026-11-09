@@ -9,7 +9,7 @@ namespace ChessFighter.Core
     /// </summary>
     public static class GameStateCodec
     {
-        const byte Version = 5;
+        const byte Version = 6;
         const int MaxHistory = 5000;
 
         public static string EncodeGame(GameState current, GameHistory history)
@@ -46,7 +46,7 @@ namespace ChessFighter.Core
                 using (var r = new BinaryReader(ms))
                 {
                     byte version = r.ReadByte();
-                    if (version < 1 || version > 5) return false; // version 1 saves predate revealed squares
+                    if (version < 1 || version > 6) return false; // version 1 saves predate revealed squares
                     var state = ReadState(r, config, version);
                     int count = r.ReadInt32();
                     if (count < 0 || count > MaxHistory) return false;
@@ -55,7 +55,7 @@ namespace ChessFighter.Core
                     {
                         var before = ReadState(r, config, version);
                         var action = new GameAction((ActionKind)r.ReadByte(), r.ReadInt16(), r.ReadInt16(), r.ReadInt16());
-                        if (action.Kind > ActionKind.Harpoon) return false;
+                        if (action.Kind > ActionKind.StealPick) return false;
                         h.Record(before, action);
                     }
                     if (ms.Position != ms.Length) return false;
@@ -101,6 +101,8 @@ namespace ChessFighter.Core
             w.Write((short)s.ForcedMover);
             w.Write((short)s.DoubleSquare);
             w.Write(s.ClockReset);
+            w.Write((byte)s.EffectKind);
+            w.Write((short)s.EffectSquare);
         }
 
         static GameState ReadState(BinaryReader r, GameConfig config, byte version)
@@ -139,7 +141,7 @@ namespace ChessFighter.Core
                 if (content.Length != 64) throw new InvalidDataException("bad content");
                 for (int i = 0; i < 64; i++)
                 {
-                    if (content[i] > (byte)PowerupKind.Harpoon) throw new InvalidDataException("bad content kind");
+                    if (content[i] > (byte)PowerupKind.StealGrab) throw new InvalidDataException("bad content kind");
                     s.Content[i] = content[i];
                 }
             }
@@ -159,6 +161,14 @@ namespace ChessFighter.Core
             s.ForcedMover = CheckSquare(r.ReadInt16());
             s.DoubleSquare = CheckSquare(r.ReadInt16());
             s.ClockReset = r.ReadBoolean();
+            if (version >= 6)
+            {
+                var effect = r.ReadByte();
+                if (effect != 0 && effect != (byte)PowerupKind.StunBolt && effect != (byte)PowerupKind.StealGrab) throw new InvalidDataException("bad effect");
+                s.EffectKind = (PowerupKind)effect;
+                s.EffectSquare = CheckSquare(r.ReadInt16());
+                if (s.EffectKind != PowerupKind.None && s.EffectSquare < 0) throw new InvalidDataException("bad effect square");
+            }
             return s;
         }
 

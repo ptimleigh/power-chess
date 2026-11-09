@@ -282,6 +282,8 @@ namespace ChessFighter.Core
                 }
                 case ActionKind.Fireball: return 500;
                 case ActionKind.Steal: return 450;
+                case ActionKind.StealPick: return 450;
+                case ActionKind.StunBeam: return 300;
                 case ActionKind.Harpoon: return 350;
                 case ActionKind.Stun: return 300;
                 case ActionKind.Detonate: return 200;

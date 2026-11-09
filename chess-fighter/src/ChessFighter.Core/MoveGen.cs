@@ -30,6 +30,12 @@ namespace ChessFighter.Core
                 return result;
             }
 
+            if (s.EffectKind != PowerupKind.None)
+            {
+                GenEffect(s, result);
+                return result;
+            }
+
             var pseudo = new List<GameAction>(96);
             if (s.ForcedMover >= 0)
             {
@@ -64,10 +70,45 @@ namespace ChessFighter.Core
                 case ActionKind.Harpoon:
                 case ActionKind.Detonate:
                 case ActionKind.Steal:
+                case ActionKind.StunBeam:
+                case ActionKind.StealPick:
                     return true;
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// The targets of a pending Stun or Steal. Stun bolts fly in all 8 directions and hit the first piece in line if it is an
+        /// enemy that is not armored (a king can be hit). Steal takes a non-king, non-armored rival in the 3x3 around the lander.
+        /// Choices that would leave your own king in check are left out.
+        /// </summary>
+        static void GenEffect(GameState s, List<GameAction> result)
+        {
+            Side me = s.ToMove;
+            int from = s.EffectSquare;
+            var pseudo = new List<GameAction>(8);
+            if (s.EffectKind == PowerupKind.StunBolt)
+            {
+                for (int dir = 0; dir < 8; dir++)
+                {
+                    int t = Geometry.FirstPieceInLine(s, from, dir);
+                    if (t < 0) continue;
+                    var p = s.Cells[t];
+                    if (p.Side == me || p.Has(Buff.Armor) || p.IsStunned) continue;
+                    pseudo.Add(new GameAction(ActionKind.StunBeam, from, t, dir));
+                }
+            }
+            else if (s.EffectKind == PowerupKind.StealGrab)
+            {
+                var area = new List<int>(8);
+                Geometry.AreaAround(from, 1, area);
+                foreach (int t in area)
+                {
+                    if (Geometry.IsVulnerable(s.Cells[t], me)) pseudo.Add(new GameAction(ActionKind.StealPick, from, t, 0));
+                }
+            }
+            foreach (var a in pseudo) if (IsLegal(s, a)) result.Add(a);
         }
 
         /// <summary>Applies the action to a copy and verifies the mover's king is not left attacked.</summary>

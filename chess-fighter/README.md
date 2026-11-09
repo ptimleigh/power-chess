@@ -10,7 +10,7 @@ shell, new theme, and a reworked set of powers.
 ## Status
 
 Early build. The engine, AI, tests, PWA and web shell come from Power Chess; the visual identity is new (32x32 sprites,
-arcade HUD, scanlines). **Built so far:** all five banked moves (Fireball, Harpoon, Bomb, Poison, Ghost), Combo +2/+4 and the one-banked-move-per-piece rule
+arcade HUD, scanlines). **Built so far:** all five banked moves (Fireball, Harpoon, Bomb, Poison, Ghost), the instant squares (Combo +2/+4, Stun, Steal, Armor) and the one-banked-move-per-piece rule
 (see [docs/POWERS.md](docs/POWERS.md)). The rest of the powers and the whole card system are still to come.
 
 ## Layout

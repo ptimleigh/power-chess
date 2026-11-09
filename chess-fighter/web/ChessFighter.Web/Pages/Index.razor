@@ -151,6 +151,7 @@
         @foreach (var perk in PerkButtons)
         {
             var k = perk;
+            if (S.Perk(ActiveSide, k.Kind) == 0) { continue; } // perks only show once you hold one (Chess Fighter squares no longer hand them out)
             if (k.Action == ActionKind.ClearBoulder && S.State.BoulderCount() == 0) { continue; }
             if (k.Kind == PowerupKind.Swap && S.Perk(ActiveSide, PowerupKind.Swap) == 0) { continue; }
             <button class="perk @(S.Mode == InputMode.Armed && S.ArmedKind == k.Action ? "on" : "")" disabled="@(!S.CanUse(k.Action))"
@@ -1265,6 +1266,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (sq == S.ViewLastFrom || sq == S.ViewLastTo) c += " last";
         if (sq == S.Selected) c += " selected";
         if (sq == S.HintFrom || sq == S.HintTo) c += " hint";
+        if (S.EffectPending && S.HumanTurn && S.EffectTargets.Contains(sq)) c += " aim";
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;

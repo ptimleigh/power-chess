@@ -28,6 +28,8 @@ public static class Names
         PowerupKind.Combo2 => "Combo +2",
         PowerupKind.Combo4 => "Combo +4",
         PowerupKind.Harpoon => "Harpoon",
+        PowerupKind.StunBolt => "Stun",
+        PowerupKind.StealGrab => "Steal",
         _ => "",
     };
 
@@ -61,6 +63,8 @@ public static class Names
         PowerupKind.SmallBomb => "Bomb I: detonate instead of moving to destroy everything in the 3x3 around it (not kings). Land on another Bomb square to upgrade to II (5x5).",
         PowerupKind.BigBomb => "Bomb II: detonate instead of moving to destroy everything in the 5x5 around it (not kings).",
         PowerupKind.Fireball => "Fireball I fires along ranks and files like a rook; land on another Fireball square for II, which also fires diagonally like a queen. It destroys the first enemy in line instead of moving, and counts as a threat for check. Lost if the piece is destroyed.",
+        PowerupKind.StunBolt => "Instant: right after landing, fire a stun bolt in any direction. It freezes the first enemy in line (a king too) for 1 turn. Armored pieces are immune. A stunned king with no other way out of check is checkmate.",
+        PowerupKind.StealGrab => "Instant: right after landing, take over one rival piece in the 3x3 around this piece. Not kings, not armored pieces. It stays where it is.",
         PowerupKind.Combo2 => "Instant: this piece moves 2 more times in a row (3 moves in all). Giving check ends the combo. Landing on another Combo adds its moves.",
         PowerupKind.Combo4 => "Instant: this piece moves 4 more times in a row (5 moves in all). Giving check ends the combo. Landing on another Combo adds its moves.",
         PowerupKind.Steal => "Convert an enemy piece that one of your pieces could capture. Your piece stays put.",
@@ -83,6 +87,8 @@ public static class Names
         PowerupKind.BigBomb => "bigbomb",
         PowerupKind.Fireball => "hadouken",
         PowerupKind.Harpoon => "hook",
+        PowerupKind.StunBolt => "bolt",
+        PowerupKind.StealGrab => "steal",
         PowerupKind.Combo2 => "plus2",
         PowerupKind.Combo4 => "plus4",
         PowerupKind.Steal => "steal",
@@ -116,7 +122,7 @@ public static class Names
     public static readonly PowerupKind[] Guide =
     {
         PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
-        PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.Stun, PowerupKind.Steal, PowerupKind.SpikedArmor,
+        PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.StunBolt, PowerupKind.StealGrab, PowerupKind.SpikedArmor,
     };
 
     public const string PortalDesc = "Teleporters come in matching pairs. Land on one and you are sent to its twin (if it is free); then both vanish.";

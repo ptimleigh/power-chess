@@ -222,6 +222,21 @@ namespace ChessFighter.Core
             return -1;
         }
 
+        /// <summary>The first piece along direction <paramref name="dir"/> (0-7) from <paramref name="from"/>, or -1. Boulders stop the line.</summary>
+        public static int FirstPieceInLine(GameState s, int from, int dir)
+        {
+            int cf = Sq.File(from) + DirFile[dir], cr = Sq.Rank(from) + DirRank[dir];
+            while (Sq.OnBoard(cf, cr))
+            {
+                int idx = Sq.Make(cf, cr);
+                if (s.Boulders[idx]) return -1;
+                if (!s.Cells[idx].IsEmpty) return idx;
+                cf += DirFile[dir];
+                cr += DirRank[dir];
+            }
+            return -1;
+        }
+
         /// <summary>The square next to <paramref name="from"/> along diagonal <paramref name="dir"/>.</summary>
         public static int NextTo(int from, int dir)
         {

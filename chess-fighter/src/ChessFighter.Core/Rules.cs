@@ -123,6 +123,31 @@ namespace ChessFighter.Core
                     return;
                 }
 
+                case ActionKind.StunBeam:
+                {
+                    var target = s.Cells[a.To];
+                    Emit(ev, EventKind.ZapFired, a.From, a.To, s.Cells[a.From].Type, me, PowerupKind.StunBolt);
+                    target.StunTurns = 1;
+                    s.Cells[a.To] = target;
+                    Emit(ev, EventKind.StunStruck, a.To, a.To, target.Type, me, PowerupKind.StunBolt);
+                    s.EffectKind = PowerupKind.None;
+                    s.EffectSquare = -1;
+                    Finish(s, ev);
+                    return;
+                }
+
+                case ActionKind.StealPick:
+                {
+                    var stolen = new Piece(s.Cells[a.To].Type, me);
+                    Place(s, a.To, stolen);
+                    Emit(ev, EventKind.Converted, a.From, a.To, stolen.Type, me, PowerupKind.StealGrab);
+                    s.ClockReset = true;
+                    s.EffectKind = PowerupKind.None;
+                    s.EffectSquare = -1;
+                    Finish(s, ev);
+                    return;
+                }
+
                 case ActionKind.Steal:
                 {
                     s.AddPerk(me, PowerupKind.Steal, -1);
@@ -363,6 +388,17 @@ namespace ChessFighter.Core
         /// <summary>Everything that happens once an action and its pickup are fully resolved.</summary>
         static void Finish(GameState s, List<GameEvent> ev)
         {
+            if (s.EffectKind != PowerupKind.None)
+            {
+                // A Stun or Steal square: the mover must aim it now. With no legal target it fizzles.
+                var kind = s.EffectKind;
+                int at = s.EffectSquare;
+                if (!s.Probe && MoveGen.LegalActions(s).Count > 0) return;
+                s.EffectKind = PowerupKind.None;
+                s.EffectSquare = -1;
+                if (!s.Probe) Emit(ev, EventKind.EffectFizzled, at, at, s.Cells[at].Type, s.ToMove, kind);
+            }
+
             if (s.ComboGain > 0)
             {
                 // A Combo square: the piece that landed on it owes that many extra moves, added to any it already owed.
@@ -618,6 +654,11 @@ namespace ChessFighter.Core
                     p.Buffs |= Buff.BigBomb;
                     p.Tier = 2;
                     break;
+                case PowerupKind.StunBolt:
+                case PowerupKind.StealGrab:
+                    s.EffectKind = kind;
+                    s.EffectSquare = sq;
+                    break;
                 case PowerupKind.Combo2:
                     s.ComboGain += 2;
                     s.ComboSquare = sq;
@@ -761,7 +802,7 @@ namespace ChessFighter.Core
         public static GameResult GetResult(GameState s, out string reason)
         {
             reason = "";
-            if (s.PendingSquare < 0 && s.ForcedMover < 0)
+            if (s.PendingSquare < 0 && s.ForcedMover < 0 && s.EffectKind == PowerupKind.None)
             {
                 // Insufficient material: bare kings.
                 bool onlyKings = true;

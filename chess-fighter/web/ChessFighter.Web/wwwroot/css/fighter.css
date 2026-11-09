@@ -481,3 +481,6 @@ html, body {
 .wick.big i { width: 300%; }
 @keyframes wickspark { 0% { background: #ffe23a; transform: translateX(-50%) rotate(0deg) scale(1); } 50% { background: #fff; transform: translateX(-50%) rotate(45deg) scale(1.25); } }
 @media (prefers-reduced-motion: reduce) { .wick i { animation: none; } }
+
+/* ---------- Stun bolt: a jagged pixel lightning beam ---------- */
+.fx-beam.zap { height: 8px; margin-top: -4px; background: repeating-linear-gradient(90deg, #fff 0 5px, #ffe23a 5px 10px, #3df2ff 10px 15px); box-shadow: 0 0 0 2px #000, 0 0 12px #ffe23a; animation-timing-function: steps(6); }

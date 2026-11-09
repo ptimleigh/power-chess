@@ -44,7 +44,7 @@ namespace ChessFighter.Core
             for (int i = entries.Count - 1; i >= 0; i--)
             {
                 var e = entries[i];
-                if (e.Mover == side && e.Before.PendingSquare < 0 && e.Before.ForcedMover < 0) return i;
+                if (e.Mover == side && e.Before.PendingSquare < 0 && e.Before.ForcedMover < 0 && e.Before.EffectKind == PowerupKind.None) return i;
             }
             return -1;
         }
@@ -52,7 +52,7 @@ namespace ChessFighter.Core
         public bool CanRewind(GameState current, Side side)
         {
             return current.ToMove == side
-                && current.PendingSquare < 0 && current.ForcedMover < 0
+                && current.PendingSquare < 0 && current.ForcedMover < 0 && current.EffectKind == PowerupKind.None
                 && current.Perks(side, PowerupKind.Rewind) > 0
                 && LastTurnStart(side) >= 0;
         }

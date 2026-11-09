@@ -31,6 +31,10 @@ namespace ChessFighter.Core
         public int PendingSquare = -1;
         public PowerupKind PendingKind;
 
+        /// <summary>An instant targeted power (Stun, Steal) the mover must now aim, and the square of the piece that landed on it.</summary>
+        public PowerupKind EffectKind;
+        public int EffectSquare = -1;
+
         /// <summary>After the first move of a Double Move piece, the only piece allowed to move.</summary>
         public int ForcedMover = -1;
 
@@ -100,6 +104,8 @@ namespace ChessFighter.Core
             c.Rng = Rng;
             c.PendingSquare = PendingSquare;
             c.PendingKind = PendingKind;
+            c.EffectKind = EffectKind;
+            c.EffectSquare = EffectSquare;
             c.ForcedMover = ForcedMover;
             c.DoubleSquare = DoubleSquare;
             c.ClockReset = ClockReset;

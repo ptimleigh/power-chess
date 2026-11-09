@@ -306,6 +306,113 @@ namespace ChessFighter.Core.Tests
             Assert.IsFalse(Geometry.IsKingAttacked(s, Side.White), "and the king is not left in check");
         }
 
+        // ---------- Stun and Steal squares (instant, aimed right after landing) ----------
+
+        [Test]
+        public void Landing_on_a_Stun_square_makes_you_aim_a_bolt_at_the_first_enemy_in_any_direction()
+        {
+            // White rook a1 lands on a3. Enemies in line: a5 (up the file), d3 (along the rank), c5 (up the diagonal).
+            var s = T.Fen("7k/8/8/p1n5/8/3p4/8/R3K3 w - - 0 1");
+            T.Square(s, "a3", PowerupKind.StunBolt);
+            T.Do(s, "a1a3");
+            Assert.AreEqual(PowerupKind.StunBolt, s.EffectKind, "the effect is pending");
+            Assert.AreEqual(Side.White, s.ToMove, "still White's turn: aim first");
+            var beams = MoveGen.LegalActions(s).Where(a => a.Kind == ActionKind.StunBeam).Select(a => Sq.Name(a.To)).OrderBy(x => x).ToList();
+            Assert.AreEqual(new[] { "a5", "c5", "d3" }, beams.ToArray(), "first enemy on each of the eight lines (b4 is empty, c5 is on the diagonal)");
+            Assert.IsFalse(MoveGen.LegalActions(s).Any(a => a.Kind == ActionKind.Move), "no other action until it is aimed");
+
+            var ev = T.Do(s, "StunBeam a3->a5");
+            Assert.IsTrue(T.At(s, "a5").IsStunned);
+            Assert.AreEqual(1, T.At(s, "a5").StunTurns);
+            Assert.AreEqual(Side.Black, s.ToMove);
+            Assert.AreEqual(PowerupKind.None, s.EffectKind);
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.ZapFired));
+        }
+
+        [Test]
+        public void A_stunned_piece_loses_exactly_one_turn()
+        {
+            var s = T.Fen("7k/8/8/p7/8/8/8/R3K3 w - - 0 1");
+            T.Square(s, "a3", PowerupKind.StunBolt);
+            T.Do(s, "a1a3");
+            T.Do(s, "StunBeam a3->a5");
+            Assert.IsFalse(T.IsLegal(s, "a5a4"), "stunned on Black's next turn");
+            T.Do(s, "h8h7");
+            T.Do(s, "e1e2");
+            Assert.IsTrue(T.IsLegal(s, "a5a4") || T.IsLegal(s, "h7h8"), "the stun has lapsed after one turn");
+            Assert.IsFalse(T.At(s, "a5").IsStunned);
+        }
+
+        [Test]
+        public void A_stun_bolt_can_hit_a_king_and_a_stunned_king_with_no_way_out_is_mate()
+        {
+            // Rook a1 lands on a8 (a Stun square) giving check along the eighth rank, then stuns the king on h8 so it cannot escape to g7.
+            var s = T.Fen("7k/7p/8/8/8/8/8/R3K3 w - - 0 1");
+            T.Square(s, "a8", PowerupKind.StunBolt);
+            T.Do(s, "a1a8");
+            Assert.IsTrue(MoveGen.LegalActions(s).Any(a => a.Kind == ActionKind.StunBeam && a.To == Sq.Parse("h8")), "the king is a legal target");
+            T.Do(s, "StunBeam a8->h8");
+            string reason;
+            Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(s, out reason));
+            Assert.AreEqual("Checkmate", reason);
+        }
+
+        [Test]
+        public void A_stun_square_fizzles_when_nothing_can_be_hit()
+        {
+            // Only an armored piece and a friend are in line, so there is no legal bolt.
+            var s = T.Fen("7k/8/8/p7/8/8/8/R3K3 w - - 0 1");
+            T.Give(s, "a5", Buff.Armor, 3);
+            T.Square(s, "a3", PowerupKind.StunBolt);
+            var ev = T.Do(s, "a1a3");
+            Assert.AreEqual(PowerupKind.None, s.EffectKind);
+            Assert.AreEqual(Side.Black, s.ToMove, "the turn simply passes");
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.EffectFizzled));
+            Assert.IsFalse(s.Mystery[Sq.Parse("a3")], "the square is used up");
+        }
+
+        [Test]
+        public void Landing_on_a_Steal_square_lets_you_take_a_neighbouring_rival_but_never_a_king_or_armor()
+        {
+            // Rook a1 lands on a3 next to a pawn (a4) and an armored rook (b4); a knight on c4 is two files away.
+            var s = T.Fen("7k/8/8/8/prn5/8/8/R3K3 w - - 0 1");
+            T.Give(s, "b4", Buff.Armor, 3);
+            T.Square(s, "a3", PowerupKind.StealGrab);
+            T.Do(s, "a1a3");
+            Assert.AreEqual(PowerupKind.StealGrab, s.EffectKind);
+            var picks = MoveGen.LegalActions(s).Where(a => a.Kind == ActionKind.StealPick).Select(a => Sq.Name(a.To)).OrderBy(x => x).ToList();
+            Assert.AreEqual(new[] { "a4" }, picks.ToArray(), "only the pawn next to a3 that is not armored (b4 armored, c4 is two files away)");
+
+            var ev = T.Do(s, "StealPick a3->a4");
+            Assert.AreEqual(Side.White, T.At(s, "a4").Side, "converted");
+            Assert.AreEqual(PieceType.Pawn, T.At(s, "a4").Type, "and it stays where it was");
+            Assert.AreEqual(Side.Black, s.ToMove);
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.Converted));
+
+            var king = T.Fen("8/8/8/8/1k6/8/8/R3K3 w - - 0 1");
+            T.Square(king, "a3", PowerupKind.StealGrab);
+            T.Do(king, "a1a3");
+            Assert.AreEqual(PowerupKind.None, king.EffectKind, "a king cannot be stolen, so the square fizzles");
+        }
+
+        [Test]
+        public void A_pending_choice_survives_save_and_load_and_the_AI_can_resolve_it()
+        {
+            var cfg = T.Cfg();
+            var s = T.Fen("7k/8/8/p7/8/8/8/R3K3 w - - 0 1", cfg);
+            T.Square(s, "a3", PowerupKind.StunBolt);
+            T.Do(s, "a1a3");
+            GameState s2;
+            GameHistory h2;
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(s, new GameHistory()), cfg, out s2, out h2));
+            Assert.AreEqual(PowerupKind.StunBolt, s2.EffectKind);
+            Assert.AreEqual(Sq.Parse("a3"), s2.EffectSquare);
+            Assert.AreEqual(MoveGen.LegalActions(s).Count, MoveGen.LegalActions(s2).Count);
+
+            var choice = Ai.ForLevel(2).Choose(s2);
+            Assert.AreEqual(ActionKind.StunBeam, choice.Kind, "the AI aims the pending bolt");
+        }
+
         // ---------- Combo ----------
 
         static int MovesInTurn(GameState s, Side side, string firstMove)
@@ -409,6 +516,8 @@ namespace ChessFighter.Core.Tests
             Assert.IsFalse(pool.Any(w => PowerupInfo.IsTransform(w.Kind)), "transform squares are gone");
             Assert.IsFalse(pool.Any(w => w.Kind == PowerupKind.Reroll || w.Kind == PowerupKind.Rewind || w.Kind == PowerupKind.Swap || w.Kind == PowerupKind.Boulder));
             Assert.IsFalse(pool.Any(w => w.Kind == PowerupKind.DoubleMove || w.Kind == PowerupKind.TripleMove), "replaced by Combo");
+            Assert.IsFalse(pool.Any(w => w.Kind == PowerupKind.Stun || w.Kind == PowerupKind.Steal), "the perk versions are replaced by instant squares");
+            Assert.IsTrue(pool.Any(w => w.Kind == PowerupKind.StunBolt) && pool.Any(w => w.Kind == PowerupKind.StealGrab));
             Assert.IsTrue(pool.All(w => w.Weight > 0));
         }
 

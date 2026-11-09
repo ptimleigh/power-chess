@@ -60,6 +60,10 @@ namespace ChessFighter.Core
         Combo4,
         /// <summary>Banked: Harpoon I pulls a rival along one diagonal, Harpoon II along all four at once.</summary>
         Harpoon,
+        /// <summary>Instant: the lander immediately fires a stun bolt in any direction at the first enemy piece in line (a king can be hit). 1 turn.</summary>
+        StunBolt,
+        /// <summary>Instant: the lander immediately takes over a rival piece (not a king) in the 3x3 around it.</summary>
+        StealGrab,
     }
 
     public static class PowerupInfo
@@ -72,6 +76,9 @@ namespace ChessFighter.Core
         }
 
         public static bool IsCombo(PowerupKind k) { return k == PowerupKind.Combo2 || k == PowerupKind.Combo4; }
+
+        /// <summary>Instant powers that make the lander choose a target right after landing.</summary>
+        public static bool IsTargeted(PowerupKind k) { return k == PowerupKind.StunBolt || k == PowerupKind.StealGrab; }
 
         public static bool IsPerk(PowerupKind k)
         {
@@ -159,6 +166,10 @@ namespace ChessFighter.Core
         Swap,
         /// <summary>Fire a Harpoon from From. Tier I: To = the rival hit, Aux = diagonal direction (4-7). Tier II: Aux = 8, fires every diagonal that has a target.</summary>
         Harpoon,
+        /// <summary>Resolve a pending Stun square: From = the lander, To = the piece hit, Aux = direction (0-7).</summary>
+        StunBeam,
+        /// <summary>Resolve a pending Steal square: From = the lander, To = the rival taken over.</summary>
+        StealPick,
     }
 
     public struct GameAction : IEquatable<GameAction>
@@ -252,6 +263,10 @@ namespace ChessFighter.Core
         PulledIn,
         /// <summary>A poisoned piece's poison wore off.</summary>
         PoisonFaded,
+        /// <summary>A stun bolt was fired: From is the shooter, To the piece it hit.</summary>
+        ZapFired,
+        /// <summary>An instant power had no legal target, so it was wasted.</summary>
+        EffectFizzled,
     }
 
     /// <summary>Describes what happened so the view layer can animate it. The engine itself never reads these.</summary>

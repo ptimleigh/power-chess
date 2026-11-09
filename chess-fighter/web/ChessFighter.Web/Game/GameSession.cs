@@ -188,6 +188,8 @@ public sealed class GameSession
             case ActionKind.Move:
             case ActionKind.Fireball:
             case ActionKind.Harpoon:
+            case ActionKind.StunBeam:
+            case ActionKind.StealPick:
             case ActionKind.Steal:
             case ActionKind.Swap:
                 HintFrom = act.From; HintTo = act.To; break;
@@ -300,6 +302,12 @@ public sealed class GameSession
     bool AiToMove => VsAi && !GameOver && State.ToMove == Side.Black;
     public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.ToMove == Side.White);
     public bool PickupPending => State.PendingSquare >= 0;
+
+    /// <summary>A Stun or Steal square was just landed on and its target must be chosen now.</summary>
+    public bool EffectPending => State.EffectKind != PowerupKind.None && !GameOver;
+
+    /// <summary>The squares the pending Stun or Steal can hit.</summary>
+    public IEnumerable<int> EffectTargets => Legal.Where(a => a.Kind == ActionKind.StunBeam || a.Kind == ActionKind.StealPick).Select(a => a.To);
     public Side Turn => State.ToMove;
 
     // ---------- setup ----------
@@ -813,6 +821,15 @@ public sealed class GameSession
         }
         if (!HumanTurn || PickupPending || Mode == InputMode.Promotion) return;
 
+        if (EffectPending)
+        {
+            // Aim the Stun bolt or pick the piece to steal. Nothing else can be done until it is resolved.
+            var pick = Legal.FirstOrDefault(a => (a.Kind == ActionKind.StunBeam || a.Kind == ActionKind.StealPick) && a.To == sq);
+            if (pick.Kind == ActionKind.StunBeam || pick.Kind == ActionKind.StealPick) await Human(pick);
+            else Sfx?.Invoke("click");
+            return;
+        }
+
         if (Mode == InputMode.BombPreview)
         {
             Cancel(); // tapping the board backs out; the Confirm button is the only way to detonate
@@ -1056,6 +1073,7 @@ public sealed class GameSession
             if (Reviewing) return "Reviewing past moves. Nothing here changes the game.";
             if (Thinking) return "Opponent is thinking...";
             if (Busy) return "";
+            if (EffectPending) return State.EffectKind == PowerupKind.StunBolt ? "Stun! Tap an enemy piece to zap it" : "Steal! Tap a rival piece next to you to take it";
             if (PickupPending) return "You found a powerup!";
             if (Mode == InputMode.Armed)
                 return ArmedKind switch
@@ -1104,6 +1122,8 @@ public sealed class GameSession
             case ActionKind.Move:
             case ActionKind.Fireball:
             case ActionKind.Harpoon:
+            case ActionKind.StunBeam:
+            case ActionKind.StealPick:
             case ActionKind.Steal:
             case ActionKind.Swap:
                 return (a.From, a.To);
@@ -1331,7 +1351,7 @@ public sealed class GameSession
                 }
                 case EventKind.StunStruck:
                     AddFx("stars", e.To, css: "stun");
-                    AddToast("STUNNED!", "Frozen for 3 turns", "stun", "star");
+                    AddToast("STUNNED!", e.Powerup == PowerupKind.Stun ? "Frozen for 3 turns" : "Frozen for 1 turn", "stun", "star");
                     Shake();
                     Sfx?.Invoke("stun");
                     break;
@@ -1355,6 +1375,15 @@ public sealed class GameSession
                     AddFx("beam", e.From, e.To, css: "rope");
                     AddToast("HARPOON!", "", "gold", "hook");
                     Sfx?.Invoke("steal");
+                    break;
+                case EventKind.ZapFired:
+                    AddFx("beam", e.From, e.To, css: "zap");
+                    AddToast("ZAP!", "", "stun", "bolt");
+                    Sfx?.Invoke("stun");
+                    break;
+                case EventKind.EffectFizzled:
+                    AddFx("ping", e.From, css: "steal");
+                    AddToast("No target", "Nothing legal to hit, so the power was wasted.", "gold", Names.Icon(e.Powerup));
                     break;
                 case EventKind.PulledIn:
                     AddFx("ping", e.To, css: "steal");

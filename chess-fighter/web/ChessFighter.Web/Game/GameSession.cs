@@ -899,6 +899,10 @@ public sealed class GameSession
 
     // ---------- turn flow ----------
 
+    /// <summary>Global animation pace: 1.0 was the original Power Chess feel. Keep in step with the CSS durations in fighter.css (.piece, .piece-body.land-*, .piece.dying).</summary>
+    const double Pace = 0.75;
+    static int T(int ms) => (int)(ms * Pace);
+
     async Task AiLoop()
     {
         while (AiToMove)
@@ -906,7 +910,7 @@ public sealed class GameSession
             Thinking = true;
             Busy = true;
             Changed?.Invoke();
-            await Task.Delay(550); // let the UI paint before the (synchronous) search
+            await Task.Delay(T(450)); // let the UI paint before the (synchronous) search
             var sw = System.Diagnostics.Stopwatch.StartNew();
             GameAction act = ai.Choose(State);
             Console.WriteLine($"[ai] {Ai.LevelName(opt.Ai)} chose {act} in {sw.ElapsedMilliseconds} ms");
@@ -954,7 +958,7 @@ public sealed class GameSession
             wait += 500;
         }
         if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn
-        await Task.Delay(wait);
+        await Task.Delay(T(wait));
 
         if (Puzzle != null && PuzzleOutcome == PuzzleResult.None)
         {
@@ -1400,7 +1404,7 @@ public sealed class GameSession
     void Kill(PieceView v)
     {
         v.Dying = true;
-        Later(650, () => Pieces.Remove(v));
+        Later(T(650), () => Pieces.Remove(v));
     }
 
     /// <summary>A fireball reaches this piece: it bursts into flame and burns away.</summary>
@@ -1449,14 +1453,14 @@ public sealed class GameSession
     /// <summary>A capture with drama: the attacker lands, the world holds for a beat under a slash, then the victim goes.</summary>
     void Strike(PieceView victim, GameEvent e)
     {
-        const int travel = 230;
+        int travel = T(230);
         int hit = victim.Type switch
         {
-            PieceType.Pawn => 60,
-            PieceType.Knight or PieceType.Bishop => 120,
-            PieceType.Rook => 150,
-            PieceType.Queen => 240,
-            _ => 100,
+            PieceType.Pawn => T(60),
+            PieceType.Knight or PieceType.Bishop => T(120),
+            PieceType.Rook => T(150),
+            PieceType.Queen => T(240),
+            _ => T(100),
         };
         string word = victim.Type switch
         {

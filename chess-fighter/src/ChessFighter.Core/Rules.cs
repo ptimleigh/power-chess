@@ -8,6 +8,10 @@ namespace ChessFighter.Core
     {
         const int ArmorStartTurns = 4; // 1 for the pickup turn itself + 3 more owner turns
         const int StunDuration = 3;
+        /// <summary>Owner turns a Stun square's bolt freezes its target. Change this one number to tune it.</summary>
+        public const int StunBoltTurns = 2;
+        /// <summary>Turns a rival already next to a Harpoon shooter is stunned.</summary>
+        public const int HarpoonStunTurns = 1;
         /// <summary>Most extra moves a stack of Combo squares can owe at once.</summary>
         public const int MaxComboMoves = 24;
         /// <summary>A poison fuse: the pickup turn plus 5 more owner turns.</summary>
@@ -104,7 +108,7 @@ namespace ChessFighter.Core
                         if (target == landing)
                         {
                             // Already next to the shooter: it cannot be pulled any closer, so it is stunned for a turn.
-                            hooked.StunTurns = 1;
+                            hooked.StunTurns = HarpoonStunTurns;
                             s.Cells[target] = hooked;
                             Emit(ev, EventKind.StunStruck, target, target, hooked.Type, me, PowerupKind.Harpoon);
                         }
@@ -154,7 +158,7 @@ namespace ChessFighter.Core
                 {
                     var target = s.Cells[a.To];
                     Emit(ev, EventKind.ZapFired, a.From, a.To, s.Cells[a.From].Type, me, PowerupKind.StunBolt);
-                    target.StunTurns = 1;
+                    target.StunTurns = StunBoltTurns;
                     s.Cells[a.To] = target;
                     Emit(ev, EventKind.StunStruck, a.To, a.To, target.Type, me, PowerupKind.StunBolt);
                     s.EffectKind = PowerupKind.None;

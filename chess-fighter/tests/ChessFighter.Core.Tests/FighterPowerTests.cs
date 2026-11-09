@@ -323,23 +323,26 @@ namespace ChessFighter.Core.Tests
 
             var ev = T.Do(s, "StunBeam a3->a5");
             Assert.IsTrue(T.At(s, "a5").IsStunned);
-            Assert.AreEqual(1, T.At(s, "a5").StunTurns);
+            Assert.AreEqual(Rules.StunBoltTurns, T.At(s, "a5").StunTurns);
             Assert.AreEqual(Side.Black, s.ToMove);
             Assert.AreEqual(PowerupKind.None, s.EffectKind);
             Assert.IsTrue(ev.Any(e => e.Kind == EventKind.ZapFired));
         }
 
         [Test]
-        public void A_stunned_piece_loses_exactly_one_turn()
+        public void A_stunned_piece_loses_its_next_two_turns()
         {
             var s = T.Fen("7k/8/8/p7/8/8/8/R3K3 w - - 0 1");
             T.Square(s, "a3", PowerupKind.StunBolt);
             T.Do(s, "a1a3");
             T.Do(s, "StunBeam a3->a5");
-            Assert.IsFalse(T.IsLegal(s, "a5a4"), "stunned on Black's next turn");
+            Assert.IsFalse(T.IsLegal(s, "a5a4"), "frozen on Black's first turn");
             T.Do(s, "h8h7");
             T.Do(s, "e1e2");
-            Assert.IsTrue(T.IsLegal(s, "a5a4") || T.IsLegal(s, "h7h8"), "the stun has lapsed after one turn");
+            Assert.IsFalse(T.IsLegal(s, "a5a4"), "and on the second");
+            T.Do(s, "h7h8");
+            T.Do(s, "e2e1");
+            Assert.IsTrue(T.IsLegal(s, "a5a4"), "free again on the third");
             Assert.IsFalse(T.At(s, "a5").IsStunned);
         }
 

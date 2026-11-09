@@ -1592,7 +1592,7 @@ public sealed class GameSession
                 }
                 case EventKind.StunStruck:
                     AddFx("stars", e.To, css: "stun");
-                    AddToast("STUNNED!", e.Powerup == PowerupKind.Stun ? "Frozen for 3 turns" : "Frozen for 1 turn", "stun", "star");
+                    AddToast("STUNNED!", e.Powerup == PowerupKind.Stun ? "Frozen for 3 turns" : $"Frozen for {(e.Powerup == PowerupKind.StunBolt ? Rules.StunBoltTurns : Rules.HarpoonStunTurns)} {((e.Powerup == PowerupKind.StunBolt ? Rules.StunBoltTurns : Rules.HarpoonStunTurns) == 1 ? "turn" : "turns")}", "stun", "star");
                     Shake();
                     Sfx?.Invoke("stun");
                     break;

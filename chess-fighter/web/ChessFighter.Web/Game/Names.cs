@@ -64,7 +64,7 @@ public static class Names
         PowerupKind.SmallBomb => "Bomb I: detonate instead of moving to destroy everything in the 3x3 around it (not kings). Land on another Bomb square to upgrade to II (5x5).",
         PowerupKind.BigBomb => "Bomb II: detonate instead of moving to destroy everything in the 5x5 around it (not kings).",
         PowerupKind.Fireball => "Fireball I fires along ranks and files like a rook; land on another Fireball square for II, which also fires diagonally like a queen. It destroys the first enemy in line instead of moving, and counts as a threat for check. Lost if the piece is destroyed.",
-        PowerupKind.StunBolt => "Instant: right after landing, fire a stun bolt in any direction. It freezes the first enemy in line (a king too) for 1 turn. Armored pieces are immune. A stunned king with no other way out of check is checkmate.",
+        PowerupKind.StunBolt => "Instant: right after landing, fire a stun bolt in any direction. It freezes the first enemy in line (a king too) for 2 turns. Armored pieces are immune. A stunned king with no other way out of check is checkmate.",
         PowerupKind.StealGrab => "Instant: right after landing, take over one rival piece in the 3x3 around this piece. Not kings, not armored pieces. It stays where it is.",
         PowerupKind.DrawCard => "Instant: draw a card into your bag. Everyone can see the cards. Some cards fire straight away, the rest wait until you play them (which costs your turn).",
         PowerupKind.Combo2 => "Instant: this piece moves 2 more times in a row (3 moves in all). Giving check ends the combo. Landing on another Combo adds its moves.",

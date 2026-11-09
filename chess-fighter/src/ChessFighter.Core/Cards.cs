@@ -467,9 +467,20 @@ namespace ChessFighter.Core
             }
             for (int i = 0; i < 64; i++)
             {
-                if (s.Cells[i].IsEmpty || dest[i] >= 0) continue;
+                var p = s.Cells[i];
+                if (p.IsEmpty || dest[i] >= 0) continue;
                 if (!claimed[i]) { dest[i] = i; claimed[i] = true; continue; }
-                for (int j = 0; j < 64; j++) if (!claimed[j]) { dest[i] = j; claimed[j] = true; break; }
+                // Crowded: take the nearest free square, and never a back rank for a pawn.
+                int bestSq = -1, bestDist = int.MaxValue;
+                for (int j = 0; j < 64; j++)
+                {
+                    if (claimed[j]) continue;
+                    if (p.Type == PieceType.Pawn && (Sq.Rank(j) == 0 || Sq.Rank(j) == 7)) continue;
+                    int d = Math.Max(Math.Abs(Sq.File(i) - Sq.File(j)), Math.Abs(Sq.Rank(i) - Sq.Rank(j)));
+                    if (d < bestDist) { bestDist = d; bestSq = j; }
+                }
+                dest[i] = bestSq;
+                claimed[bestSq] = true;
             }
             var old = (Piece[])s.Cells.Clone();
             for (int i = 0; i < 64; i++) s.Cells[i] = default(Piece);
@@ -508,7 +519,7 @@ namespace ChessFighter.Core
                 if (!p.IsEmpty)
                 {
                     p.Side = p.Side.Opponent();
-                    if (p.Origin > 0) p.Origin = (byte)(64 - p.Origin);
+                    if (p.Origin > 0) p.Origin = (byte)(65 - p.Origin); // origin is square + 1, and the rotated square is 63 - square
                 }
                 s.Cells[j] = p;
                 s.Boulders[j] = boulders[i];

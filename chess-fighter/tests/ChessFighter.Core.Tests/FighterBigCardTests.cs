@@ -198,6 +198,29 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
+        public void World_turned_upside_down_keeps_every_pieces_starting_square_pointing_at_its_rotated_home()
+        {
+            // From the opening position every piece is on its start square. After the flip each one must still be on its (rotated) start square,
+            // so a Hit restart straight afterwards would move nothing, and a pawn's start can never land on a back rank.
+            var s = GameState.FromFen(GameState.StartFen, T.Cfg());
+            T.Do(s, "e2e4");
+            T.Do(s, "e7e5");
+            T.Do(s, "e4e5".Replace("e4e5", "g1f3"));
+            T.Do(s, "b8c6");
+            s.AddCard(Side.White, CardKind.WorldUpsideDown, 1);
+            PlayCard(s, CardKind.WorldUpsideDown);
+            for (int i = 0; i < 64; i++)
+            {
+                var p = s.Cells[i];
+                if (p.IsEmpty || p.Origin == 0) continue;
+                int home = p.Origin - 1;
+                if (p.Type == PieceType.Pawn)
+                    Assert.IsFalse(Sq.Rank(home) == 0 || Sq.Rank(home) == 7, "a pawn's start square " + Sq.Name(home) + " is never a back rank");
+            }
+            Assert.AreEqual(Sq.Parse("d7") + 1, s.Cells[Sq.Parse("d5")].Origin == 0 ? 0 : (s.Cells[Sq.Parse("d5")].Origin), "the pawn from e2 (now a black pawn on d5) started on d7 after the rotation");
+        }
+
+        [Test]
         public void World_turned_upside_down_swaps_losses_and_is_unplayable_if_it_would_leave_you_in_check()
         {
             var s = T.Fen("k7/8/8/8/8/8/8/R6K w - - 0 1");

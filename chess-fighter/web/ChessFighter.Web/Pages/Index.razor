@@ -117,6 +117,7 @@
                 <FxLayer Items="S.Effects" />
             </div>
 
+        </div>
             <div class="toasts">
                 @foreach (var t in S.Toasts)
                 {
@@ -126,7 +127,6 @@
                     </div>
                 }
             </div>
-        </div>
     </div>
 
     <section class="player me @(S.Turn == Side.White && !S.GameOver ? "active" : "")">

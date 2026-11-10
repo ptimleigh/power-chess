@@ -136,7 +136,7 @@ public static class Names
         CardKind.RoleReversal => "Role Reversal",
         CardKind.HorseSacrifice => "Horse Sacrifice",
         CardKind.Promotion => "You Get a Promotion!",
-        CardKind.PlaceBoulder => "Okay, I'll Keep Boulders",
+        CardKind.PlaceBoulder => "Place Boulder",
         CardKind.SmashBoulder => "Smash Boulder",
         CardKind.SummonCaissa => "Summon Caïssa",
         CardKind.NuhUh => "Nuh-uh",

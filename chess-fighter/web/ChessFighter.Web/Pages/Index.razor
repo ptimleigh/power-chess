@@ -673,7 +673,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     <div class="modal" data-testid="clip-sheet">
         <div class="card clip-sheet" @onclick:stopPropagation="true">
             <div class="kicker">Replay clip</div>
-            <div class="clip-frame"><canvas id="clipCanvas" class="clip-canvas" width="720" height="1280"></canvas></div>
+            <canvas id="clipCanvas" class="clip-canvas" width="720" height="1280"></canvas>
             <div class="clip-len">
                 <button class="rbtn" data-action="clip-longer" disabled="@(clipPlies >= clipAvail || clipBusy)" @onclick="() => SetClipPlies(clipPlies + 1)" aria-label="Start earlier">@Icons.Svg("prev")</button>
                 <span data-testid="clip-len">Last <b>@clipPlies</b> @(clipPlies == 1 ? "move" : "moves") <small>of @clipAvail</small></span>

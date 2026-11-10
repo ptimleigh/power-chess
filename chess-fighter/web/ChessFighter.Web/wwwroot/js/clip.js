@@ -578,7 +578,13 @@ window.pcclip = (function () {
         function drawBoard() {
             const fw = 16;
             ctx.fillStyle = '#000'; ctx.fillRect(BX - fw - 8, BY - fw - 8, BOARD + 2 * (fw + 8), BOARD + 2 * (fw + 8));
-            ctx.fillStyle = stripe(); ctx.fillRect(BX - fw - 4, BY - fw - 4, BOARD + 2 * (fw + 4), BOARD + 2 * (fw + 4));
+            // the board's gold frame: a diagonal gold-to-orange gradient with a light top-left edge and a dark bottom-right edge
+            const fx0 = BX - fw - 4, fy0 = BY - fw - 4, fsz = BOARD + 2 * (fw + 4);
+            const fg = ctx.createLinearGradient(fx0, fy0, fx0 + fsz, fy0 + fsz);
+            fg.addColorStop(0, GOLD); fg.addColorStop(1, '#b8570a');
+            ctx.fillStyle = fg; ctx.fillRect(fx0, fy0, fsz, fsz);
+            ctx.fillStyle = '#fff0a0'; ctx.fillRect(fx0, fy0, fsz, 5); ctx.fillRect(fx0, fy0, 5, fsz);
+            ctx.fillStyle = '#6b3004'; ctx.fillRect(fx0, fy0 + fsz - 5, fsz, 5); ctx.fillRect(fx0 + fsz - 5, fy0, 5, fsz);
             ctx.fillStyle = '#000'; ctx.fillRect(BX - 4, BY - 4, BOARD + 8, BOARD + 8);
             for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
                 ctx.fillStyle = (f + r) % 2 === 1 ? '#7a6bb8' : '#3f3280';

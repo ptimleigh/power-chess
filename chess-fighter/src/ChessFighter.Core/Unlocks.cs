@@ -29,25 +29,7 @@ namespace ChessFighter.Core
         public static List<UnlockItem> AtLevel(int level)
         {
             var list = new List<UnlockItem>();
-            bool transforms = false;
-            foreach (var w in GameConfig.DefaultPool())
-            {
-                var k = w.Kind;
-                if (Progression.UnlockLevel(k) != level) continue;
-                if (IsBasicTransform(k))
-                {
-                    if (transforms) continue;
-                    transforms = true;
-                    list.Add(new UnlockItem
-                    {
-                        Type = UnlockType.Transforms, Level = level, Kind = PowerupKind.TransformQueen,
-                        Name = "Transform squares",
-                        Blurb = "A piece that opens one changes into another piece on the spot. Never a king.",
-                    });
-                    continue;
-                }
-                list.Add(new UnlockItem { Type = UnlockType.Powerup, Level = level, Kind = k });
-            }
+            // Chess Fighter has every power from the first game, so there are no per-power unlocks to announce.
             if (level == Progression.TeleporterLevel)
                 list.Add(new UnlockItem { Type = UnlockType.Teleporters, Level = level, Name = "Teleporters", Blurb = "Land on one teleporter square to jump to its twin on the other side." });
             if (level == Presets.FrequencyLevel)

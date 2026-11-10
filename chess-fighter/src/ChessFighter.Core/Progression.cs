@@ -279,8 +279,6 @@ namespace ChessFighter.Core
             p.Xp += xp;
             r.XpGained = xp;
             r.NewLevel = p.Level;
-            foreach (var w in GameConfig.DefaultPool())
-                if (UnlockLevel(w.Kind) > r.OldLevel && UnlockLevel(w.Kind) <= r.NewLevel) r.NewPowerups.Add(w.Kind);
             r.NewTeleporters = TeleporterLevel > r.OldLevel && TeleporterLevel <= r.NewLevel;
         }
     }

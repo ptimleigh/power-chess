@@ -31,12 +31,12 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Big_bombs_pool_is_only_big_bombs_even_below_its_unlock_level()
+        public void Bombs_pool_is_only_bombs_even_below_its_unlock_level()
         {
             var cfg = new GameConfig();
             Presets.Apply(cfg, "bigbombs", Frequency.Normal, "", 6);
             Assert.AreEqual(1, cfg.Pool.Count);
-            Assert.AreEqual(PowerupKind.BigBomb, cfg.Pool[0].Kind);
+            Assert.AreEqual(PowerupKind.SmallBomb, cfg.Pool[0].Kind);
         }
 
         [Test]
@@ -67,11 +67,11 @@ namespace ChessFighter.Core.Tests
             string c = Presets.DefaultCustom();
             int fire = kinds.IndexOf(PowerupKind.Fireball);
             c = Presets.SetCustom(c, fire, 0);
-            int steal = kinds.IndexOf(PowerupKind.Steal);
+            int steal = kinds.IndexOf(PowerupKind.StealGrab);
             c = Presets.SetCustom(c, steal, 3);
             var pool = Presets.CustomPool(c);
             Assert.IsFalse(pool.Any(w => w.Kind == PowerupKind.Fireball));
-            Assert.AreEqual(27, pool.First(w => w.Kind == PowerupKind.Steal).Weight);
+            Assert.AreEqual(24, pool.First(w => w.Kind == PowerupKind.StealGrab).Weight);
             var cfg = new GameConfig();
             Presets.Apply(cfg, "custom", Frequency.Normal, c, 10);
             Assert.AreEqual(pool.Count, cfg.Pool.Count);

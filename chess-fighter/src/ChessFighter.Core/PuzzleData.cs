@@ -5,12 +5,10 @@ namespace ChessFighter.Core
     {
         public static readonly PuzzleDef[] All =
         {
-            new PuzzleDef("d1-1", "Changing Sides", "Steal an enemy piece you could capture. It becomes yours.", 1, 1, "k7/r7/2N5/8/8/2RK4/B7/8 w - - 0 1", "steal:1", "", ""),
             new PuzzleDef("d1-10", "Dragon's Breath", "Tap the glowing piece, press Fireball, then pick a direction.", 1, 1, "3krR2/8/2pK4/8/8/8/8/8 w - - 0 1", "", "f8:fireball", ""),
             new PuzzleDef("d1-11", "Ember Strike", "Tap the glowing piece, press Fireball, then pick a direction.", 1, 1, "7k/2B5/8/8/5Q2/8/2K5/8 w - - 0 1", "", "c7:fireball", ""),
             new PuzzleDef("d1-12", "Trial by Fire", "Tap the glowing piece, press Fireball, then pick a direction.", 1, 1, "8/2p3Q1/4k1K1/8/8/8/8/7B w - - 0 1", "", "h1:fireball", ""),
             new PuzzleDef("d1-13", "Burn the Wall", "Tap the glowing piece, press Fireball, then pick a direction.", 1, 1, "4k3/N7/8/8/8/KB4R1/8/8 w - - 0 1", "", "a7:fireball", ""),
-            new PuzzleDef("d1-14", "Grand Larceny", "Steal an enemy piece you could capture. It becomes yours.", 1, 1, "8/3B4/8/8/2K2Np1/8/6rk/1R6 w - - 0 1", "steal:1", "", ""),
             new PuzzleDef("d1-2", "Haunted", "A ghost slides through pieces and boulders.", 1, 1, "rk6/2p1R3/4Q3/8/8/2K5/8/8 w - - 0 1", "", "e7:ghost", ""),
             new PuzzleDef("d1-3", "Phantom Menace", "A ghost slides through pieces and boulders.", 1, 1, "8/7R/8/3B4/7K/8/4R3/1rk5 w - - 0 1", "", "h7:ghost", ""),
             new PuzzleDef("d1-4", "Trial by Fire", "Tap the glowing piece, press Fireball, then pick a direction.", 1, 1, "7k/8/8/3B4/K2P4/6R1/8/8 w - - 0 1", "", "d5:fireball", ""),
@@ -22,11 +20,8 @@ namespace ChessFighter.Core
             new PuzzleDef("d2-1", "Poltergeist", "A ghost slides through pieces and boulders.", 2, 2, "k7/8/p7/8/7R/8/6K1/7Q w - - 0 1", "", "h4:ghost", ""),
             new PuzzleDef("d2-10", "Dragon's Breath", "Tap the glowing piece, press Fireball, then pick a direction.", 2, 2, "5k2/8/8/8/1R6/3BK1B1/8/8 w - - 0 1", "", "d3:fireball", ""),
             new PuzzleDef("d2-11", "Phantom Menace", "A ghost slides through pieces and boulders.", 2, 2, "3k4/K7/7R/7R/8/8/8/8 w - - 0 1", "", "h5:ghost", ""),
-            new PuzzleDef("d2-12", "Back to Back", "The buffed piece must move twice in a row.", 2, 2, "5rrk/8/8/8/8/8/2Q5/K7 w - - 0 1", "", "c2:doublemove", ""),
             new PuzzleDef("d2-13", "Burn the Wall", "Tap the glowing piece, press Fireball, then pick a direction.", 2, 2, "5R2/8/8/5P2/2R3K1/8/8/4k3 w - - 0 1", "", "f5:fireball", ""),
-            new PuzzleDef("d2-14", "Hat Trick", "The buffed piece must move three times in a row.", 2, 2, "3K1k2/8/5pB1/1Q6/8/8/8/8 w - - 0 1", "", "b5:triplemove", ""),
             new PuzzleDef("d2-2", "Haunted", "A ghost slides through pieces and boulders.", 2, 2, "8/5B2/8/8/8/1Q6/4p3/K5k1 w - - 0 1", "", "f7:ghost", ""),
-            new PuzzleDef("d2-3", "Double Trouble", "The buffed piece must move twice in a row.", 2, 2, "8/3B3N/8/7k/3K4/8/2Q5/8 w - - 0 1", "", "c2:doublemove", ""),
             new PuzzleDef("d2-4", "Trial by Fire", "Tap the glowing piece, press Fireball, then pick a direction.", 2, 2, "7k/8/8/8/3R1B2/8/4K3/8 w - - 0 1", "", "f4:fireball", ""),
             new PuzzleDef("d2-5", "Burn the Wall", "Tap the glowing piece, press Fireball, then pick a direction.", 2, 2, "2K5/8/8/8/4Q3/1B6/7p/6k1 w - - 0 1", "", "b3:fireball", ""),
             new PuzzleDef("d2-6", "Dragon's Breath", "Tap the glowing piece, press Fireball, then pick a direction.", 2, 2, "5K2/4B3/8/2p5/1R6/k7/8/8 w - - 0 1", "", "e7:fireball", ""),
@@ -35,18 +30,14 @@ namespace ChessFighter.Core
             new PuzzleDef("d2-9", "Burn the Wall", "Tap the glowing piece, press Fireball, then pick a direction.", 2, 2, "8/1Q6/8/2N5/8/7k/8/7K w - - 0 1", "", "c5:fireball", ""),
             new PuzzleDef("d3-1", "Burn the Wall", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "8/3N1N2/8/8/3R2P1/8/8/1k2K3 w - - 0 1", "", "d7:fireball", ""),
             new PuzzleDef("d3-10", "Dragon's Breath", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "7k/6N1/8/8/5R2/1K6/P7/4N3 w - - 0 1", "", "e1:fireball", ""),
-            new PuzzleDef("d3-11", "Sticky Fingers", "Steal an enemy piece you could capture. It becomes yours.", 3, 3, "8/5Q2/8/8/8/8/5r1r/4K2k w - - 0 1", "steal:1", "", ""),
             new PuzzleDef("d3-12", "Trial by Fire", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "8/8/8/6b1/3K1N1k/8/3R2P1/8 w - - 0 1", "", "g2:fireball", ""),
             new PuzzleDef("d3-13", "Burn the Wall", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "k6K/8/1R4N1/8/8/8/8/6N1 w - - 0 1", "", "g6:fireball", ""),
             new PuzzleDef("d3-14", "Dragon's Breath", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "1B1R4/8/7k/8/4N3/8/4K3/8 w - - 0 1", "", "e4:fireball", ""),
             new PuzzleDef("d3-2", "Dragon's Breath", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "3K4/8/8/R7/8/4B1p1/7k/8 w - - 0 1", "", "e3:fireball", ""),
             new PuzzleDef("d3-3", "Ember Strike", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "7R/8/2k5/8/R7/K5B1/8/8 w - - 0 1", "", "g3:fireball", ""),
             new PuzzleDef("d3-4", "Trial by Fire", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "8/8/8/8/8/4B3/3K4/1k6 w - - 0 1", "", "e3:fireball", ""),
-            new PuzzleDef("d3-5", "Changing Sides", "Steal an enemy piece you could capture. It becomes yours.", 3, 3, "3N4/8/K7/8/4Q1R1/8/4rk2/6n1 w - - 0 1", "steal:1", "", ""),
             new PuzzleDef("d3-6", "Dragon's Breath", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "7N/N2K4/pk6/8/2B5/8/8/8 w - - 0 1", "", "c4:fireball", ""),
-            new PuzzleDef("d3-7", "Statue Maker", "Use Stun on an enemy piece, then finish the job.", 3, 3, "3B4/8/8/7k/5r2/8/8/1BQ3K1 w - - 0 1", "stun:1", "", ""),
             new PuzzleDef("d3-8", "Trial by Fire", "Tap the glowing piece, press Fireball, then pick a direction.", 3, 3, "8/8/k3B3/1pP1B3/1K2N3/8/8/8 w - - 0 1", "", "e4:fireball", ""),
-            new PuzzleDef("d3-9", "Changing Sides", "Steal an enemy piece you could capture. It becomes yours.", 3, 3, "8/8/2B5/3R4/4K3/8/3r4/2k5 w - - 0 1", "steal:1", "", ""),
         };
     }
 }

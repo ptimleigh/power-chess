@@ -94,9 +94,6 @@ namespace ChessFighter.Core.Tests
             var r = Progression.Award(p, m);
             Assert.AreEqual(1, r.OldLevel);
             Assert.AreEqual(3, r.NewLevel, "260 XP skips straight past level 2 (60) to level 3 (180)");
-            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.SmallBomb));
-            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.Ghost));
-            Assert.IsTrue(r.NewPowerups.Contains(PowerupKind.BigBomb));
             Assert.IsTrue(r.NewTeleporters);
             var names = r.NewTrophies.Select(t => t.Name).ToList();
             CollectionAssert.IsSubsetOf(new[] { "First Win", "Checkmate", "Flawless" }, names);

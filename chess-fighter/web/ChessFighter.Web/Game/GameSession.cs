@@ -371,7 +371,7 @@ public sealed class GameSession
             // A small first game: a rook and pawns each, and two mystery squares in the middle holding friendly powerups.
             cfg.InitialPairs = 0;
             cfg.PortalChance = 0;
-            cfg.Pool = new[] { PowerupKind.Fireball, PowerupKind.SpikedArmor, PowerupKind.Poison, PowerupKind.Steal, PowerupKind.SmallBomb }
+            cfg.Pool = new[] { PowerupKind.Fireball, PowerupKind.SpikedArmor, PowerupKind.Poison, PowerupKind.StealGrab, PowerupKind.SmallBomb }
                 .Select(k => new WeightedKind(k, 1)).ToList();
         }
 

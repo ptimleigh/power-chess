@@ -14,22 +14,16 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Level_two_unlocks_bombs_ghost_and_one_transforms_card()
+        public void Every_power_is_available_from_the_first_game_so_levels_unlock_no_powerups()
         {
-            var items = Unlocks.AtLevel(2);
-            Assert.IsTrue(items.Any(i => i.Type == UnlockType.Powerup && i.Kind == PowerupKind.SmallBomb));
-            Assert.IsTrue(items.Any(i => i.Type == UnlockType.Powerup && i.Kind == PowerupKind.Ghost));
-            Assert.AreEqual(1, items.Count(i => i.Type == UnlockType.Transforms), "the four basic transforms share one card");
+            var all = Unlocks.Between(0, Progression.MaxLevel);
+            Assert.AreEqual(0, all.Count(i => i.Type == UnlockType.Powerup || i.Type == UnlockType.Transforms));
         }
 
         [Test]
-        public void Level_three_unlocks_big_bomb_queen_swap_and_teleporters()
+        public void Level_three_unlocks_teleporters()
         {
-            var items = Unlocks.AtLevel(3);
-            Assert.IsTrue(items.Any(i => i.Kind == PowerupKind.BigBomb));
-            Assert.IsTrue(items.Any(i => i.Kind == PowerupKind.TransformQueen && i.Type == UnlockType.Powerup));
-            Assert.IsTrue(items.Any(i => i.Kind == PowerupKind.Swap));
-            Assert.IsTrue(items.Any(i => i.Type == UnlockType.Teleporters));
+            Assert.IsTrue(Unlocks.AtLevel(3).Any(i => i.Type == UnlockType.Teleporters));
         }
 
         [Test]
@@ -56,27 +50,14 @@ namespace ChessFighter.Core.Tests
         {
             var items = Unlocks.Between(1, 4);
             Assert.IsTrue(items.Select(i => i.Level).SequenceEqual(items.Select(i => i.Level).OrderBy(l => l)));
-            Assert.IsTrue(items.Any(i => i.Kind == PowerupKind.TripleMove));
+            Assert.IsTrue(items.Any(i => i.Type == UnlockType.Teleporters));
             Assert.AreEqual(0, Unlocks.Between(10, 99).Count);
-        }
-
-        [Test]
-        public void Every_powerup_unlock_is_listed_exactly_once_across_levels()
-        {
-            var all = Unlocks.Between(0, Progression.MaxLevel);
-            foreach (var w in GameConfig.DefaultPool())
-            {
-                var k = w.Kind;
-                bool basicTransform = k == PowerupKind.TransformPawn || k == PowerupKind.TransformKnight || k == PowerupKind.TransformBishop || k == PowerupKind.TransformRook;
-                int n = all.Count(i => i.Type == UnlockType.Powerup && i.Kind == k);
-                Assert.AreEqual(basicTransform ? 0 : 1, n, k.ToString());
-            }
         }
 
         [Test]
         public void Next_unlock_level_skips_empty_levels_and_ends_at_zero()
         {
-            Assert.AreEqual(2, Unlocks.NextUnlockLevel(1));
+            Assert.AreEqual(3, Unlocks.NextUnlockLevel(1));
             Assert.AreEqual(0, Unlocks.NextUnlockLevel(Progression.MaxLevel));
             for (int l = 1; l < Progression.MaxLevel; l++)
             {

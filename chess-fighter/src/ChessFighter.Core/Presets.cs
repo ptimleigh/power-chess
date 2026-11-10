@@ -40,11 +40,11 @@ namespace ChessFighter.Core
         {
             new RulePreset { Id = "chaos", Name = "Chaos Mode", Blurb = "A new square every turn. Everything, everywhere.", UnlockLevel = 5, Freq = Frequency.Chaos },
             new RulePreset { Id = "calm", Name = "Calm Mode", Blurb = "Few squares. Every pickup matters.", UnlockLevel = 5, Freq = Frequency.Rare },
-            new RulePreset { Id = "bigbombs", Name = "Oops! All Big Bombs", Blurb = "Every square is a Big Bomb. Tread carefully.", UnlockLevel = 6, Pool = () => Only(PowerupKind.BigBomb) },
+            new RulePreset { Id = "bigbombs", Name = "Oops! All Bombs", Blurb = "Every square is a Bomb. Tread carefully.", UnlockLevel = 6, Pool = () => Only(PowerupKind.SmallBomb) },
             new RulePreset { Id = "ghosttown", Name = "Ghost Town", Blurb = "Ghosts and teleporters only.", UnlockLevel = 7, Pool = () => Only(PowerupKind.Ghost), Portal = 0.45 },
-            new RulePreset { Id = "fireworks", Name = "Fireworks", Blurb = "Fireball, Steal and Stun. Pure attack.", UnlockLevel = 8, Pool = () => Only(PowerupKind.Fireball, PowerupKind.Steal, PowerupKind.Stun) },
-            new RulePreset { Id = "royal", Name = "Royal Court", Blurb = "Armor, Ghost, Triple Move and bombs: gifts a king can use.", UnlockLevel = 9,
-                Pool = () => Only(PowerupKind.SpikedArmor, PowerupKind.Ghost, PowerupKind.TripleMove, PowerupKind.SmallBomb, PowerupKind.BigBomb) },
+            new RulePreset { Id = "fireworks", Name = "Fireworks", Blurb = "Fireball, Harpoon and Stun Bolt. Pure attack.", UnlockLevel = 8, Pool = () => Only(PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.StunBolt) },
+            new RulePreset { Id = "royal", Name = "Royal Court", Blurb = "Armor, Ghost, Combos and bombs: gifts a king can use.", UnlockLevel = 9,
+                Pool = () => Only(PowerupKind.SpikedArmor, PowerupKind.Ghost, PowerupKind.Combo2, PowerupKind.SmallBomb) },
         };
 
         public static RulePreset Find(string id)
@@ -79,7 +79,7 @@ namespace ChessFighter.Core
         public static List<PowerupKind> CustomKinds()
         {
             var l = new List<PowerupKind>();
-            foreach (var w in GameConfig.DefaultPool()) l.Add(w.Kind);
+            foreach (var w in GameConfig.FighterPool()) l.Add(w.Kind);
             return l;
         }
 
@@ -106,7 +106,7 @@ namespace ChessFighter.Core
         public static List<WeightedKind> CustomPool(string custom)
         {
             var pool = new List<WeightedKind>();
-            var defaults = GameConfig.DefaultPool();
+            var defaults = GameConfig.FighterPool();
             for (int i = 0; i < defaults.Count; i++)
             {
                 int v = CustomLevelOf(custom, i);
@@ -154,7 +154,7 @@ namespace ChessFighter.Core
             else if (id == Custom)
             {
                 var pool = CustomPool(custom);
-                cfg.Pool = pool.Count > 0 ? pool : GameConfig.DefaultPool();
+                cfg.Pool = pool.Count > 0 ? pool : GameConfig.FighterPool();
             }
         }
 

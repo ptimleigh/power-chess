@@ -422,7 +422,7 @@ html, body {
    Tier I burns blue; tier II burns golden and bigger (think super-saiyan).
    ===================================================================== */
 .piece-body { position: relative; z-index: 1; }
-.aura { position: absolute; inset: -22% -24% 4% -24%; z-index: 0; pointer-events: none; }
+.aura { position: absolute; inset: 0% 8% 4% 8%; z-index: 0; pointer-events: none; }
 .aura i {
     position: absolute;
     bottom: 0;
@@ -462,8 +462,8 @@ html, body {
 .aura.fb1 { --core: #eaffff; --glow: #3df2ff99; --ember: #bff6ff; }
 .aura.fb1 i { background: linear-gradient(180deg, #8fe8ff 0, #3df2ff 34%, #2d6bff 72%, #1a3fb5 100%); }
 .aura.fb1 { filter: drop-shadow(0 0 2px #2d6bff); }
-.aura.fb2 { --core: #fffbd0; --glow: #ffb400aa; --ember: #ffe27a; filter: drop-shadow(0 0 2px #ff6a1f) drop-shadow(0 0 7px #ff9f1ccc); inset: -30% -30% 4% -30%; }
-.aura.fb2 i { background: linear-gradient(180deg, #ffe23a 0, #ffa400 40%, #ff5a1f 76%, #c4141c 100%); }
+.aura.fb2 { --core: #fffbd0; --glow: #ffb400aa; --ember: #fff2a0; filter: drop-shadow(0 0 2px #ffb400) drop-shadow(0 0 5px #ffd23fcc); inset: -2% 4% 4% 4%; }
+.aura.fb2 i { background: linear-gradient(180deg, #fff6a8 0, #ffe23a 36%, #ffc400 72%, #f09a14 100%); }
 .aura.fb2 i:nth-child(3) { display: block; }
 .aura.fb2 i:nth-child(1) { height: 62%; } .aura.fb2 i:nth-child(2) { height: 82%; } .aura.fb2 i:nth-child(3) { height: 100%; }
 .aura.fb2 i:nth-child(4) { height: 82%; } .aura.fb2 i:nth-child(5) { height: 62%; }

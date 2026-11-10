@@ -1,0 +1,15 @@
+{
+  "name": "chess-fighter-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor shell that wraps the Chess Fighter web build as an Android app.",
+  "dependencies": {
+    "@capacitor-community/admob": "6.2.0",
+    "@capacitor/android": "6.2.1",
+    "@capacitor/app": "6.0.2",
+    "@capacitor/cli": "6.2.1",
+    "@capacitor/core": "6.2.1",
+    "@capacitor/filesystem": "6.0.2",
+    "@capacitor/share": "6.0.3"
+  }
+}

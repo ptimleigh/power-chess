@@ -796,7 +796,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     <div class="modal" @onclick="CloseHelp">
         <div class="card help" @onclick:stopPropagation="true">
             <div class="kicker">How to play</div>
-            <p>Normal chess with checkmate. Gold <b>?</b> squares appear in matching pairs. Land a piece on one to open it. Tap any powered-up piece to see what it has. The Moves button lets you look back at the game without changing it.</p>
+            <p>Normal chess with checkmate. Power squares appear in matching pairs: land a piece on one to collect it. Some powers wait on the piece until you use them, some work at once, and Draw Card squares add a card to your bag. Tap any powered-up piece to see what it has. The Moves button lets you look back at the game without changing it.</p>
             <ul class="guide">
                 @foreach (var k in Names.Guide)
                 {
@@ -806,7 +806,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     </li>
                 }
             </ul>
-            <p class="fine">Kings are immune to every powerup. Perks, bombs and stun strikes use your turn.</p>
+            <p class="fine">Kings can use most powers, but not Poison or Bombs. Using a banked power (Fireball, Harpoon, Bomb) or playing a card costs your turn.</p>
             <div class="row help-row">
                 <button class="btn" data-action="training" @onclick="StartTraining">Learn the basics</button>
                 <button class="btn" data-action="reset-tutorials" @onclick="ResetTutorials">Reset tutorials</button>
@@ -816,6 +816,13 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 <button class="btn" data-action="feedback" @onclick="SendFeedback">Send feedback</button>
             </div>
             @if (shareMsg != "") { <div class="clip-msg" data-testid="share-msg">@shareMsg</div> }
+            <div class="row help-row">
+                <a class="btn" data-action="privacy" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
+                @if (adsAvailable)
+                {
+                    <button class="btn" data-action="ad-choices" @onclick="AdChoices">Ad choices</button>
+                }
+            </div>
             <p class="fine" data-testid="build-label">Build @ChessFighter.Web.Game.BuildInfo.Label</p>
             <button class="btn primary" @onclick="() => showHelp = false">Got it</button>
         </div>
@@ -1154,6 +1161,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     // ---------- tester sharing ----------
 
     string shareMsg = "";
+
+    async Task AdChoices() { try { await JS.InvokeVoidAsync("pcads.privacyOptions"); } catch { } }
 
     void CloseHelp() { showHelp = false; shareMsg = ""; }
 

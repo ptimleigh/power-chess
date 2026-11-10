@@ -1,0 +1,9 @@
+{
+  "appId": "app.chessfighter.game",
+  "appName": "Chess Fighter",
+  "webDir": "www",
+  "backgroundColor": "#07061a",
+  "android": {
+    "allowMixedContent": false
+  }
+}

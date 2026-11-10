@@ -548,6 +548,30 @@ window.pcclip = (function () {
             ctx.drawImage(img, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
         }
 
+        // The game's own icons: each SVG becomes an image (cream, plus a black copy for the outline) once, and is painted onto the canvas.
+        const iconImgs = {};
+        function loadIcons() {
+            const jobs = [];
+            for (const k of Object.keys(data.icons || {})) {
+                for (const [tag, color] of [['f', '#fff1b8'], ['k', '#000000']]) {
+                    const svg = data.icons[k].replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" ').replace(/currentColor/g, color);
+                    const img = new Image();
+                    jobs.push(new Promise(res => { img.onload = img.onerror = res; }));
+                    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+                    iconImgs[k + tag] = img;
+                }
+            }
+            return Promise.all(jobs);
+        }
+        function drawIcon(kind, cx, cy, size) {
+            const f = iconImgs[kind + 'f'], k = iconImgs[kind + 'k'];
+            if (!f || !f.complete || !f.naturalWidth) return false;
+            ctx.imageSmoothingEnabled = false;
+            for (const [dx, dy] of [[3, 3], [-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(k, cx - size / 2 + dx, cy - size / 2 + dy, size, size);
+            ctx.drawImage(f, cx - size / 2, cy - size / 2, size, size);
+            return true;
+        }
+
         const patCache = {};
         function hatch(a, b) {
             const key = a + b;
@@ -634,8 +658,11 @@ window.pcclip = (function () {
                 ctx.fillRect(p.x, p.y, SQ, SQ);
                 ctx.lineWidth = 5; ctx.strokeStyle = '#000'; ctx.strokeRect(p.x + 3, p.y + 3, SQ - 6, SQ - 6);
                 ctx.lineWidth = 3; ctx.strokeStyle = blink ? '#fff' : '#ffe9a8'; ctx.strokeRect(p.x + 3, p.y + 3, SQ - 6, SQ - 6);
-                const label = content ? ((data.glyphs && data.glyphs[content]) || names[content] || '') : '?';
-                ptext(label, p.x + SQ / 2, p.y + SQ / 2, label.length > 4 ? 12 : label.length > 2 ? 15 : content ? 24 : 38, '#fff');
+                // an icon as on the game board; the hidden "?" and the +2 / +4 combos stay big pixel text
+                if (!(content && data.icons && data.icons[content] && drawIcon(content, p.x + SQ / 2, p.y + SQ / 2, SQ * .56))) {
+                    const label = content ? ((data.glyphs && data.glyphs[content]) || names[content] || '') : '?';
+                    ptext(label, p.x + SQ / 2, p.y + SQ / 2, label.length > 4 ? 12 : label.length > 2 ? 15 : content ? 24 : 38, '#fff');
+                }
             }
             for (const sq of deco.g) {
                 const p = sqXY(sq);
@@ -1050,7 +1077,7 @@ window.pcclip = (function () {
         const api = {
             canvas, snd,
             play() {
-                return new Promise(res => { resolveDone = res; startIntro(); raf = requestAnimationFrame(frame); });
+                return loadIcons().then(() => new Promise(res => { if (stopped) { res(false); return; } resolveDone = res; startIntro(); raf = requestAnimationFrame(frame); }));
             },
             stop() { stopped = true; cancelAnimationFrame(raf); snd.close(); if (resolveDone) resolveDone(false); },
         };

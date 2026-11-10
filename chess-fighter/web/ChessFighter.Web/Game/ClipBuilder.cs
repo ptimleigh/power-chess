@@ -55,6 +55,9 @@ public static class ClipBuilder
             v = 2,
             powerups = Enum.GetValues<PowerupKind>().ToDictionary(k => (int)k, k => Names.Name(k)),
             glyphs = Enum.GetValues<PowerupKind>().ToDictionary(k => (int)k, k => Glyph(k)),
+            // the same icons the game board draws, as SVG; the replay paints them onto its canvas (? and +2/+4 stay text)
+            icons = Enum.GetValues<PowerupKind>().Where(k => k != PowerupKind.None && k != PowerupKind.Combo2 && k != PowerupKind.Combo4)
+                .ToDictionary(k => (int)k, k => Icons.Svg(Names.Icon(k)).Value),
             cards = Enum.GetValues<CardKind>().Where(k => k != CardKind.None).ToDictionary(k => (int)k, k => Names.CardName(k)),
             sprites = new[] { PieceType.Pawn, PieceType.Knight, PieceType.Bishop, PieceType.Rook, PieceType.Queen, PieceType.King }
                 .ToDictionary(t => (int)t, t => Sprites.Rows(t)),

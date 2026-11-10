@@ -654,17 +654,18 @@ namespace ChessFighter.Core
         public static PowerupKind Draw(GameState s, Piece p, int sq)
         {
             var pool = s.Config.Pool;
+            double f = LateRamp.Factor(s, p.Side);
             int total = 0;
             for (int i = 0; i < pool.Count; i++)
             {
-                if (Eligible(s, p, sq, pool[i].Kind)) total += pool[i].Weight;
+                if (Eligible(s, p, sq, pool[i].Kind)) total += LateRamp.Weigh(pool[i].Weight, LateRamp.RarePower(pool[i].Kind), f);
             }
             if (total <= 0) return PowerupKind.None;
             int roll = s.Rng.Range(total);
             for (int i = 0; i < pool.Count; i++)
             {
                 if (!Eligible(s, p, sq, pool[i].Kind)) continue;
-                roll -= pool[i].Weight;
+                roll -= LateRamp.Weigh(pool[i].Weight, LateRamp.RarePower(pool[i].Kind), f);
                 if (roll < 0) return pool[i].Kind;
             }
             return PowerupKind.None;
@@ -910,12 +911,13 @@ namespace ChessFighter.Core
             var pool = s.Config.Pool;
             bool rewind = s.Config.RewindAllowed[0] || s.Config.RewindAllowed[1];
             bool swap = s.Config.SwapAllowed[0] || s.Config.SwapAllowed[1];
+            double f = LateRamp.Factor(s, null);
             int total = 0;
             for (int i = 0; i < pool.Count; i++)
             {
                 if (pool[i].Kind == PowerupKind.Rewind && !rewind) continue;
                 if (pool[i].Kind == PowerupKind.Swap && !swap) continue;
-                total += pool[i].Weight;
+                total += LateRamp.Weigh(pool[i].Weight, LateRamp.RarePower(pool[i].Kind), f);
             }
             if (total <= 0) return PowerupKind.None;
             int roll = s.Rng.Range(total);
@@ -923,7 +925,7 @@ namespace ChessFighter.Core
             {
                 if (pool[i].Kind == PowerupKind.Rewind && !rewind) continue;
                 if (pool[i].Kind == PowerupKind.Swap && !swap) continue;
-                roll -= pool[i].Weight;
+                roll -= LateRamp.Weigh(pool[i].Weight, LateRamp.RarePower(pool[i].Kind), f);
                 if (roll < 0) return pool[i].Kind;
             }
             return PowerupKind.None;

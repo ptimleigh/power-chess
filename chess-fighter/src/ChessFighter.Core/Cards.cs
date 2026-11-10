@@ -123,13 +123,14 @@ namespace ChessFighter.Core
 
         public static CardKind Draw(GameState s, Side drawer)
         {
+            double f = LateRamp.Factor(s, drawer);
             int total = 0;
-            for (int k = First; k <= Last; k++) total += Weight(s, drawer, (CardKind)k);
+            for (int k = First; k <= Last; k++) total += LateRamp.Weigh(Weight(s, drawer, (CardKind)k), LateRamp.RareCard((CardKind)k), f);
             if (total <= 0) return CardKind.None;
             int roll = s.Rng.Range(total);
             for (int k = First; k <= Last; k++)
             {
-                roll -= Weight(s, drawer, (CardKind)k);
+                roll -= LateRamp.Weigh(Weight(s, drawer, (CardKind)k), LateRamp.RareCard((CardKind)k), f);
                 if (roll < 0) return (CardKind)k;
             }
             return CardKind.None;

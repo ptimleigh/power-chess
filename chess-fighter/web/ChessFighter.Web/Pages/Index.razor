@@ -1161,7 +1161,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (!restored)
         {
             bool firstEver = played == null && !tut.Off && opt.Tutorials;
-            opt.Training = firstEver; // someone's very first game starts on the small training board
+            opt.Training = firstEver; // someone's very first game is a guided one on the full board
             if (firstEver || haveSettings) StartNew(persist: false);
             opt.Training = false;
         }

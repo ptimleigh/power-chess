@@ -257,7 +257,6 @@ public sealed class GameSession
 
     // ---------- powerup tutorials ----------
 
-    public const string TrainingFen = "r3k3/pppp4/8/8/8/8/4PPPP/4K2R w - - 0 1";
 
     public TutorialState Tut { get; }
     /// <summary>The powerup whose tutorial sheet is open, if any.</summary>
@@ -379,10 +378,10 @@ public sealed class GameSession
     {
         Puzzle = null;
         PuzzleOutcome = PuzzleResult.None;
-        string? fen = opt.Training ? TrainingFen : opt.Fen;
+        string? fen = opt.Fen; // the training game is the normal full board with two flame squares in the middle
         if (opt.Training)
         {
-            // A small first game: a rook and pawns each, and two mystery squares in the middle holding friendly powerups.
+            // A first game on the full board against the Easy opponent: no random squares, just two Fireball squares in the middle.
             cfg.InitialPairs = 0;
             cfg.PortalChance = 0;
             cfg.Pool = new[] { PowerupKind.Fireball, PowerupKind.SpikedArmor, PowerupKind.Poison, PowerupKind.StealGrab, PowerupKind.SmallBomb }
@@ -445,7 +444,7 @@ public sealed class GameSession
     public string CoachText => CoachStep switch
     {
         1 => "Welcome! Tap one of your blue pieces, then tap a square to move it. Checkmate the red king to win.",
-        2 => "The gold squares are power squares. Land a piece on one to collect it. Try the flame squares!",
+        2 => "The gold squares are power squares: land a piece on one to collect it. Your d-pawn can reach the flame square on d4 in one move!",
         3 => "That piece now holds a Fireball. Tap it, press the Fireball button, then tap a red piece to blast it.",
         4 => "Nice shot! Capture pieces and checkmate the king to win. Tap ? any time for help.",
         _ => "",
@@ -502,7 +501,7 @@ public sealed class GameSession
         if (opt.Puzzle != null) SetupPuzzle();
         else SetupNormal(cfg);
 
-        ResetTracker(!opt.Training && (opt.Fen == null || opt.Rewards));
+        ResetTracker(opt.Fen == null || opt.Rewards);
         Pieces.Clear();
         Effects.Clear();
         Toasts.Clear();

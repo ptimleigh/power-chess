@@ -4,7 +4,7 @@ using ChessFighter.Core;
 
 // Plays computer-vs-computer Chess Fighter games and reports what the powers and cards do.
 // Usage: dotnet run -c Release --project tools/BalanceSim -- [games=200] [aiLevel=2] [unlockLevel=20] [maxPly=300] [seed=1]
-int games = Arg(0, 200), aiLevel = Arg(1, 2), unlock = Arg(2, 20), maxPly = Arg(3, 300), seed0 = Arg(4, 1), ramp = Arg(5, 1), rampStart = Arg(6, 30), rampFull = Arg(7, 100);
+int games = Arg(0, 200), aiLevel = Arg(1, 2), unlock = Arg(2, 20), maxPly = Arg(3, 300), seed0 = Arg(4, 1), ramp = Arg(5, 1), rampStart = Arg(6, 30), rampFull = Arg(7, 100), aiLevelB = Arg(8, 0);
 LateRamp.StartPly = rampStart; LateRamp.FullPly = rampFull;
 static int Arg(int i, int d) { var a = Environment.GetCommandLineArgs(); return a.Length > i + 1 && int.TryParse(a[i + 1], out var v) ? v : d; }
 
@@ -13,7 +13,7 @@ int done = 0;
 var sw = System.Diagnostics.Stopwatch.StartNew();
 Parallel.For(0, games, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, i =>
 {
-    results.Add(PlayOne((ulong)(seed0 + i), aiLevel, unlock, maxPly, ramp != 0));
+    results.Add(PlayOne((ulong)(seed0 + i), aiLevel, aiLevelB == 0 ? aiLevel : aiLevelB, unlock, maxPly, ramp != 0));
     int n = Interlocked.Increment(ref done);
     if (n % 20 == 0) Console.Error.WriteLine($"  {n}/{games} games, {sw.Elapsed.TotalSeconds:0}s");
 });
@@ -101,11 +101,11 @@ Console.Error.WriteLine("Report written to " + path);
 static string Pct(int a, int b) => b == 0 ? "-" : (100.0 * a / b).ToString("0") + "%";
 static int Median(IEnumerable<int> v) { var l = v.OrderBy(x => x).ToList(); return l.Count == 0 ? 0 : l[l.Count / 2]; }
 
-static Game PlayOne(ulong seed, int aiLevel, int unlock, int maxPly, bool ramp)
+static Game PlayOne(ulong seed, int aiLevel, int aiLevelB, int unlock, int maxPly, bool ramp)
 {
     var cfg = new GameConfig { Pool = FighterUnlocks.PoolFor(unlock), UnlockLevel = unlock, Squares = SquareMode.Revealed, PortalChance = unlock >= FighterUnlocks.TeleporterLevel ? 0.12 : 0, MaxPly = maxPly, LateRamp = ramp };
     var s = GameState.NewGame(cfg, seed);
-    var ais = new[] { Ai.ForLevel(aiLevel), Ai.ForLevel(aiLevel) };
+    var ais = new[] { Ai.ForLevel(aiLevel), Ai.ForLevel(aiLevelB) }; // White plays at aiLevel, Black at aiLevelB
     var g = new Game();
     var ev = new List<GameEvent>();
     int guard = 0;

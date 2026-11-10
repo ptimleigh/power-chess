@@ -217,7 +217,8 @@ public static class Tutorials
                 .Place("d2", PieceType.Pawn, W).Place("d4", PieceType.King, B).Place("e5", PieceType.Pawn, B)
                 .Say("A bomb piece can detonate instead of moving"),
         }
-        .Then(1200, c => c.Fx("ring", "c3", radius: 1, css: "boom").Fx("flash", "c3", radius: 1, css: "boom")
+        .Then(1200, c => c.Aim("d4").Say("A king inside the blast is in check"))
+        .Then(1200, c => c.Aim().Fx("ring", "c3", radius: 1, css: "boom").Fx("flash", "c3", radius: 1, css: "boom")
             .Kill("b4").Kill("c4").Kill("d2").Strip("c3", Buff.SmallBomb)
             .Say("Everything around it is destroyed, even your own pieces. Kings survive")),
 
@@ -227,7 +228,8 @@ public static class Tutorials
                 .Place("e3", PieceType.Pawn, W).Place("b4", PieceType.King, B).Place("f6", PieceType.Pawn, B)
                 .Say("A Big Bomb reaches two squares out"),
         }
-        .Then(1200, c => c.Fx("ring", "c3", radius: 2, css: "boom").Fx("flash", "c3", radius: 2, css: "boom")
+        .Then(1200, c => c.Aim("b4").Say("A king inside the blast is in check"))
+        .Then(1200, c => c.Aim().Fx("ring", "c3", radius: 2, css: "boom").Fx("flash", "c3", radius: 2, css: "boom")
             .Kill("a5").Kill("e1").Kill("e3").Strip("c3", Buff.BigBomb)
             .Say("Kings survive. Pieces outside the blast are safe")),
 

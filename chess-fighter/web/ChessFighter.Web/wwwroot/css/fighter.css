@@ -674,3 +674,6 @@ html, body {
 .more-toggle { justify-self: center; margin-top: 10px; }
 .opt-summary { font-size: 11px; color: var(--dim); text-align: center; margin: 6px 0 4px; }
 .more-options { display: grid; gap: 4px; }
+
+/* The full-colour piece art is tall and narrow: let it stand a little taller in its square */
+.piece-svg.art { transform: scale(1.04); transform-origin: 50% 100%; }

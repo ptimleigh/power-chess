@@ -1,6 +1,13 @@
-@* Pixel-art chess pieces: 32x32 shaded sprites drawn as crisp SVG rects (see Game/Sprites.cs). Colours come from fighter.css. *@
+@* Pixel-art chess pieces drawn as crisp SVG rects. The full-colour art (Game/Sprites.Art.cs) is used when present; the old shared-palette 32x32 sprites are the fallback (Game/Sprites.cs). *@
 @using ChessFighter.Web.Game
-<svg viewBox="0 0 32 32" class="piece-svg @(Side == Side.White ? "w" : "b")" shape-rendering="crispEdges" aria-hidden="true">@((MarkupString)Sprites.Body(Type))</svg>
+@if (Sprites.HasArt)
+{
+    <svg viewBox="0 0 @Sprites.ArtW @Sprites.ArtH" class="piece-svg art @(Side == Side.White ? "w" : "b")" shape-rendering="crispEdges" preserveAspectRatio="xMidYMax meet" aria-hidden="true">@((MarkupString)Sprites.ArtBody(Type, Side))</svg>
+}
+else
+{
+    <svg viewBox="0 0 32 32" class="piece-svg @(Side == Side.White ? "w" : "b")" shape-rendering="crispEdges" aria-hidden="true">@((MarkupString)Sprites.Body(Type))</svg>
+}
 
 @code {
     [Parameter] public PieceType Type { get; set; }

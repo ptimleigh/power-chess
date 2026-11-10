@@ -66,4 +66,67 @@ public static partial class Sprites
             return markup[t] = sb.ToString();
         }
     }
+
+    // ---------------------------------------------------------------- full-colour art (Sprites.Art.cs)
+
+    /// <summary>A ready-coloured piece: rows of palette characters ('.' is empty) and the palette as "c=#rrggbb;...".</summary>
+    public sealed class ArtSprite
+    {
+        public string[] Rows { get; }
+        public string Legend { get; }
+        public Dictionary<char, string> Palette { get; }
+
+        public ArtSprite(string[] rows, string legend)
+        {
+            Rows = rows;
+            Legend = legend;
+            Palette = legend.Split(';').ToDictionary(x => x[0], x => x.Substring(2));
+        }
+    }
+
+    /// <summary>Use the full-colour piece art (ivory against black) instead of the shared-palette 32x32 sprites, which stay as a fallback.</summary>
+    public static bool HasArt => true;
+
+    static readonly Dictionary<(PieceType, Side), ArtSprite> art = BuildArt();
+    static readonly Dictionary<(PieceType, Side), string> artMarkup = new();
+
+    static Dictionary<(PieceType, Side), ArtSprite> BuildArt()
+    {
+        var d = new Dictionary<(PieceType, Side), ArtSprite>();
+        LoadArt(d);
+        return d;
+    }
+
+    /// <summary>The art sprite's rects as one cached SVG fragment, filled with its own colours.</summary>
+    public static string ArtBody(PieceType t, Side side)
+    {
+        lock (artMarkup)
+        {
+            if (artMarkup.TryGetValue((t, side), out var s)) return s;
+            if (!art.TryGetValue((t, side), out var sprite)) return artMarkup[(t, side)] = "";
+            var sb = new StringBuilder();
+            for (int r = 0; r < sprite.Rows.Length; r++)
+            {
+                var row = sprite.Rows[r];
+                int x = 0;
+                while (x < row.Length)
+                {
+                    char c = row[x];
+                    if (c == '.') { x++; continue; }
+                    int start = x;
+                    while (x < row.Length && row[x] == c) x++;
+                    sb.Append("<rect x=\"").Append(start).Append("\" y=\"").Append(r).Append("\" width=\"").Append(x - start)
+                      .Append("\" height=\"1\" fill=\"").Append(sprite.Palette[c]).Append("\"/>");
+                }
+            }
+            return artMarkup[(t, side)] = sb.ToString();
+        }
+    }
+
+    /// <summary>For the replay clip: {"w":{"1":{rows,pal},...},"b":{...}} keyed by side then piece type.</summary>
+    public static object ArtForClip() => new[] { Side.White, Side.Black }.ToDictionary(
+        s => s == Side.White ? "w" : "b",
+        s => new[] { PieceType.Pawn, PieceType.Knight, PieceType.Bishop, PieceType.Rook, PieceType.Queen, PieceType.King }
+            .Where(pt => art.ContainsKey((pt, s)))
+            .ToDictionary(pt => ((int)pt).ToString(), pt => (object)new { rows = art[(pt, s)].Rows, pal = art[(pt, s)].Palette.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value) }));
 }

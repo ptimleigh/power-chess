@@ -58,6 +58,7 @@ public static class ClipBuilder
             cards = Enum.GetValues<CardKind>().Where(k => k != CardKind.None).ToDictionary(k => (int)k, k => Names.CardName(k)),
             sprites = new[] { PieceType.Pawn, PieceType.Knight, PieceType.Bishop, PieceType.Rook, PieceType.Queen, PieceType.King }
                 .ToDictionary(t => (int)t, t => Sprites.Rows(t)),
+            art = Sprites.HasArt ? Sprites.ArtForClip() : null,
             title,
             plies,
             vsAi,

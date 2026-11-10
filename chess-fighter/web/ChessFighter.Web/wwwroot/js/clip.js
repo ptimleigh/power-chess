@@ -510,6 +510,20 @@ window.pcclip = (function () {
         function sprite(type, side, tint) {
             const key = type + ':' + side + ':' + (tint || '');
             if (spriteCache[key]) return spriteCache[key];
+            const art = data.art && data.art[side === 0 ? 'w' : 'b'] && data.art[side === 0 ? 'w' : 'b'][type];
+            if (art) {
+                // full-colour art: its own palette, and a tall canvas (the piece is taller than wide)
+                const h = art.rows.length, w = art.rows[0].length;
+                const c = document.createElement('canvas'); c.width = w; c.height = h;
+                const g = c.getContext('2d');
+                for (let r = 0; r < h; r++) for (let x = 0; x < w; x++) {
+                    const ch = art.rows[r][x];
+                    if (ch === '.') continue;
+                    g.fillStyle = art.pal[ch] || '#ff00ff'; g.fillRect(x, r, 1, 1);
+                }
+                if (tint) { g.globalCompositeOperation = 'source-atop'; g.globalAlpha = .55; g.fillStyle = tint; g.fillRect(0, 0, w, h); }
+                return spriteCache[key] = c;
+            }
             const c = document.createElement('canvas'); c.width = 32; c.height = 32;
             const g = c.getContext('2d');
             const rows = (data.sprites && data.sprites[type]) || [];
@@ -526,6 +540,12 @@ window.pcclip = (function () {
             if (tint) { g.globalCompositeOperation = 'source-atop'; g.globalAlpha = .55; g.fillStyle = tint; g.fillRect(0, 0, 32, 32); }
             spriteCache[key] = c;
             return c;
+        }
+
+        // Draws a sprite centred on (cx, cy), `h` pixels tall; a tall art piece keeps its proportions.
+        function drawSprite(img, cx, cy, h) {
+            const w = h * img.width / img.height;
+            ctx.drawImage(img, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
         }
 
         const patCache = {};
@@ -683,7 +703,12 @@ window.pcclip = (function () {
             if (p.s > .5) drawAura(p, x, y);
             ctx.globalAlpha = Math.max(0, Math.min(1, p.a)) * (ghost ? .7 : 1);
             ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(x - size * .3, y + size * .38, size * .6, 6);
-            ctx.drawImage(sprite(p.type, p.side, tint), x - size / 2, y - size / 2 + bob, size, size);
+            {
+                // tall art pieces stand a little taller than their square, feet on the same line
+                const sp = sprite(p.type, p.side, tint);
+                const th = sp.height > sp.width * 1.3 ? size * 1.08 : size;
+                drawSprite(sp, x, y + bob - (th - size) / 2, th);
+            }
             ctx.restore();
 
             // markers on top: tiers, bomb fuse, orbiting hooks, armor ring, stun
@@ -714,7 +739,7 @@ window.pcclip = (function () {
                 for (let i = 0; i < n; i++) {
                     const a = real / 700 + i * Math.PI / 2;
                     const hx = x + Math.cos(a) * SQ * .5, hy = y + Math.sin(a) * SQ * .5;
-                    ctx.drawImage(sprite(3, p.side, null), Math.round(hx - 12), Math.round(hy - 12), 24, 24);
+                    drawSprite(sprite(3, p.side, null), hx, hy, 24);
                 }
             }
             if (p.buffs & 4) {
@@ -806,7 +831,7 @@ window.pcclip = (function () {
                     const q = Math.min(1, k * 1.8);
                     const tip = { x: f.from.x + (f.to.x - f.from.x) * q, y: f.from.y + (f.to.y - f.from.y) * q };
                     stripeLine(f.from, tip, 8, ['#d9a35a', '#6b3d12'], 10, 0);
-                    ctx.drawImage(sprite(3, 0, null), Math.round(tip.x - 20), Math.round(tip.y - 20), 40, 40);
+                    drawSprite(sprite(3, 0, null), tip.x, tip.y, 40);
                     break;
                 }
                 case 'fireball': {

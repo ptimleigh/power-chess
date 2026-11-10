@@ -1379,7 +1379,11 @@ public sealed class GameSession
 
     async Task Human(GameAction a)
     {
+        // A piece about to land on a powerup square: remember what it holds, so the demo opens the first time it is found.
+        var landed = PowerupKind.None;
+        if (a.Kind == ActionKind.Move && a.To >= 0 && a.To < 64 && State.Mystery[a.To]) landed = (PowerupKind)State.Content[a.To];
         await Play(a);
+        if (landed != PowerupKind.None && !GameOver) MaybeTutorial(landed);
         await AiLoop();
     }
 

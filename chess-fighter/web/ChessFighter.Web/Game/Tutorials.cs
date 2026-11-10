@@ -239,12 +239,11 @@ public static class Tutorials
         .Then(1000, c => c.Aim("a3"))
         .Then(700, c => c.Aim().Fx("fireball", "a1", "a3", css: "fire", durMs: 450).Strip("a1", Buff.Fireball).Say("It destroys the first enemy in line"))
         .Then(450, c => c.Fx("burst", "a3", css: "fire").Fx("flash", "a3", radius: 0, css: "boom").Kill("a3", burning: true))
-        .Then(2200, c => c.Clear().Place("d1", PieceType.Queen, W, Buff.Fireball).Place("d2", PieceType.Pawn, W)
-            .Place("d3", PieceType.Pawn, B).Place("d5", PieceType.Knight, B).Say("A Queen's fireball burns the whole line"))
-        .Then(900, c => c.Aim("d3"))
-        .Then(700, c => c.Aim().Fx("fireball", "d1", "d5", css: "fire", durMs: 600).Strip("d1", Buff.Fireball))
-        .Then(300, c => c.Fx("burst", "d3", css: "fire").Kill("d3", burning: true))
-        .Then(300, c => c.Fx("burst", "d5", css: "fire").Kill("d5", burning: true)),
+        .Then(2200, c => c.Clear().Place("c1", PieceType.Bishop, W, Buff.Fireball).Place("e3", PieceType.Pawn, B).Place("f4", PieceType.Knight, B)
+            .Say("Fireball II also fires diagonally"))
+        .Then(900, c => c.Aim("e3"))
+        .Then(700, c => c.Aim().Fx("fireball", "c1", "e3", css: "fire", durMs: 500).Strip("c1", Buff.Fireball).Say("It stops at the first piece it hits"))
+        .Then(500, c => c.Fx("burst", "e3", css: "fire").Kill("e3", burning: true)),
 
         [PowerupKind.Steal] = new DemoScript
         {
@@ -286,5 +285,69 @@ public static class Tutorials
         }
         .Then(1000, c => c.Fx("ring", "b2", css: "gold").Fx("ping", "b2", css: "gold"))
         .Then(300, c => c.Become("b2", PieceType.Queen).Say("It becomes another piece on the spot")),
+        [PowerupKind.Harpoon] = new DemoScript
+        {
+            Setup = c => c.Place("b1", PieceType.Bishop, W, Buff.Harpoon).Place("e4", PieceType.Rook, B).Say("Harpoon I hooks along one diagonal"),
+        }
+        .Then(1000, c => c.Aim("e4"))
+        .Then(700, c => c.Aim().Fx("beam", "b1", "e4", css: "rope").Say("It hooks the first rival in line..."))
+        .Then(800, c => c.Move("e4", "c2").Strip("b1", Buff.Harpoon).Say("...and drags it next to the shooter"))
+        .Then(2000, c => c.Clear().Place("c3", PieceType.Bishop, W, Buff.Harpoon).Place("a5", PieceType.Pawn, B).Place("e5", PieceType.Knight, B)
+            .Place("e1", PieceType.Rook, B).Place("a1", PieceType.Pawn, B).Say("Harpoon II hooks all four diagonals at once"))
+        .Then(900, c => c.Fx("beam", "c3", "a5", css: "rope").Fx("beam", "c3", "e5", css: "rope").Fx("beam", "c3", "e1", css: "rope").Fx("beam", "c3", "a1", css: "rope"))
+        .Then(800, c => c.Move("a5", "b4").Move("e5", "d4").Move("e1", "d2").Move("a1", "b2").Strip("c3", Buff.Harpoon).Say("Using it costs your turn. One use")),
+
+        [PowerupKind.StunBolt] = new DemoScript
+        {
+            Setup = c => c.Place("c1", PieceType.Rook, W).Place("f3", PieceType.Bishop, B).Mystery("c3", true).Say("A Stun Bolt square works the moment you land"),
+        }
+        .Then(1100, c => c.Aim("c3"))
+        .Then(800, c => c.Aim().Mystery("c3", false).Move("c1", "c3").Fx("ring", "c3", css: "gold").Say("Fire a bolt in any direction..."))
+        .Then(900, c => c.Aim("f3"))
+        .Then(800, c => c.Aim().Fx("beam", "c3", "f3", css: "zap").Fx("stars", "f3", css: "stun").Stun("f3", 2).Say("...it freezes the first enemy in line for 2 turns"))
+        .Then(1300, c => c.Say("Even a king. Armored pieces are immune")),
+
+        [PowerupKind.StealGrab] = new DemoScript
+        {
+            Setup = c => c.Place("b1", PieceType.Knight, W).Place("d4", PieceType.Rook, B).Place("c4", PieceType.Pawn, B).Mystery("c3", true)
+                .Say("A Steal square lets you take over a rival"),
+        }
+        .Then(1100, c => c.Aim("c3"))
+        .Then(800, c => c.Aim().Mystery("c3", false).Move("b1", "c3").Say("Land on it, then pick a rival in the 3x3 around you"))
+        .Then(1000, c => c.Aim("d4"))
+        .Then(800, c => c.Aim().Fx("beam", "c3", "d4", css: "steal").Fx("ring", "d4", radius: 0, css: "steal").Flip("d4")
+            .Say("It switches sides and stays where it is"))
+        .Then(1300, c => c.Say("Not kings, not armored pieces")),
+
+        [PowerupKind.DrawCard] = new DemoScript
+        {
+            Setup = c => c.Place("a2", PieceType.Pawn, W).Mystery("a3", true).Say("A Draw Card square gives you a card"),
+        }
+        .Then(1100, c => c.Aim("a3"))
+        .Then(800, c => c.Aim().Mystery("a3", false).Move("a2", "a3").Fx("ring", "a3", radius: 1, css: "gold").Fx("burst", "a3", css: "fire")
+            .Say("The card goes in your bag. Everyone can see it"))
+        .Then(1600, c => c.Say("Some cards fire at once. The rest you play later, at the cost of your turn")),
+
+        [PowerupKind.Combo2] = new DemoScript
+        {
+            Setup = c => c.Place("b1", PieceType.Knight, W).Place("f6", PieceType.King, B).Mystery("c3", true).Say("A +2 square: this piece moves again, twice"),
+        }
+        .Then(1000, c => c.Aim("c3"))
+        .Then(800, c => c.Aim().Mystery("c3", false).Move("b1", "c3").Fx("ring", "c3", css: "gold").Say("Move 1 of 3"))
+        .Then(900, c => c.Move("c3", "e4").Say("Move 2 of 3"))
+        .Then(900, c => c.Move("e4", "d6").Say("Move 3 of 3"))
+        .Then(1000, c => c.Say("Giving check ends the combo early. Landing on another combo adds its moves")),
+
+        [PowerupKind.Combo4] = new DemoScript
+        {
+            Setup = c => c.Place("b1", PieceType.Knight, W).Place("f6", PieceType.King, B).Mystery("c3", true).Say("A +4 square: this piece moves again, four times"),
+        }
+        .Then(1000, c => c.Aim("c3"))
+        .Then(700, c => c.Aim().Mystery("c3", false).Move("b1", "c3").Fx("ring", "c3", css: "gold").Say("Move 1 of 5"))
+        .Then(750, c => c.Move("c3", "b5").Say("Move 2 of 5"))
+        .Then(750, c => c.Move("b5", "d6").Say("Move 3 of 5"))
+        .Then(750, c => c.Move("d6", "f5").Say("Move 4 of 5"))
+        .Then(750, c => c.Move("f5", "d4").Say("Move 5 of 5"))
+        .Then(1000, c => c.Say("Giving check ends the combo early")),
     };
 }

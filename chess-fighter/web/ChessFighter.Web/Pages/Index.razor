@@ -1048,6 +1048,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     static string TutorialText(PowerupKind k) => PowerupInfo.IsTransform(k)
         ? "The piece that opens one changes into another piece on the spot. Never a king."
+        : k == PowerupKind.Harpoon
+        ? "Harpoon I hooks the first rival along one diagonal and drags it next to this piece. Land on another Harpoon square for II, which hooks all four diagonals at once. A rival that can't be pulled any closer is stunned for a turn. Uses your turn, one use."
         : Names.Desc(k);
 
     // ---------- tester sharing ----------

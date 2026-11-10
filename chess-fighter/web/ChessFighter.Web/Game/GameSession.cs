@@ -1834,7 +1834,7 @@ public sealed class GameSession
                     int rank = Sq.Rank(e.From), dms = 1500;
                     AddFx("dragon", e.From, css: e.Side == Side.White ? "w" : "b", durMs: dms);
                     for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++)
-                        strikeDelay[events[j].From] = (int)(dms * Math.Clamp(((Sq.File(events[j].From) + 0.5) * 12.5 - 6) / 118, 0, 1));
+                        strikeDelay[events[j].From] = (int)(dms * 0.8 * Math.Clamp(((Sq.File(events[j].From) + 0.5) * 12.5 - 6) / 134, 0, 1));
                     lastFireMs = Math.Max(lastFireMs, dms);
                     AddToast("DRAGON STRIKE!", "A row burns", "fire", "hadouken");
                     Shake(2);

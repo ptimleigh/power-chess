@@ -559,6 +559,12 @@ html, body {
 .fx-dragonrow .dr-fire { position: absolute; left: 0; top: var(--cy); height: 14px; margin-top: -7px; width: 0; background: repeating-linear-gradient(90deg, #fffbd0 0 6px, #ffb400 6px 12px, #ff3b2f 12px 18px); box-shadow: 0 0 0 2px #000, 0 0 14px #ff7a1f; animation: drfire var(--dur) steps(16) forwards, drfade .4s steps(4) calc(var(--dur) + 100ms) forwards; }
 .fx-dragonrow .dr-img { position: absolute; top: var(--cy); left: -10%; width: var(--span); height: auto; image-rendering: pixelated; transform: translate(-50%, -50%) rotate(-90deg); filter: drop-shadow(3px 3px 0 #000); animation: drfly var(--dur) steps(16) forwards, drfade .4s steps(4) calc(var(--dur) + 100ms) forwards; }
 @keyframes drfly { from { left: -10%; } to { left: 108%; } }
-@keyframes drfire { from { width: 6%; } to { width: 124%; } }
+@keyframes drfire { from { width: 6%; } to { width: 135%; } }
+.fx-dragonrow .dr-fire { animation-duration: calc(var(--dur) * .8), .4s; animation-timing-function: steps(14), steps(4); }
+.fx-dragonrow .dr-ball { position: absolute; top: var(--cy); left: 6%; width: var(--ball); aspect-ratio: 1; transform: translate(-100%, -50%); animation: drball calc(var(--dur) * .8) steps(14) forwards, drfade .4s steps(4) calc(var(--dur) + 100ms) forwards; filter: drop-shadow(0 0 10px #ff7a1f); }
+.fx-dragonrow .dr-ball i { position: absolute; inset: 0; clip-path: polygon(0 50%, 22% 18%, 55% 8%, 85% 28%, 100% 50%, 85% 72%, 55% 92%, 22% 82%); background: #ff3b2f; }
+.fx-dragonrow .dr-ball i:nth-child(2) { inset: 14% 8% 14% 20%; background: #ffb400; }
+.fx-dragonrow .dr-ball i:nth-child(3) { inset: 30% 4% 30% 40%; background: #fffbd0; }
+@keyframes drball { from { left: 6%; } to { left: 140%; } }
 @keyframes drfade { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fx-sword { animation-duration: .01s; } }

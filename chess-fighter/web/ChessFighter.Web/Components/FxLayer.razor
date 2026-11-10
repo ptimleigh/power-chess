@@ -47,8 +47,9 @@
             <img class="fx-sword" src="img/summons/sword.png" alt="" style="left:@(N(Cx(fx.Sq)))%;--ty:@(N(Cy(fx.Sq)))%;width:@(N(Size * 0.75))%" />
             break;
         case "dragon":
-            <div class="fx-dragonrow @fx.Css" style="--cy:@(N(Cy(fx.Sq)))%;--dur:@(fx.DurMs)ms;--len:@(N(Size * 2.4))%;--span:@(N(Size * 3.4))%">
+            <div class="fx-dragonrow @fx.Css" style="--cy:@(N(Cy(fx.Sq)))%;--dur:@(fx.DurMs)ms;--len:@(N(Size * 2.4))%;--span:@(N(Size * 3.4))%;--ball:@(N(Size * 1.5))%">
                 <div class="dr-fire"></div>
+                <div class="dr-ball"><i></i><i></i><i></i></div>
                 <img class="dr-img" src="img/summons/dragon-@(fx.Css == "w" ? "white" : "black").png" alt="" />
             </div>
             break;

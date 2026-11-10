@@ -15,7 +15,7 @@ public static class Icons
             "bomb" => "<circle cx=\"11\" cy=\"14\" r=\"7\"/><path d=\"M15 8l3-3\" stroke=\"currentColor\" stroke-width=\"2.2\" fill=\"none\"/><circle cx=\"19\" cy=\"4\" r=\"2\" fill=\"#ffd54a\"/>",
             "bigbomb" => "<circle cx=\"10.5\" cy=\"14.5\" r=\"8\"/><path d=\"M15 8l3-3\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\"/><circle cx=\"19\" cy=\"4\" r=\"2.4\" fill=\"#ffd54a\"/><circle cx=\"8\" cy=\"12\" r=\"1.6\" fill=\"#ffffff55\"/>",
             "fire" => "<path d=\"M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z\"/>",
-            "hadouken" => "<path fill=\"#c4141c\" d=\"M10 5.5L6.5 1.5 6.8 6 1.5 3.5l3.6 5L0.5 9.5 5 12l-4.5 2.5 4.6 1-3.6 5 5.3-2.5-.3 4.5 3.5-4z\"/><path fill=\"#ff6a1f\" d=\"M10 8.5L7.5 6.5l.4 3L4.5 9.2 6.5 12l-2 2.8 3.4-.5-.4 3 2.5-2z\"/><path fill=\"#ffe27a\" d=\"M9.5 6h3.5c4 0 9 2.5 9 6s-5 6-9 6H9.5z\"/><ellipse cx=\"15.5\" cy=\"9.4\" rx=\"4.2\" ry=\"1.5\" fill=\"#ffffffcc\"/>",
+            "hadouken" => "<g transform=\"rotate(-90 12 12)\"><path d=\"M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z\"/></g>",
             "hook" => "<path d=\"M12 2v12\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\"/><path d=\"M5 13a7 7 0 0 0 14 0\" stroke=\"currentColor\" stroke-width=\"2.8\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M2 14l3-4 3 4zM16 14l3-4 3 4z\"/><circle cx=\"12\" cy=\"3.2\" r=\"2\"/>",
             "bolt" => "<path d=\"M13 2L4 14h6l-1 8 9-12h-6z\"/>",
             "card" => "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M12 7l1.8 3.6 4 .6-2.9 2.8.7 4L12 16l-3.6 2 .7-4-2.9-2.8 4-.6z\" fill=\"#10061f\"/>",

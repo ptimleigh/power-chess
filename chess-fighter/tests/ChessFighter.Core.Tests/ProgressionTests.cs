@@ -93,7 +93,7 @@ namespace ChessFighter.Core.Tests
             Assert.IsFalse(r.NewTeleporters, "teleporters arrive at level 4");
             var names = r.NewTrophies.Select(t => t.Name).ToList();
             CollectionAssert.IsSubsetOf(new[] { "First Win", "Checkmate", "Flawless" }, names);
-            Assert.AreEqual(100 + 15 + 20 + 50 + 25 * r.NewTrophies.Count, r.XpGained);
+            Assert.AreEqual(100 + 15 + 20 + 50 + System.Math.Min(25 * r.NewTrophies.Count, 50), r.XpGained);
             Assert.AreEqual(1, p.Games);
             Assert.AreEqual(1, p.Mates);
             Assert.IsTrue(p.Has(Trophies.All[0]));

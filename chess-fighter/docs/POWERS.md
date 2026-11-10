@@ -145,3 +145,12 @@ deck through Draw Card squares, so they appear once Draw Card (level 7) and thei
 Until a power's second tier opens, landing on the same power square again uses the square up ("maxed out") instead of upgrading.
 XP: going from level n to n+1 costs 200 + 30n XP (level 2 at 230 XP, level 10 at 2430, level 20 at 9500), so a win is about one level early on.
 Code: `FighterUnlocks` in `Unlocks.cs`.
+
+## Trophies (30)
+
+Original: First Win, Checkmate, Flawless, Pyro (burn 3 pieces with fireballs in one game), Demolition, Collector (5 power squares of any kind),
+Thief, Warp Drive, Phantom, Hard Won, Regular, Daily Dose, On a Roll, Week Warrior, Devoted, Grandmaster Slayer.
+Added: Nuh-uh!, Card Shark (5 cards in a game), Caïssa's Favor (bring back a queen), Upside Down, Take Two, Hook Line, Deep Freeze (stun a king),
+Combo Breaker (5 moves in a row), Level II (upgrade a power), Dragon's Breath (3+ pieces with one Dragon Strike), Smite (3 pieces with Summon Shiva),
+Incoming! (win with a missile), Veteran (level 10), Master of Squares (level 20).
+Each new trophy is worth 25 XP, but one game pays at most 50 XP in trophies.

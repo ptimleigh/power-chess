@@ -24,6 +24,17 @@ namespace ChessFighter.Core
         public int Steals;
         public int Teleports;
         public bool CollectedGhost;
+        /// <summary>Cards the player played, cards they cancelled with Nuh-uh, and which of the big ones they used.</summary>
+        public int CardsPlayed, CardsCancelled;
+        public bool UsedWorld, UsedTakeBack, RestoredQueen;
+        public int HarpoonHooks, Upgrades;
+        public bool FrozeKing;
+        /// <summary>The longest run of the player's own moves with no rival move between (a combo makes these).</summary>
+        public int BestRun;
+        /// <summary>Most rival pieces one Dragon Strike burned, and most pieces one Shiva summon struck.</summary>
+        public int BestDragonBurn, BestSmite;
+        /// <summary>The player's level once this match's XP is counted (set while awarding, for the level trophies).</summary>
+        public int LevelAfter;
 
         public bool Won { get { return Result == (Me == Side.White ? GameResult.WhiteWins : GameResult.BlackWins); } }
         public bool Lost { get { return Result == (Me == Side.White ? GameResult.BlackWins : GameResult.WhiteWins); } }
@@ -42,29 +53,38 @@ namespace ChessFighter.Core
 
         public MatchSummary Summary { get { return s; } }
 
+        int run;
+
         public void Observe(IList<GameEvent> events)
         {
             Side me = s.Me;
-            int shot = -1, bomb = -1;
+            int shot = -1, bomb = -1, dragon = -1, smite = 0;
             for (int i = 0; i < events.Count; i++)
             {
                 var e = events[i];
                 switch (e.Kind)
                 {
+                    case EventKind.Moved:
+                        if (e.Side == me) { run++; if (run > s.BestRun) s.BestRun = run; } else run = 0;
+                        break;
                     case EventKind.Captured:
                         if (e.Side == me) s.Captures++; else s.PiecesLost++;
-                        shot = bomb = -1;
+                        shot = bomb = dragon = -1;
                         break;
                     case EventKind.PoisonTriggered:
                         if (e.Side == me) s.PiecesLost++; else s.Captures++;
                         break;
                     case EventKind.FireballFired:
                         shot = e.Side == me ? 0 : -1;
-                        bomb = -1;
+                        bomb = dragon = -1;
                         break;
                     case EventKind.Detonated:
                         bomb = e.Side == me ? 0 : -1;
-                        shot = -1;
+                        shot = dragon = -1;
+                        break;
+                    case EventKind.DragonFire:
+                        dragon = e.Side == me ? 0 : -1;
+                        shot = bomb = -1;
                         break;
                     case EventKind.Destroyed:
                         if (e.Side == me) s.PiecesLost++;
@@ -73,6 +93,7 @@ namespace ChessFighter.Core
                             s.Captures++;
                             if (shot >= 0) { shot++; s.FireballKills++; if (shot > s.BestFireballShot) s.BestFireballShot = shot; }
                             if (bomb >= 0) { bomb++; if (bomb > s.BestBombKills) s.BestBombKills = bomb; }
+                            if (dragon >= 0) { dragon++; if (dragon > s.BestDragonBurn) s.BestDragonBurn = dragon; }
                         }
                         break;
                     case EventKind.Converted:
@@ -81,14 +102,41 @@ namespace ChessFighter.Core
                     case EventKind.Teleported:
                         if (e.Side == me) s.Teleports++;
                         break;
-                    case EventKind.BuffGained:
-                    case EventKind.PerkGained:
-                    case EventKind.Transformed:
+                    case EventKind.PickupFound:
                         if (e.Side == me)
                         {
                             s.PowerupsCollected++;
                             if (e.Powerup == PowerupKind.Ghost) s.CollectedGhost = true;
                         }
+                        break;
+                    case EventKind.PickupRerolled:
+                        if (e.Side == me && s.PowerupsCollected > 0) s.PowerupsCollected--;
+                        break;
+                    case EventKind.HarpoonFired:
+                        if (e.Side == me) s.HarpoonHooks++;
+                        break;
+                    case EventKind.StunStruck:
+                        if (e.Side == me && e.Powerup == PowerupKind.StunBolt && e.Piece == PieceType.King) s.FrozeKing = true;
+                        break;
+                    case EventKind.PowerUpgraded:
+                        if (e.Side == me) s.Upgrades++;
+                        break;
+                    case EventKind.CardPlayed:
+                        if (e.Side == me)
+                        {
+                            s.CardsPlayed++;
+                            if (e.Card == CardKind.WorldUpsideDown) s.UsedWorld = true;
+                            if (e.Card == CardKind.TakeBack) s.UsedTakeBack = true;
+                        }
+                        break;
+                    case EventKind.CardCancelled:
+                        if (e.Side == me) s.CardsCancelled++;
+                        break;
+                    case EventKind.PieceRestored:
+                        if (e.Side == me && e.Piece == PieceType.Queen) s.RestoredQueen = true;
+                        break;
+                    case EventKind.ShivaStrike:
+                        if (e.Side == me) { smite++; if (smite > s.BestSmite) s.BestSmite = smite; }
                         break;
                 }
             }
@@ -152,7 +200,7 @@ namespace ChessFighter.Core
             new Trophy(0, "First Win", "Win a game.", (m, p) => m.Won),
             new Trophy(1, "Checkmate", "Win by checkmate.", (m, p) => m.Won && m.Reason == "Checkmate"),
             new Trophy(2, "Flawless", "Win without losing a single piece.", (m, p) => m.Won && m.PiecesLost == 0),
-            new Trophy(3, "Pyro", "Burn 2 or more pieces with one fireball.", (m, p) => m.BestFireballShot >= 2),
+            new Trophy(3, "Pyro", "Burn 3 pieces with fireballs in one game.", (m, p) => m.FireballKills >= 3),
             new Trophy(4, "Demolition", "Blow up 3 or more enemy pieces with one bomb.", (m, p) => m.BestBombKills >= 3),
             new Trophy(5, "Collector", "Collect 5 powerups in one game.", (m, p) => m.PowerupsCollected >= 5),
             new Trophy(6, "Thief", "Steal an enemy piece.", (m, p) => m.Steals > 0),
@@ -165,6 +213,20 @@ namespace ChessFighter.Core
             new Trophy(13, "Week Warrior", "Solve the daily challenge 7 days in a row.", (m, p) => p.BestStreak >= 7),
             new Trophy(14, "Devoted", "Solve the daily challenge 30 days in a row.", (m, p) => p.BestStreak >= 30),
             new Trophy(15, "Grandmaster Slayer", "Beat the Master opponent.", (m, p) => m.Won && m.AiLevel >= 5),
+            new Trophy(16, "Nuh-uh!", "Cancel a rival's card with Nuh-uh.", (m, p) => m.CardsCancelled > 0),
+            new Trophy(17, "Card Shark", "Play 5 cards in one game.", (m, p) => m.CardsPlayed >= 5),
+            new Trophy(18, "Caïssa's Favor", "Bring back a queen with Summon Caïssa.", (m, p) => m.RestoredQueen),
+            new Trophy(19, "Upside Down", "Win after playing World Turned Upside Down.", (m, p) => m.Won && m.UsedWorld),
+            new Trophy(20, "Take Two", "Win after playing Take Back.", (m, p) => m.Won && m.UsedTakeBack),
+            new Trophy(21, "Hook, Line", "Hook a rival with a Harpoon.", (m, p) => m.HarpoonHooks > 0),
+            new Trophy(22, "Deep Freeze", "Freeze a king with a Stun Bolt.", (m, p) => m.FrozeKing),
+            new Trophy(23, "Combo Breaker", "Make 5 moves in a row with a +4 combo.", (m, p) => m.BestRun >= 5),
+            new Trophy(24, "Level II", "Upgrade a power to its second tier.", (m, p) => m.Upgrades > 0),
+            new Trophy(25, "Dragon's Breath", "Burn 3 or more rival pieces with one Dragon Strike.", (m, p) => m.BestDragonBurn >= 3),
+            new Trophy(26, "Smite", "Strike three pieces with one Summon Shiva.", (m, p) => m.BestSmite >= 3),
+            new Trophy(27, "Incoming!", "Win with a Missile Strike.", (m, p) => m.Won && m.Reason == "Missile strike"),
+            new Trophy(28, "Veteran", "Reach level 10.", (m, p) => m.LevelAfter >= 10),
+            new Trophy(29, "Master of Squares", "Reach level 20.", (m, p) => m.LevelAfter >= 20),
         };
     }
 
@@ -230,14 +292,17 @@ namespace ChessFighter.Core
             p.Steals += m.Steals;
             p.Teleports += m.Teleports;
 
+            m.LevelAfter = LevelForXp(p.Xp + xp);
             foreach (var t in Trophies.All)
             {
                 if (p.Has(t) || !t.Earned(m, p)) continue;
                 p.TrophyBits |= 1u << t.Index;
                 r.NewTrophies.Add(t);
-                xp += 25;
             }
-            if (r.NewTrophies.Count > 0) parts.Add(new KeyValuePair<string, int>("Trophies", 25 * r.NewTrophies.Count));
+            // A trophy is worth 25 XP, but a single game pays at most 50 so a first win is not front-loaded.
+            int trophyXp = Math.Min(25 * r.NewTrophies.Count, 50);
+            xp += trophyXp;
+            if (trophyXp > 0) parts.Add(new KeyValuePair<string, int>("Trophies", trophyXp));
 
             Grant(p, r, xp);
             return r;

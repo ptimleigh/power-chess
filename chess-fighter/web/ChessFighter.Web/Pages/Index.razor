@@ -1322,7 +1322,20 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (sq == S.Selected) c += " selected";
         if (sq == S.HintFrom || sq == S.HintTo) c += " hint";
         if (S.EffectPending && S.HumanTurn && S.EffectTargets.Contains(sq)) c += " aim";
-        if (cardAim.Contains(sq)) c += " aim";
+        if (cardAim.Contains(sq))
+        {
+            if (S.ActiveCard == CardKind.MissileStrike)
+            {
+                // Four big blocks instead of 64 lit squares: only the outer edge of each quadrant is drawn.
+                int f = Sq.File(sq) % 4, r = Sq.Rank(sq) % 4;
+                c += " quad";
+                if (f == 0) c += " ql";
+                if (f == 3) c += " qr";
+                if (r == 0) c += " qb";
+                if (r == 3) c += " qt";
+            }
+            else c += " aim";
+        }
         if (missileZone.Contains(sq)) c += " missile";
         if (S.Targets.Contains(sq))
         {

@@ -158,6 +158,15 @@ Each new trophy is worth 25 XP, but one game pays at most 50 XP in trophies.
 ## Late-game ramp
 
 Rare powers (Combo +4, Steal, Harpoon) and the big cards (Missile Strike, Dragon Strike, Summon Shiva, World Turned Upside Down, Hit Restart) get likelier as a
-game runs: 1x until ply 50 (move 25), rising to 2x at ply 160 (move 80). A card draw by the side behind in material gets up to +0.5 more, with 2x as the
-ceiling. Common powers are unchanged. In 800 simulated Normal games the ramp left game length (78 to 80 plies) and the leader's win rate (81%) about the same,
-and nudged draws from 6% to 5% and missile finishes from 2% to 3%. The effect is small because most games end near ply 75. Code: `LateRamp.cs`.
+game runs: 1x until ply 30 (move 15), rising to 2x at ply 100 (move 50). A card draw by the side behind in material gets up to +0.5 more, with 2x as the
+ceiling. Common powers are unchanged. Code: `LateRamp.cs`; the simulator can compare settings (`BalanceSim ... ramp start full`).
+
+800 simulated Normal games each, same seeds:
+
+| | No ramp | Ramp ply 50 to 160 | Ramp ply 30 to 100 (used) |
+|---|---|---|---|
+| Draws | 6% | 5% | 4% |
+| Average length (plies) | 78 | 80 | 77 |
+| Side with more squares wins | 81% | 81% | 80% |
+| Ended by missile | 2% | 3% | 3% |
+| Pieces struck by Shiva per game | 0.25 | - | 0.42 |

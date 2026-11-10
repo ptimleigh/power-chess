@@ -3,13 +3,13 @@ namespace ChessFighter.Core
     /// <summary>
     /// Rare powers and the big cards get likelier as a game goes on, and likelier still for the side that is behind in material.
     /// The factor never passes 2, and common powers are untouched, so nothing becomes the only thing that spawns.
-    /// Time: 1x until ply 50 (move 25), rising to 2x by ply 160 (move 80). Catch-up: +0.1 for each point of material behind past the first, at most +0.5.
+    /// Time: 1x until ply 30 (move 15), rising to 2x by ply 100 (move 50). Catch-up: +0.1 for each point of material behind past the first, at most +0.5.
     /// </summary>
     public static class LateRamp
     {
         public const double MaxFactor = 2.0;
         /// <summary>The ply where the time ramp starts and where it reaches its full strength (the simulator changes these to compare settings).</summary>
-        public static int StartPly = 50, FullPly = 160;
+        public static int StartPly = 30, FullPly = 100;
         public const int Scale = 20; // weights are multiplied by this so a factor like 1.45 stays whole
 
         public static bool RarePower(PowerupKind k)

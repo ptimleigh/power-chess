@@ -616,6 +616,22 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     <div class="modal" data-testid="newgame" @onclick="() => showNew = false">
         <div class="card newgame" @onclick:stopPropagation="true">
             <div class="kicker">Choose your fight</div>
+            <div class="opt-label">Opponent</div>
+            <div class="seg six">
+                @foreach (var lv in new[] { 1, 2, 3, 4, 5, 0 })
+                {
+                    int level = lv;
+                    <button class="@Seg(selAi == level)" data-ai="@level" @onclick="() => selAi = level">@Ai.LevelName(level)</button>
+                }
+            </div>
+            <button class="btn ghost small more-toggle" data-action="more-options" @onclick="() => showMoreOptions = !showMoreOptions">@(showMoreOptions ? "Fewer options" : "More options")</button>
+            @if (!showMoreOptions)
+            {
+                <div class="opt-summary" data-testid="opt-summary">@OptionSummary</div>
+            }
+            else
+            {
+                <div class="more-options" data-testid="more-options">
             <div class="opt-label">Powerup squares</div>
             <div class="seg">
                 <button class="@Seg(selMode == SquareMode.Revealed)" data-mode="revealed" @onclick="() => selMode = SquareMode.Revealed">
@@ -625,46 +641,46 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     <b>Mystery</b><small>Every square is a "?" until you land on it.</small>
                 </button>
             </div>
-            <div class="opt-label">Opponent</div>
-            <div class="seg six">
-                @foreach (var lv in new[] { 1, 2, 3, 4, 5, 0 })
-                {
-                    int level = lv;
-                    <button class="@Seg(selAi == level)" data-ai="@level" @onclick="() => selAi = level">@Ai.LevelName(level)</button>
-                }
-            </div>
-            <div class="opt-label">Rules</div>
-            <div class="opt-chips" data-testid="preset-chips">
-                @foreach (var pr in PresetChoices())
-                {
-                    var choice = pr;
-                    bool open = Presets.Available(choice.id, EffectiveLevel);
-                    <button class="@Seg(selPreset == choice.id && open) chip-btn @(open ? "" : "locked")" data-preset="@choice.id" disabled="@(!open)" title="@choice.blurb" @onclick="() => selPreset = choice.id">
-                        <b>@choice.name</b>
-                        @if (!open) { <small>Level @choice.level</small> }
-                    </button>
-                }
-            </div>
-            @if (selPreset != Presets.Classic && Presets.Available(selPreset, EffectiveLevel))
+            @if (PresetChoices().Any(x => x.id != Presets.Classic && Presets.Available(x.id, EffectiveLevel)))
             {
-                <div class="preset-blurb" data-testid="preset-blurb">@PresetBlurb(selPreset) <em>Half XP.</em></div>
-            }
-            @if (selPreset == Presets.Custom && Presets.Available(selPreset, EffectiveLevel))
-            {
-                <button class="btn ghost small" data-action="customize" @onclick="() => showCustom = true">Customize powerups</button>
-            }
-            <div class="opt-label">Square frequency</div>
-            <div class="opt-chips" data-testid="freq-chips">
-                @foreach (var fq in new[] { Frequency.Rare, Frequency.Normal, Frequency.Frequent, Frequency.Chaos })
+                <div class="opt-label">Rules</div>
+                <div class="opt-chips" data-testid="preset-chips">
+                    @foreach (var pr in PresetChoices())
+                    {
+                        var choice = pr;
+                        bool open = Presets.Available(choice.id, EffectiveLevel);
+                        @if (open)
+                        {
+                            <button class="@Seg(selPreset == choice.id) chip-btn" data-preset="@choice.id" title="@choice.blurb" @onclick="() => selPreset = choice.id">
+                                <b>@choice.name</b>
+                            </button>
+                        }
+                    }
+                </div>
+                @if (selPreset != Presets.Classic && Presets.Available(selPreset, EffectiveLevel))
                 {
-                    var f = fq;
-                    bool open = Presets.FrequencyAvailable(EffectiveLevel);
-                    <button class="@Seg(selFreq == f && (open || f == Frequency.Normal)) chip-btn @(open || f == Frequency.Normal ? "" : "locked")" data-freq="@((int)f)" disabled="@(!open && f != Frequency.Normal)" @onclick="() => selFreq = f">
-                        <b>@Presets.FrequencyName(f)</b>
-                        @if (!open && f != Frequency.Normal) { <small>Level @Presets.FrequencyLevel</small> }
-                    </button>
+                    <div class="preset-blurb" data-testid="preset-blurb">@PresetBlurb(selPreset) <em>Half XP.</em></div>
                 }
-            </div>
+                @if (selPreset == Presets.Custom && Presets.Available(selPreset, EffectiveLevel))
+                {
+                    <button class="btn ghost small" data-action="customize" @onclick="() => showCustom = true">Customize powerups</button>
+                }
+            }
+            @if (Presets.FrequencyAvailable(EffectiveLevel))
+            {
+                <div class="opt-label">Square frequency</div>
+                <div class="opt-chips" data-testid="freq-chips">
+                    @foreach (var fq in new[] { Frequency.Rare, Frequency.Normal, Frequency.Frequent, Frequency.Chaos })
+                    {
+                        var f = fq;
+                        bool open = Presets.FrequencyAvailable(EffectiveLevel);
+                        <button class="@Seg(selFreq == f && (open || f == Frequency.Normal)) chip-btn @(open || f == Frequency.Normal ? "" : "locked")" data-freq="@((int)f)" disabled="@(!open && f != Frequency.Normal)" @onclick="() => selFreq = f">
+                            <b>@Presets.FrequencyName(f)</b>
+                            @if (!open && f != Frequency.Normal) { <small>Level @Presets.FrequencyLevel</small> }
+                        </button>
+                    }
+                </div>
+            }
             <div class="opt-label">Effects</div>
             <div class="seg">
                 <button class="@Seg(selDrama)" data-drama="on" @onclick="() => selDrama = true">
@@ -674,6 +690,12 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     <b>Calm</b><small>Quick and quiet. Faster to play.</small>
                 </button>
             </div>
+                </div>
+                @if (NextUnlockHint != "")
+                {
+                    <div class="opt-summary">@NextUnlockHint</div>
+                }
+            }
             <div class="row newgame-row">
                 <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">FIGHT!</button>
                 <button class="btn ghost" data-action="cancel-new" @onclick="() => showNew = false">Cancel</button>
@@ -845,7 +867,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     bool urlSeed;
     bool muted;
     bool showHelp;
-    bool showNew;
+    bool showNew, showMoreOptions;
     bool showProfile;
     bool showDaily;
     bool shared;
@@ -1467,6 +1489,21 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     }
 
     static string PresetBlurb(string id) => Presets.Find(id)?.Blurb ?? "Choose which powerups appear and how often.";
+
+    /// <summary>One line describing the current choices while the extra options are folded away.</summary>
+    string OptionSummary => $"{(selMode == SquareMode.Mystery ? "Mystery squares" : "Revealed squares")} · {(Presets.Available(selPreset, EffectiveLevel) && selPreset != Presets.Classic ? PresetChoices().First(x => x.id == selPreset).name : "Standard rules")} · {(selDrama ? "Dramatic" : "Calm")} effects";
+
+    /// <summary>"More ways to play unlock at level N", for the nearest locked rule variant.</summary>
+    string NextUnlockHint
+    {
+        get
+        {
+            int next = 0;
+            foreach (var c in PresetChoices()) if (c.level > EffectiveLevel && (next == 0 || c.level < next)) next = c.level;
+            if (!Presets.FrequencyAvailable(EffectiveLevel) && (next == 0 || Presets.FrequencyLevel < next)) next = Presets.FrequencyLevel;
+            return next == 0 ? "" : $"More ways to play unlock at level {next}.";
+        }
+    }
 
     static string Seg(bool on) => "seg-btn" + (on ? " on" : "");
 

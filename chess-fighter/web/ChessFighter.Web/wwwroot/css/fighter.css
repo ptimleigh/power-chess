@@ -669,3 +669,8 @@ html, body {
 .sq.coachsq::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3; box-shadow: inset 0 0 0 4px var(--gold), inset 0 0 0 7px #000; animation: coachpulse .8s steps(2) infinite; }
 @keyframes coachpulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .sq.coachsq::after { animation: none; } }
+
+/* New game sheet: opponent first, everything else folded under More options */
+.more-toggle { justify-self: center; margin-top: 10px; }
+.opt-summary { font-size: 11px; color: var(--dim); text-align: center; margin: 6px 0 4px; }
+.more-options { display: grid; gap: 4px; }

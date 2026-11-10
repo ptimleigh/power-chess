@@ -568,3 +568,5 @@ html, body {
 @keyframes drball { from { left: 6%; } to { left: 140%; } }
 @keyframes drfade { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fx-sword { animation-duration: .01s; } }
+
+.cp-note { font-family: var(--mono); font-size: 12px; color: var(--text); text-align: center; line-height: 1.4; max-width: 30ch; }

@@ -157,7 +157,15 @@
             var cstep = S.NextCardStep(out _, out var cextras);
             <div class="card-prompt" data-testid="card-step">
                 <div class="cp-title">@Names.CardName(S.ActiveCard)</div>
+                @if (S.CardPreview >= 0)
+                {
+                    <div class="cp-note" data-testid="card-preview">@S.CardPreviewNote</div>
+                }
                 <div class="row">
+                    @if (S.CardPreview >= 0)
+                    {
+                        <button class="btn primary" data-action="card-fire" @onclick="S.ConfirmPreview">Fire</button>
+                    }
                     @if (cstep == GameSession.CardStep.Confirm)
                     {
                         <button class="btn primary" data-action="card-play" @onclick="S.ConfirmCard">Play</button>

@@ -743,6 +743,7 @@ public sealed class GameSession
         {
             var step = NextCardStep(out var squares, out _);
             if (step != CardStep.Square) return Enumerable.Empty<int>();
+            if (CardPreview >= 0) squares = new List<int> { CardPreview };
             if (ActiveCard == CardKind.DragonStrike)
                 return squares.SelectMany(a => Enumerable.Range(0, 8).Select(f => Sq.Make(f, Sq.Rank(a))));
             if (ActiveCard == CardKind.MissileStrike)
@@ -764,6 +765,9 @@ public sealed class GameSession
         SelectedCard = CardKind.None;
         cardFrom = cardTo = cardExtra = -1;
         cardInputs = 0;
+        CardPreview = -1;
+        CardPreviewNote = "";
+        Doomed.Clear();
     }
 
     public async Task SelectCard(CardKind kind)
@@ -776,6 +780,34 @@ public sealed class GameSession
         SelectedCard = kind;
         Sfx?.Invoke("click");
         await AdvanceCard();
+        if (SelectedCard == CardKind.None)
+        {
+            // The card had no legal use: say why instead of silently doing nothing.
+            AddToast("Can't play " + Names.CardName(kind), WhyCardBlocked(kind), "stun", Names.CardIcon(kind));
+            Sfx?.Invoke("thud");
+            Changed?.Invoke();
+        }
+    }
+
+    /// <summary>A short reason a card has no legal use right now.</summary>
+    string WhyCardBlocked(CardKind kind)
+    {
+        var pseudo = new List<GameAction>();
+        Cards.Generate(State, Turn, kind, pseudo);
+        if (pseudo.Count > 0) return "It would leave your king in check.";
+        switch (kind)
+        {
+            case CardKind.NuhUh: return "Nuh-uh answers a card your rival plays.";
+            case CardKind.MissileStrike: return "A missile is already on its way.";
+            case CardKind.SummonCaissa: return State.Captured.Skip((int)Turn * 8).Take(8).Sum(x => (int)x) == 0 ? "You haven't lost a piece yet." : "There is no free square to place it.";
+            case CardKind.SummonShiva: return "No rival piece can be struck. Kings and armored pieces are safe.";
+            case CardKind.DragonStrike: return "No row from 3 to 6 has a piece to burn without a king in it.";
+            case CardKind.TakeBack: return "There isn't enough history to rewind yet.";
+            case CardKind.SmashBoulder: return "There is no boulder on the board.";
+            case CardKind.HorseSacrifice: return "You have no knight to sacrifice.";
+            case CardKind.NoMorePowers: return "There are no powers or powerup squares to clear.";
+            default: return "It has no legal use right now.";
+        }
     }
 
     public void CancelCard()
@@ -800,6 +832,48 @@ public sealed class GameSession
         Changed?.Invoke();
     }
 
+    /// <summary>The row or quadrant the player has aimed at but not yet fired.</summary>
+    public int CardPreview { get; private set; } = -1;
+    public string CardPreviewNote { get; private set; } = "";
+
+    void ShowStrikePreview(int anchor)
+    {
+        CardPreview = anchor;
+        Doomed.Clear();
+        int mine = 0, theirs = 0;
+        if (ActiveCard == CardKind.DragonStrike)
+        {
+            int rank = Sq.Rank(anchor);
+            for (int f = 0; f < 8; f++)
+            {
+                int sq = Sq.Make(f, rank);
+                var c = State.Cells[sq];
+                if (!Geometry.IsVulnerableToBomb(c)) continue;
+                Doomed.Add(sq);
+                if (c.Side == Turn) mine++; else theirs++;
+            }
+            CardPreviewNote = $"The dragon burns {theirs} rival and {mine} of your own pieces.";
+        }
+        else
+        {
+            for (int i = 0; i < 16; i++)
+            {
+                var c = State.Cells[Sq.Make(Sq.File(anchor) + i % 4, Sq.Rank(anchor) + i / 4)];
+                if (c.IsEmpty || c.Type == PieceType.King) continue;
+                if (c.Side == Turn) mine++; else theirs++;
+            }
+            CardPreviewNote = $"Lands in 10 moves and destroys everything there (a king loses the game). Right now: {theirs} rival, {mine} yours.";
+        }
+    }
+
+    public async Task ConfirmPreview()
+    {
+        if (CardPreview < 0) return;
+        cardFrom = cardTo = CardPreview;
+        cardInputs++;
+        await AdvanceCard();
+    }
+
     public async Task ConfirmCard()
     {
         if (NextCardStep(out _, out _) != CardStep.Confirm) return;
@@ -819,6 +893,14 @@ public sealed class GameSession
         var step = NextCardStep(out var squares, out _);
         sq = CardAnchor(ActiveCard, sq);
         if (step != CardStep.Square || !squares.Contains(sq)) { Sfx?.Invoke("click"); return; }
+        if ((ActiveCard == CardKind.DragonStrike || ActiveCard == CardKind.MissileStrike) && CardPreview != sq)
+        {
+            // First tap shows what the strike will hit; a second tap (or Play) fires it.
+            ShowStrikePreview(sq);
+            Sfx?.Invoke("click");
+            Changed?.Invoke();
+            return;
+        }
         var acts = CardRemaining();
         if (acts.All(a => a.From == a.To)) { cardFrom = sq; cardTo = sq; }
         else if (cardFrom < 0 && acts.Select(a => a.From).Distinct().Count() > 1) cardFrom = sq;

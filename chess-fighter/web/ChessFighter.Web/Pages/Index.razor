@@ -1219,6 +1219,20 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     bool clipReady;
 
+    /// <summary>The first part of the saved file's name: chess-fighter-win-checkmate. The date and time are added in the browser.</summary>
+    string ClipNameStem()
+    {
+        string outcome = S.Result switch
+        {
+            GameResult.Draw => "draw",
+            GameResult.WhiteWins => S.VsAi ? "win" : "white-wins",
+            GameResult.BlackWins => S.VsAi ? "loss" : "black-wins",
+            _ => "game",
+        };
+        string why = new string((S.ResultReason ?? "").ToLowerInvariant().Where(char.IsLetter).ToArray());
+        return "chess-fighter-" + outcome + (why.Length > 0 ? "-" + why : "");
+    }
+
     /// <summary>Records the clip (this takes as long as the clip, in real time). Sharing is a separate tap: phones only open the share sheet straight after a tap.</summary>
     async Task RenderClip()
     {
@@ -1229,7 +1243,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         try { await JS.InvokeVoidAsync("pcclip.stop"); } catch { }
         try
         {
-            var res = await JS.InvokeAsync<ClipResult>("pcclip.record", BuildClipJson());
+            var res = await JS.InvokeAsync<ClipResult>("pcclip.record", BuildClipJson(), ClipNameStem());
             if (!res.Ok) clipMsg = res.Error ?? "Recording failed.";
             else { clipReady = true; clipMsg = "Your video is ready."; }
         }

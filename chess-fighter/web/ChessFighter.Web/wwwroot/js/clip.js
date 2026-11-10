@@ -1042,8 +1042,17 @@ window.pcclip = (function () {
         return '';
     }
 
+    // chess-fighter-win-checkmate-nov10-1932.mp4: the result, then the local date and time, so saved clips never share a name.
+    function fileName(stem, ext) {
+        const d = new Date();
+        const mon = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'][d.getMonth()];
+        const pad = n => String(n).padStart(2, '0');
+        const base = (stem || 'chess-fighter-clip').replace(/[^a-z0-9-]/gi, '').toLowerCase() || 'chess-fighter-clip';
+        return base + '-' + mon + d.getDate() + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.' + ext;
+    }
+
     // Plays the clip off-screen at real time while recording the canvas and the synth audio. Resolves with a summary.
-    async function record(json) {
+    async function record(json, stem) {
         stop();
         await fontReady();
         const mime = pickMime();
@@ -1067,7 +1076,7 @@ window.pcclip = (function () {
             const type = mime.split(';')[0];
             const blob = new Blob(chunks, { type });
             const ext = type.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
-            lastClip = { blob, mime: type, name: 'chess-fighter-clip.' + ext };
+            lastClip = { blob, mime: type, name: fileName(stem, ext) };
             return { ok: true, mime: type, size: blob.size, name: lastClip.name };
         } catch (e) {
             return { ok: false, error: String(e && e.message || e) };

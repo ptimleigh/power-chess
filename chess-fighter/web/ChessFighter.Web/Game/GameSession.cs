@@ -732,7 +732,7 @@ public sealed class GameSession
             if (tos.Count > 1 && cardTo < 0) { squares = tos; return CardStep.Square; }
         }
         if (extras.Count > 1 && cardExtra < 0) return CardStep.Extra;
-        if (State.PendingCard == CardKind.None && cardInputs == 0) return CardStep.Confirm;
+        if (cardInputs == 0) return CardStep.Confirm;
         return CardStep.None;
     }
 
@@ -1623,6 +1623,8 @@ public sealed class GameSession
         int movedId = -1;
         int fireFrom = -1;
         var fireDelay = new Dictionary<int, int>();
+        var strikeDelay = new Dictionary<int, int>(); // piece square -> ms until the sword or dragon reaches it
+        int smiteCount = 0;
         for (int ei = 0; ei < events.Count; ei++)
         {
             var e = events[ei];
@@ -1686,7 +1688,14 @@ public sealed class GameSession
                 case EventKind.Destroyed:
                 {
                     var v = At(e.From);
-                    if (fireFrom >= 0 && v != null && fireDelay.TryGetValue(e.From, out var wait))
+                    if (v != null && strikeDelay.TryGetValue(e.From, out var sdelay))
+                    {
+                        // Stays on the board until the sword lands or the dragon passes.
+                        v.PendingDeath = true;
+                        int at = e.From;
+                        Later(T(sdelay), () => { v.PendingDeath = false; Kill(v); AddFx("burst", at, css: "boom"); Shake(); });
+                    }
+                    else if (fireFrom >= 0 && v != null && fireDelay.TryGetValue(e.From, out var wait))
                     {
                         // Stays on the board until the ball reaches it, then ignites.
                         v.PendingDeath = true;
@@ -1820,17 +1829,30 @@ public sealed class GameSession
                     Sfx?.Invoke("stun");
                     break;
                 case EventKind.DragonFire:
-                    AddFx("beam", e.From, e.To, css: "dragon");
+                {
+                    // A dragon (green for White, red for Black) sweeps along the row; each piece falls as it passes.
+                    int rank = Sq.Rank(e.From), dms = 1500;
+                    AddFx("dragon", e.From, css: e.Side == Side.White ? "w" : "b", durMs: dms);
+                    for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++)
+                        strikeDelay[events[j].From] = (int)(dms * Math.Clamp(((Sq.File(events[j].From) + 0.5) * 12.5 - 6) / 118, 0, 1));
+                    lastFireMs = Math.Max(lastFireMs, dms);
                     AddToast("DRAGON STRIKE!", "A row burns", "fire", "hadouken");
                     Shake(2);
                     Sfx?.Invoke("fire");
                     break;
+                }
                 case EventKind.ShivaStrike:
-                    AddFx("ring", e.From, radius: 1, css: "gold");
-                    AddFx("burst", e.From, css: "steal");
-                    AddFx("callout", e.From, css: "heavy", text: "SMITE!");
-                    Sfx?.Invoke("slash");
+                {
+                    // One sword per victim, dropped in turn after the portrait has had its moment.
+                    int drop = 1700 + smiteCount * 650;
+                    smiteCount++;
+                    int at = e.From;
+                    strikeDelay[at] = drop + 380;
+                    Later(T(drop), () => AddFx("sword", at, durMs: 700));
+                    Later(T(drop + 380), () => { AddFx("ring", at, radius: 1, css: "gold"); Sfx?.Invoke("slash"); });
+                    lastFireMs = Math.Max(lastFireMs, T(drop + 1000));
                     break;
+                }
                 case EventKind.MissileLaunched:
                     AddToast("MISSILE INCOMING", "It lands in 10 moves. Clear the zone!", "fire", "bigbomb");
                     Sfx?.Invoke("fire");

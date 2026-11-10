@@ -551,3 +551,14 @@ html, body {
 @keyframes ssin { 0% { transform: translateX(-60vw) scale(1.1); opacity: 0; } 20% { transform: none; opacity: 1; } 80% { transform: none; opacity: 1; } 100% { transform: translateX(10vw); opacity: 0; } }
 @keyframes ssname { 0%, 15% { transform: scale(2.4); opacity: 0; } 30%, 80% { transform: none; opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .summon-splash, .summon-splash img, .summon-splash .ss-name { animation: none; } }
+
+/* Shiva's sword drops onto its target; dragons sweep a row */
+.fx-sword { position: absolute; z-index: 9; height: auto; image-rendering: pixelated; pointer-events: none; transform: translate(-50%, -100%); filter: drop-shadow(2px 2px 0 #000) drop-shadow(0 0 8px #bfe3ff); animation: swordfall .8s steps(8) forwards; }
+@keyframes swordfall { 0% { top: -30%; opacity: 1; } 50% { top: var(--ty); opacity: 1; } 80% { top: var(--ty); opacity: 1; } 100% { top: var(--ty); opacity: 0; } }
+.fx-dragonrow { position: absolute; inset: 0; z-index: 9; overflow: hidden; pointer-events: none; }
+.fx-dragonrow .dr-fire { position: absolute; left: 0; top: var(--cy); height: 14px; margin-top: -7px; width: 0; background: repeating-linear-gradient(90deg, #fffbd0 0 6px, #ffb400 6px 12px, #ff3b2f 12px 18px); box-shadow: 0 0 0 2px #000, 0 0 14px #ff7a1f; animation: drfire var(--dur) steps(16) forwards, drfade .4s steps(4) calc(var(--dur) + 100ms) forwards; }
+.fx-dragonrow .dr-img { position: absolute; top: var(--cy); left: -10%; width: var(--span); height: auto; image-rendering: pixelated; transform: translate(-50%, -50%) rotate(-90deg); filter: drop-shadow(3px 3px 0 #000); animation: drfly var(--dur) steps(16) forwards, drfade .4s steps(4) calc(var(--dur) + 100ms) forwards; }
+@keyframes drfly { from { left: -10%; } to { left: 108%; } }
+@keyframes drfire { from { width: 6%; } to { width: 124%; } }
+@keyframes drfade { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fx-sword { animation-duration: .01s; } }

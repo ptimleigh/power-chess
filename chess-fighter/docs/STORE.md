@@ -24,7 +24,7 @@ Add these in the repository's Settings, Secrets and variables, Actions. Nothing 
 Make the keystore once and **keep a backup**: Play ties your app to it (or enrol in Play App Signing and keep the upload key safe).
 `keytool -genkeypair -v -keystore fighter.keystore -alias fighter -keyalg RSA -keysize 2048 -validity 10000`
 
-Before publishing, replace `[add your contact email here before publishing]` in `privacy.html`.
+The privacy policy lists chessfighterapp@gmail.com as the contact; use the same address in the Play Console developer and store-listing contact fields.
 
 ## Ad rules (already in the game)
 Interstitials only between games, never in your first 2 games, at most one every 3 games and 4 minutes, never before a daily puzzle.

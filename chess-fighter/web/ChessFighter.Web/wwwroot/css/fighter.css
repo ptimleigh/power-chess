@@ -489,12 +489,29 @@ html, body {
 .piece.poisoned .piece-body { filter: drop-shadow(0 3px 0 #000a) drop-shadow(2px 0 0 #b05cff) drop-shadow(-2px 0 0 #b05cff); }
 
 /* ---------- Bomb: a sparking fuse above the piece (longer and brighter at tier II) ---------- */
-.wick { position: absolute; left: 50%; top: -14%; width: 8%; height: 24%; transform: translateX(-50%); z-index: 3; pointer-events: none; background: repeating-linear-gradient(180deg, #d9a35a 0 3px, #6b3d12 3px 6px); box-shadow: 0 0 0 1px #000; }
-.wick i { position: absolute; left: 50%; top: -34%; width: 230%; aspect-ratio: 1; transform: translateX(-50%); background: #ffe23a; box-shadow: 0 0 0 2px #ff7a1f, 0 0 0 4px #000; animation: wickspark .36s steps(2) infinite; }
+.wick { position: absolute; left: 50%; top: -14%; width: 8%; height: 24%; transform: translateX(-50%); z-index: 3; pointer-events: none; background: repeating-linear-gradient(180deg, #d9a35a 0 3px, #6b3d12 3px 6px); box-shadow: 0 0 0 1px #000; filter: drop-shadow(0 0 3px #ff9f1c); }
+/* the fuse spark: a spiky four-point star with a yellow centre and a white-hot core, twinkling, with sparks flying off it */
+.wick i {
+    position: absolute; left: 50%; top: -42%; width: 380%; aspect-ratio: 1; transform: translateX(-50%);
+    clip-path: polygon(50% 0, 57% 34%, 100% 50%, 57% 66%, 50% 100%, 43% 66%, 0 50%, 43% 34%);
+    background: #ff7a1f; animation: wickspark .5s steps(3) infinite;
+}
+.wick i::before { content: ""; position: absolute; inset: 22%; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); background: #ffe23a; transform: rotate(45deg); }
+.wick i::after { content: ""; position: absolute; inset: 38%; background: #fff; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.wick::after {
+    content: ""; position: absolute; left: 50%; top: -30%; width: 60%; aspect-ratio: 1; background: #ffe23a;
+    box-shadow: 260% -190% 0 #ffb400, -240% -110% 0 #ff7a1f, 120% -330% 0 #fff2a0;
+    animation: wickfly .7s steps(5) infinite;
+}
 .wick.big { height: 34%; top: -22%; width: 10%; }
-.wick.big i { width: 300%; }
-@keyframes wickspark { 0% { background: #ffe23a; transform: translateX(-50%) rotate(0deg) scale(1); } 50% { background: #fff; transform: translateX(-50%) rotate(45deg) scale(1.25); } }
-@media (prefers-reduced-motion: reduce) { .wick i { animation: none; } }
+.wick.big i { width: 440%; top: -46%; }
+@keyframes wickspark {
+    0% { transform: translateX(-50%) rotate(0deg) scale(1); }
+    50% { transform: translateX(-50%) rotate(45deg) scale(1.22); }
+    100% { transform: translateX(-50%) rotate(90deg) scale(1); }
+}
+@keyframes wickfly { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-90%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wick i, .wick::after { animation: none; } }
 
 /* ---------- Stun bolt: a jagged pixel lightning beam ---------- */
 .fx-beam.zap { height: 8px; margin-top: -4px; background: repeating-linear-gradient(90deg, #fff 0 5px, #ffe23a 5px 10px, #3df2ff 10px 15px); box-shadow: 0 0 0 2px #000, 0 0 12px #ffe23a; animation-timing-function: steps(6); }

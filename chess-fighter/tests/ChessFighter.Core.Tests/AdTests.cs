@@ -50,7 +50,7 @@ namespace ChessFighter.Core.Tests
         [Test]
         public void Doubling_can_level_you_up_and_lists_the_new_unlocks()
         {
-            var profile = new Profile { Xp = 50 };
+            var profile = new Profile { Xp = 215 };
             var r = new MatchReward { OldLevel = profile.Level, XpGained = 20 };
             Assert.AreEqual(1, r.OldLevel);
             Assert.IsTrue(RewardedXp.Double(profile, r));

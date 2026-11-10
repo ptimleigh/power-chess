@@ -575,3 +575,6 @@ html, body {
 .fx-dragonrow.b { transform: scaleX(-1); }
 
 .summon-splash .ss-name small { display: block; margin-top: 8px; font-size: 9px; color: #fff; text-align: center; }
+
+.xpbar i { transition: width .9s steps(30); }
+.xpbar.snap i { transition: none; }

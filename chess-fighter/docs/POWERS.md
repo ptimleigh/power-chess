@@ -143,5 +143,5 @@ deck through Draw Card squares, so they appear once Draw Card (level 7) and thei
 | 20 | Oops! All Bombs mode, custom rules builder |
 
 Until a power's second tier opens, landing on the same power square again uses the square up ("maxed out") instead of upgrading.
-XP: the first ten levels are unchanged (level 10 at 2700 XP); each level after that costs 450 more (level 20 at 7200 XP).
+XP: going from level n to n+1 costs 200 + 30n XP (level 2 at 230 XP, level 10 at 2430, level 20 at 9500), so a win is about one level early on.
 Code: `FighterUnlocks` in `Unlocks.cs`.

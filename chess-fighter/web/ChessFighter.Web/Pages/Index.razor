@@ -484,10 +484,17 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 <div class="reward" data-testid="reward">
                     <div class="xp-line"><b>+@rw.XpGained XP</b>
                         <small>@string.Join(" · ", rw.Breakdown.Select(b => $"{b.Key} {b.Value}"))</small></div>
-                    <div class="xpbar"><i style="width:@(XpPercent(profile))%"></i></div>
+                    <div class="xpbar @(animSnap ? "snap" : "")" data-testid="xp-anim"><i style="width:@(xpAnimDone ? XpPercent(profile) : animPct)%"></i></div>
                     @if (S.HintsUsed > 0) { <div class="lv-line" data-testid="hint-note">Hints used: @S.HintsUsed (XP x@(HintPolicy.XpScale(S.HintsUsed).ToString("0.0")))</div> }
-                    <div class="lv-line">Level @profile.Level@(profile.Level < Progression.MaxLevel ? $" · {Progression.XpForLevel(profile.Level + 1) - profile.Xp} XP to level {profile.Level + 1}" : " · max")</div>
-                    @if (rw.NewLevel > rw.OldLevel)
+                    @if (xpAnimDone)
+                    {
+                        <div class="lv-line">Level @profile.Level@(profile.Level < Progression.MaxLevel ? $" · {Progression.XpForLevel(profile.Level + 1) - profile.Xp} XP to level {profile.Level + 1}" : " · max")</div>
+                    }
+                    else
+                    {
+                        <div class="lv-line">Level @animLevel</div>
+                    }
+                    @if (rw.NewLevel > rw.OldLevel && xpAnimDone)
                     {
                         <div class="levelup" data-testid="levelup">LEVEL UP! You reached level @rw.NewLevel</div>
                         @if ((rw.NewPowerups.Count > 0 || rw.NewTeleporters) && newUnlocks.Count == 0)
@@ -876,10 +883,59 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     void OnGameEnded(MatchSummary m)
     {
         if ((debugOptions && !opt.Rewards) || !S.Rewardable) { reward = null; return; }
+        int xpBefore = profile.Xp;
         reward = Progression.Award(profile, m);
         RefreshUnlocks();
         opt.Level = profile.Level;
         _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
+        _ = RunXpAnim(xpBefore, profile.Xp);
+    }
+
+    // ---------- XP bar fill after a win ----------
+
+    bool xpAnimDone = true, animSnap;
+    int animPct, animLevel;
+    int xpAnimSerial;
+
+    static int PctIn(int xp, int level)
+    {
+        if (level >= Progression.MaxLevel) return 100;
+        int lo = Progression.XpForLevel(level), hi = Progression.XpForLevel(level + 1);
+        return Math.Clamp((xp - lo) * 100 / Math.Max(1, hi - lo), 0, 100);
+    }
+
+    /// <summary>Fills the bar from where it was to where it is now. A level-up fills it to the top, flashes, empties and carries on.</summary>
+    async Task RunXpAnim(int xpBefore, int xpAfter)
+    {
+        int serial = ++xpAnimSerial;
+        int from = Progression.LevelForXp(xpBefore), to = Progression.LevelForXp(xpAfter);
+        xpAnimDone = false;
+        animLevel = from;
+        animPct = PctIn(xpBefore, from);
+        StateHasChanged();
+        await Task.Delay(700);
+        for (int lvl = from; lvl <= to; lvl++)
+        {
+            if (serial != xpAnimSerial) return;
+            animLevel = lvl;
+            animPct = lvl == to ? PctIn(xpAfter, lvl) : 100;
+            StateHasChanged();
+            await Task.Delay(1000);
+            if (lvl < to)
+            {
+                animLevel = lvl + 1;
+                animSnap = true;
+                animPct = 0;
+                StateHasChanged();
+                await Task.Delay(120);
+                animSnap = false;
+                StateHasChanged();
+                await Task.Delay(120);
+            }
+        }
+        if (serial != xpAnimSerial) return;
+        xpAnimDone = true;
+        StateHasChanged();
     }
 
     void DebugXp(int xp, bool reset = false)
@@ -1216,8 +1272,10 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         bool earned = false;
         try { earned = await Ads.ShowRewardedAsync(); } catch { }
         adBusy = false;
+        int xpBeforeAd = profile.Xp;
         if (earned && RewardedXp.Double(profile, reward))
         {
+            _ = RunXpAnim(xpBeforeAd, profile.Xp);
             RefreshUnlocks();
             opt.Level = debugOptions && opt.Level >= 0 ? opt.Level : profile.Level;
             _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
@@ -1234,6 +1292,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         S = new GameSession(opt, tut);
         WireSession();
         reward = null;
+        xpAnimDone = true;
         if (persist && !debugOptions) EnablePersist();
     }
 

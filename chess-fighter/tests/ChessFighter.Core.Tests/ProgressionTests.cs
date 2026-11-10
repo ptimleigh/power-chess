@@ -11,9 +11,10 @@ namespace ChessFighter.Core.Tests
         public void Levels_follow_the_xp_curve_and_cap_out()
         {
             Assert.AreEqual(1, Progression.LevelForXp(0));
-            Assert.AreEqual(1, Progression.LevelForXp(59));
-            Assert.AreEqual(2, Progression.LevelForXp(60));
-            Assert.AreEqual(3, Progression.LevelForXp(180));
+            Assert.AreEqual(1, Progression.LevelForXp(229));
+            Assert.AreEqual(2, Progression.LevelForXp(230));
+            Assert.AreEqual(3, Progression.LevelForXp(490));
+            Assert.AreEqual(9500, Progression.XpForLevel(20));
             Assert.AreEqual(Progression.MaxLevel, Progression.LevelForXp(int.MaxValue / 2));
             for (int l = 2; l <= Progression.MaxLevel; l++)
                 Assert.AreEqual(l, Progression.LevelForXp(Progression.XpForLevel(l)));
@@ -87,8 +88,8 @@ namespace ChessFighter.Core.Tests
             var m = new MatchSummary { Me = Side.White, Result = GameResult.WhiteWins, Reason = "Checkmate", AiLevel = 2, Captures = 3, PowerupsCollected = 2 };
             var r = Progression.Award(p, m);
             Assert.AreEqual(1, r.OldLevel);
-            Assert.AreEqual(3, r.NewLevel, "260 XP skips straight past level 2 (60) to level 3 (180)");
-            CollectionAssert.IsSupersetOf(r.NewPowerups, new[] { PowerupKind.SmallBomb, PowerupKind.Ghost });
+            Assert.AreEqual(2, r.NewLevel, "a first win (260 XP with trophies) is one level: level 2 needs 230, level 3 needs 490");
+            CollectionAssert.Contains(r.NewPowerups, PowerupKind.SmallBomb);
             Assert.IsFalse(r.NewTeleporters, "teleporters arrive at level 4");
             var names = r.NewTrophies.Select(t => t.Name).ToList();
             CollectionAssert.IsSubsetOf(new[] { "First Win", "Checkmate", "Flawless" }, names);

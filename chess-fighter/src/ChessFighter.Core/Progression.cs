@@ -172,12 +172,14 @@ namespace ChessFighter.Core
     {
         public const int MaxLevel = FighterUnlocks.MaxLevel;
 
-        /// <summary>Total XP needed to reach a level (level 1 = 0).</summary>
+        /// <summary>
+        /// Total XP needed to reach a level (level 1 = 0). Going from level n to n+1 costs 200 + 30n XP, so a win (around 150 to 300
+        /// XP) is about one level early on: 2: 230, 3: 490, 4: 780 ... 10: 2430 ... 20: 9500.
+        /// </summary>
         public static int XpForLevel(int level)
         {
             if (level <= 1) return 0;
-            if (level <= 10) return 30 * (level - 1) * level; // 2: 60, 3: 180, 4: 360, 5: 600 ... 10: 2700
-            return 2700 + 450 * (level - 10); // 11: 3150 ... 20: 7200
+            return 200 * (level - 1) + 15 * (level - 1) * level;
         }
 
         public static int LevelForXp(int xp)

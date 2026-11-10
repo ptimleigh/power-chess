@@ -60,6 +60,23 @@ public sealed class Toast
     public int Ms = 2600;
 }
 
+/// <summary>
+/// The card-draw moment. The player sees a fan of face-down cards and taps one; the card inside was decided by the random draw
+/// already, so the pick is for show. A rival's draw is a quick face-up flip.
+/// </summary>
+public sealed class DrawShow
+{
+    public CardKind Card;
+    public Side Side;
+    public string WhoLabel = "";
+    /// <summary>True while the player is being asked to pick (the board is blocked and the rival waits).</summary>
+    public bool Pick;
+    /// <summary>0 waiting for a pick, 1 flipped and showing the card.</summary>
+    public int Phase;
+    public int Chosen = 1;
+    public int Serial;
+}
+
 /// <summary>One line of the event log: what happened and to whom.</summary>
 public sealed class LogEntry
 {
@@ -506,6 +523,7 @@ public sealed class GameSession
         ResetTracker(opt.Fen == null || opt.Rewards);
         Pieces.Clear();
         Effects.Clear();
+        Draw = null;
         Toasts.Clear();
         toastQueue.Clear();
         Log.Clear();
@@ -1534,6 +1552,7 @@ public sealed class GameSession
         }
         if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn
         await Task.Delay(T(wait));
+        while (Draw is { Pick: true }) await Task.Delay(60); // the rival waits for the player's card pick
 
         if (Puzzle != null && PuzzleOutcome == PuzzleResult.None)
         {
@@ -1948,7 +1967,7 @@ public sealed class GameSession
                     break;
                 case EventKind.CardDrawn:
                     AddFx("ring", e.From, radius: 1, css: "gold");
-                    AddToast("DREW: " + Names.CardName(e.Card), Names.CardDesc(e.Card), "gold", Names.CardIcon(e.Card));
+                    StartDrawShow(e.Card, e.Side);
                     Sfx?.Invoke("pickup");
                     break;
                 case EventKind.CardPlayed:
@@ -2204,6 +2223,62 @@ public sealed class GameSession
         var fx = new FxItem { Id = nextId++, Kind = kind, Sq = sq, To = to, Radius = radius, Css = css, DurMs = durMs, Text = text };
         Effects.Add(fx);
         Later(Math.Max(1100, durMs + 500), () => Effects.Remove(fx));
+    }
+
+    // ---------- card draw reveal ----------
+
+    public DrawShow? Draw { get; private set; }
+    int drawSerial;
+
+    void LogOnly(Side who, string text)
+    {
+        Log.Add(new LogEntry { Who = who, WhoLabel = WhoLabelFor(who), Text = text, Ply = State.Ply });
+        if (Log.Count > 60) Log.RemoveAt(0);
+    }
+
+    /// <summary>
+    /// A card was drawn: the player gets the pick-a-card moment (it waits for a tap, or flips by itself after three seconds), the rival's
+    /// card flips face-up for a second. Calm effects skip the picking and just show the card.
+    /// </summary>
+    void StartDrawShow(CardKind card, Side side)
+    {
+        LogOnly(side, "Drew " + Names.CardName(card));
+        if (Draw != null && Draw.Pick) { AddToast("DREW: " + Names.CardName(card), Names.CardDesc(card), "gold", Names.CardIcon(card), side, false); return; }
+        bool human = !VsAi || side == Side.White;
+        int serial = ++drawSerial;
+        var show = new DrawShow { Card = card, Side = side, WhoLabel = WhoLabelFor(side), Serial = serial, Pick = human && opt.Drama, Phase = 0 };
+        if (!show.Pick) show.Phase = 1;
+        Draw = show;
+        if (show.Pick)
+            Later(3000, () => { if (Draw?.Serial == serial && Draw.Phase == 0) FlipDraw(1); });
+        else
+            Later(human ? 1900 : 1300, () => { if (Draw?.Serial == serial) { Draw = null; } });
+    }
+
+    /// <summary>The player taps one of the face-down cards.</summary>
+    public void PickDrawCard(int index)
+    {
+        if (Draw == null || Draw.Phase != 0) return;
+        FlipDraw(index);
+    }
+
+    void FlipDraw(int index)
+    {
+        if (Draw == null) return;
+        int serial = Draw.Serial;
+        Draw.Chosen = index;
+        Draw.Phase = 1;
+        Sfx?.Invoke("pickup");
+        Changed?.Invoke();
+        Later(2300, () => { if (Draw?.Serial == serial) Draw = null; });
+    }
+
+    /// <summary>A tap anywhere on the revealed card closes it.</summary>
+    public void DismissDraw()
+    {
+        if (Draw == null || Draw.Phase == 0) return;
+        Draw = null;
+        Changed?.Invoke();
     }
 
     /// <summary>The side the event being processed belongs to; toasts made during <see cref="Process"/> are tagged with it.</summary>

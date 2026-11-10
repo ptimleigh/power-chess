@@ -137,6 +137,29 @@
         <div class="chips">@InvChips(Side.White)</div>
     </section>
 
+    @if (S.Draw is DrawShow dr)
+    {
+        <div class="draw-overlay @(dr.Pick ? "pick" : "quick") @(dr.Side == Side.White ? "by-white" : "by-black")" data-testid="draw-overlay" data-phase="@dr.Phase" @onclick="S.DismissDraw">
+            <div class="draw-who"><i class="twho">@dr.WhoLabel</i> @(dr.Phase == 0 ? "Pick a card!" : "drew")</div>
+            <div class="draw-deck">
+                @for (int i = 0; i < 3; i++)
+                {
+                    int ci = i;
+                    bool chosen = dr.Phase == 1 && dr.Chosen == i;
+                    <button class="dcard @(chosen ? "flip" : "") @(dr.Phase == 1 && !chosen ? "gone" : "")" style="--i:@ci" data-card-pick="@ci" disabled="@(!dr.Pick || dr.Phase != 0)"
+                            @onclick="() => S.PickDrawCard(ci)" @onclick:stopPropagation="true" aria-label="Card @(ci + 1)">
+                        <span class="dback"><b>?</b></span>
+                        <span class="dface"><span class="dicon">@Icons.Svg(Names.CardIcon(dr.Card))</span><span class="dname">@Names.CardShort(dr.Card)</span></span>
+                    </button>
+                }
+            </div>
+            @if (dr.Phase == 1)
+            {
+                <div class="draw-info" data-testid="draw-info"><b>@Names.CardName(dr.Card)</b><small>@Names.CardDesc(dr.Card)</small><em>Tap to continue</em></div>
+            }
+        </div>
+    }
+
     @if (S.CoachStep > 0 && !S.GameOver)
     {
         <div class="coach" data-testid="coach" data-step="@S.CoachStep">

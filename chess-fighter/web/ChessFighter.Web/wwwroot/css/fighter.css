@@ -692,3 +692,34 @@ html, body {
 @keyframes boltflash { 0% { opacity: 1; } 20% { opacity: .2; } 40% { opacity: 1; } 60% { opacity: .3; } 80% { opacity: 1; } 100% { opacity: 0; } }
 .fx-callout.zap span { color: #ffe23a; border-bottom-color: #ffe23a; }
 @media (prefers-reduced-motion: reduce) { .fx-bolt { animation: none; } }
+
+/* Card draw: a deck slides in, three face-down cards fan out, tap one to flip it */
+.draw-overlay { position: fixed; inset: 0; z-index: 70; display: grid; place-content: center; justify-items: center; gap: 30px; background: #07061acc; animation: drawbg .25s steps(4) both; }
+.draw-overlay.quick { background: #07061a66; pointer-events: none; }
+.draw-who { font-family: var(--px); font-size: 11px; color: var(--gold); text-shadow: 2px 2px 0 #000; display: flex; align-items: center; gap: 8px; }
+.draw-overlay.by-black .twho { background: #d9231b; }
+.draw-deck { perspective: 900px; position: relative; width: 300px; max-width: 92vw; height: 200px; animation: deckin .55s steps(8) both; }
+.dcard { position: absolute; left: 50%; top: 50%; width: 104px; height: 150px; margin: -75px 0 0 -52px; padding: 0; border: 4px solid #000; background: none; cursor: pointer;
+    transform: translateX(calc((var(--i) - 1) * 96px)) rotate(calc((var(--i) - 1) * 10deg)); transform-style: preserve-3d; transition: transform .5s steps(6), opacity .3s steps(3);
+    box-shadow: 0 0 0 3px var(--gold), 5px 5px 0 3px #000; animation: cardbob 1.2s steps(2) infinite; animation-delay: calc(var(--i) * -.3s); }
+.dcard:disabled { cursor: default; }
+.dcard:not(:disabled):hover { transform: translateX(calc((var(--i) - 1) * 96px)) translateY(-14px) rotate(calc((var(--i) - 1) * 10deg)); }
+.dback, .dface { position: absolute; inset: 0; display: grid; place-items: center; backface-visibility: hidden; }
+.dback { background: repeating-linear-gradient(45deg, #5a2fd0 0 6px, #3a1c9a 6px 12px); }
+.dback b { font-family: var(--px); font-size: 34px; color: #fff; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; }
+.dface { background: linear-gradient(180deg, #2b1f66, #120a38); transform: rotateY(180deg); align-content: center; gap: 10px; color: var(--gold); }
+.dicon { width: 58px; height: 58px; filter: drop-shadow(2px 2px 0 #000); }
+.dicon svg { width: 100%; height: 100%; fill: currentColor; }
+.dname { font-family: var(--px); font-size: 8px; color: #fff; text-align: center; padding: 0 4px; line-height: 1.4; }
+.dcard.flip { transform: translateX(0) translateY(-10px) rotate(0deg) rotateY(180deg) scale(1.25); animation: none; z-index: 3; }
+.dcard.gone { opacity: 0; transform: translateX(calc((var(--i) - 1) * 150px)) rotate(calc((var(--i) - 1) * 24deg)); animation: none; }
+.draw-overlay.quick .dcard { animation: none; }
+.draw-overlay.quick .dcard.flip { transition-duration: .35s; }
+.draw-info { display: grid; gap: 6px; text-align: center; max-width: min(88vw, 340px); animation: pxpop .3s steps(4) both; }
+.draw-info b { font-family: var(--px); font-size: 12px; color: var(--gold); text-shadow: 2px 2px 0 #000; line-height: 1.5; }
+.draw-info small { font-size: 13px; color: var(--text); line-height: 1.4; }
+.draw-info em { font-style: normal; font-size: 11px; color: var(--dim); }
+@keyframes deckin { 0% { transform: translateX(110vw) rotate(25deg); } 100% { transform: none; } }
+@keyframes drawbg { 0% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes cardbob { 50% { margin-top: -80px; } }
+@media (prefers-reduced-motion: reduce) { .draw-deck { animation: none; } .dcard { animation: none; transition: none; } }

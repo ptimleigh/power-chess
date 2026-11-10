@@ -12,6 +12,7 @@ namespace ChessFighter.Core
         const int Mate = 100000;
         const int Inf = 1000000;
         static readonly int[] PieceValue = { 0, 100, 320, 330, 500, 900, 0 };
+        public static int PieceValueOf(PieceType t) { return PieceValue[(int)t]; }
 
         /// <summary>Search depth in actions (a perk use or a bomb counts as one). With a time budget it is the deepest iteration tried.</summary>
         public int Depth = 2;
@@ -122,7 +123,7 @@ namespace ChessFighter.Core
                     Rules.Apply(child, a);
                     int score;
                     GameResult ended = child.ToMove != root.ToMove ? Rules.GetResult(child) : GameResult.Ongoing;
-                    if (ended == GameResult.Ongoing) score = ScoreChild(root, child, d - 1, alpha, Inf, 0);
+                    if (ended == GameResult.Ongoing) score = ScoreChild(root, child, d - 1 + (a.Kind == ActionKind.Harpoon ? 1 : 0), alpha, Inf, 0);
                     else score = ended == GameResult.Draw ? 0 : Mate; // take a mate, and never stalemate a won position away
                     if (aborted) { complete = false; break; }
                     if (score > alpha)
@@ -231,7 +232,8 @@ namespace ChessFighter.Core
             {
                 var child = s.Clone();
                 Rules.Apply(child, a);
-                int score = ScoreChild(s, child, depth - 1, alpha, beta, ext);
+                // A hook is only worth its turn through what follows (the pulled piece is now in reach), so look one ply further.
+                int score = ScoreChild(s, child, depth - 1 + (a.Kind == ActionKind.Harpoon ? 1 : 0), alpha, beta, ext);
                 if (aborted) return 0;
                 if (score > best) best = score;
                 if (best > alpha) alpha = best;
@@ -368,6 +370,7 @@ namespace ChessFighter.Core
                 if (p.Has(Buff.TripleMove)) v += 55;
                 if (p.Has(Buff.Ghost)) v += 8 * p.GhostTurns;
                 if (p.Has(Buff.Fireball)) v += 90;
+                if (p.Has(Buff.Harpoon)) v += p.Tier >= 2 ? 80 : 40;
                 if (p.Has(Buff.Poison)) v += 30;
                 if (p.Has(Buff.Armor)) v += 15 * p.ArmorTurns;
                 if (p.Has(Buff.SmallBomb)) v += 50;

@@ -589,7 +589,28 @@ namespace ChessFighter.Core
             child.Probe = true;
             Rules.Apply(child, a);
             int v = Ai.Evaluate(child);
-            return child.ToMove == s.ToMove ? v : -v;
+            v = child.ToMove == s.ToMove ? v : -v;
+            if (Cards.KindOf(a.Aux) == CardKind.MissileStrike) v += MissileBonus(s, a);
+            return v;
+        }
+
+        /// <summary>
+        /// A missile lands in 10 moves, so a static look sees nothing. Value it by what stands in the quadrant now: rival pieces
+        /// (and especially their king, who must run) are worth hitting, our own pieces are a cost, and our own king there rules it out.
+        /// </summary>
+        static int MissileBonus(GameState s, GameAction a)
+        {
+            Side me = s.ToMove;
+            int rival = 0, own = 0;
+            for (int i = 0; i < 16; i++)
+            {
+                var p = s.Cells[Sq.Make(Sq.File(a.To) + i % 4, Sq.Rank(a.To) + i / 4)];
+                if (p.IsEmpty) continue;
+                if (p.Type == PieceType.King) { if (p.Side == me) return -100000; rival += 700; continue; }
+                int v = Ai.PieceValueOf(p.Type);
+                if (p.Side == me) own += v; else rival += v;
+            }
+            return rival * 2 / 5 - own * 3 / 2;
         }
     }
 }

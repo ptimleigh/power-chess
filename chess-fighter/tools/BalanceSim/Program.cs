@@ -121,6 +121,7 @@ static Game PlayOne(ulong seed, int aiLevel, int unlock, int maxPly)
             {
                 case EventKind.PickupFound: picked[e.Powerup] = picked.GetValueOrDefault(e.Powerup) + 1; break;
                 case EventKind.CardPlayed: cards[e.Card] = cards.GetValueOrDefault(e.Card) + 1; break;
+                case EventKind.CardCancelled: cards[CardKind.NuhUh] = cards.GetValueOrDefault(CardKind.NuhUh) + 1; break;
                 case EventKind.Captured: g.Captures++; break;
                 case EventKind.FireballFired: g.FireShots++; break;
                 case EventKind.HarpoonFired: g.HarpoonShots++; break;

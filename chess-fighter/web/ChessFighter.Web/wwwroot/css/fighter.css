@@ -578,3 +578,14 @@ html, body {
 
 .xpbar i { transition: width .9s steps(30); }
 .xpbar.snap i { transition: none; }
+
+/* Results card: less crowded */
+.xp-line { flex-direction: row; align-items: baseline; justify-content: space-between; }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; font-size: 11px; color: var(--dim); text-decoration: underline; cursor: pointer; }
+.xp-detail { font-size: 11px; color: var(--dim); line-height: 1.4; }
+.trophy-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.trophy-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 2px solid #000; background: #ffd23f22; color: var(--gold); font-size: 11px; font-weight: 800; }
+.trophy-chip i { width: 14px; height: 14px; display: inline-block; }
+.trophy-chip i svg { width: 100%; height: 100%; fill: currentColor; }
+.unlock-strip.compact { margin: 4px 0; }
+.unlock-strip.compact .us-text { font-size: 11px; }

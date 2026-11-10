@@ -2,7 +2,7 @@
 @if (Items.Count > 0)
 {
     var it = Items[idx];
-    <div class="unlock-strip" data-testid="unlock-strip" data-count="@Items.Count">
+    <div class="unlock-strip @(Compact ? "compact" : "")" data-testid="unlock-strip" data-count="@Items.Count">
         <div class="us-head"><b>@Heading</b><small>@(idx + 1) of @Items.Count</small></div>
         <div class="us-card" data-unlock="@Key(it)">
             @if (it.Type == UnlockType.Powerup || it.Type == UnlockType.Transforms || it.Type == UnlockType.Upgrade)
@@ -18,7 +18,7 @@
                 <div class="us-badge">@Icons.Svg(it.Type == UnlockType.Preset ? "spark" : it.Type == UnlockType.Cards ? "card" : "dice")</div>
             }
             <div class="us-name">@NameOf(it) <em>Level @it.Level</em></div>
-            <div class="us-text">@TextOf(it)</div>
+            <div class="us-text">@(Compact ? FirstSentence(TextOf(it)) : TextOf(it))</div>
             @if (it.Type == UnlockType.Preset && OnTry.HasDelegate)
             {
                 <button class="btn small" data-action="try-preset" @onclick="() => OnTry.InvokeAsync(it.PresetId!)">Try it</button>
@@ -38,6 +38,14 @@
 @code {
     [Parameter] public List<UnlockItem> Items { get; set; } = new();
     [Parameter] public string Heading { get; set; } = "New unlocks";
+    /// <summary>On the results card: one sentence of description instead of the full text.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    static string FirstSentence(string text)
+    {
+        int i = text.IndexOf(". ", StringComparison.Ordinal);
+        return i > 0 ? text.Substring(0, i + 1) : text;
+    }
     [Parameter] public EventCallback<string> OnTry { get; set; }
     /// <summary>Raised when the last card has been shown.</summary>
     [Parameter] public EventCallback OnSeenAll { get; set; }

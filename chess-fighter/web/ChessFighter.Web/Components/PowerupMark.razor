@@ -3,7 +3,11 @@
 <span class="pu-glyph">
     @if (Kind == PowerupKind.None)
     {
-        <b>?</b>
+        <b class="pu-q">?</b>
+    }
+    else if (Kind == PowerupKind.Combo2 || Kind == PowerupKind.Combo4)
+    {
+        <b class="pu-num">@(Kind == PowerupKind.Combo2 ? "+2" : "+4")</b>
     }
     else
     {

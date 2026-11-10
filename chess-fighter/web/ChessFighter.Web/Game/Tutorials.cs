@@ -306,7 +306,7 @@ public static class Tutorials
         .Then(1100, c => c.Aim("c3"))
         .Then(800, c => c.Aim().Mystery("c3", false).Move("c1", "c3").Fx("ring", "c3", css: "gold").Say("Fire a bolt in any direction..."))
         .Then(900, c => c.Aim("f3"))
-        .Then(800, c => c.Aim().Fx("beam", "c3", "f3", css: "zap").Fx("stars", "f3", css: "stun").Stun("f3", 2).Say("...it freezes the first enemy in line for 2 turns"))
+        .Then(800, c => c.Aim().Fx("bolt", "c3", "f3").Fx("stars", "f3", css: "stun").Stun("f3", 2).Say("...it freezes the first enemy in line for 2 turns"))
         .Then(1300, c => c.Say("Even a king. Armored pieces are immune")),
 
         [PowerupKind.StealGrab] = new DemoScript

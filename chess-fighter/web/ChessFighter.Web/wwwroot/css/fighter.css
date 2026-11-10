@@ -677,3 +677,18 @@ html, body {
 
 /* The full-colour piece art is tall and narrow: let it stand a little taller in its square */
 .piece-svg.art { transform: scale(1.04); transform-origin: 50% 100%; }
+
+/* Replay-style labels on the real board: a big pixel-font "?" and "+2" / "+4" with a black outline and shadow */
+.pu-glyph b.pu-q, .pu-glyph b.pu-num { font-family: var(--px); font-weight: 400; color: #fff; line-height: 1; letter-spacing: 0;
+    text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; }
+.pu-glyph b.pu-q { font-size: calc(var(--b) / 8 * .5); }
+.pu-glyph b.pu-num { font-size: calc(var(--b) / 8 * .3); white-space: nowrap; }
+/* Stun bolt: a lightning zigzag that flashes, with a big yellow ZAP! on the target */
+.fx-bolt { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 12; overflow: visible; animation: boltflash .7s steps(1) forwards; }
+.fx-bolt polyline { fill: none; stroke-linejoin: miter; stroke-linecap: square; }
+.fx-bolt .bo { stroke: #000; stroke-width: 3.6; }
+.fx-bolt .bm { stroke: #ffe23a; stroke-width: 2.2; }
+.fx-bolt .bc { stroke: #fff; stroke-width: .8; }
+@keyframes boltflash { 0% { opacity: 1; } 20% { opacity: .2; } 40% { opacity: 1; } 60% { opacity: .3; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.fx-callout.zap span { color: #ffe23a; border-bottom-color: #ffe23a; }
+@media (prefers-reduced-motion: reduce) { .fx-bolt { animation: none; } }

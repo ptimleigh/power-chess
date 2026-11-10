@@ -2048,7 +2048,8 @@ public sealed class GameSession
                     break;
                 }
                 case EventKind.ZapFired:
-                    AddFx("beam", e.From, e.To, css: "zap");
+                    AddFx("bolt", e.From, e.To);
+                    AddFx("callout", e.To, css: "heavy zap", text: "ZAP!");
                     AddToast("ZAP!", "", "stun", "bolt");
                     Sfx?.Invoke("stun");
                     break;

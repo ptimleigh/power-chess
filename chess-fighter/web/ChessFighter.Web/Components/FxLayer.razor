@@ -53,6 +53,13 @@
                 <img class="dr-img" src="img/summons/dragon-@(fx.Css == "w" ? "white" : "black").png" alt="" />
             </div>
             break;
+        case "bolt":
+            <svg class="fx-bolt" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <polyline points="@BoltPoints(fx.Sq, fx.To)" class="bo"/>
+                <polyline points="@BoltPoints(fx.Sq, fx.To)" class="bm"/>
+                <polyline points="@BoltPoints(fx.Sq, fx.To)" class="bc"/>
+            </svg>
+            break;
         case "beam":
             double dx = Cx(fx.To) - Cx(fx.Sq), dy = Cy(fx.To) - Cy(fx.Sq);
             double len = Math.Sqrt(dx * dx + dy * dy);
@@ -70,6 +77,23 @@
     [Parameter] public double Scale { get; set; } = 1;
 
     double Size => 100.0 / Cols;
+
+    /// <summary>A lightning zigzag between two squares, as SVG polyline points in board percent.</summary>
+    string BoltPoints(int from, int to)
+    {
+        double x0 = Cx(from), y0 = Cy(from), x1 = Cx(to), y1 = Cy(to);
+        double dx = x1 - x0, dy = y1 - y0, len = Math.Max(0.01, Math.Sqrt(dx * dx + dy * dy));
+        double ux = dx / len, uy = dy / len, px = -uy, py = ux;
+        int n = Math.Max(4, (int)Math.Round(len / (Size * 0.55)));
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i <= n; i++)
+        {
+            double t = (double)i / n;
+            double off = i == 0 || i == n ? 0 : (i % 2 == 0 ? -1 : 1) * Size * 0.22;
+            sb.Append(N(x0 + dx * t + px * off)).Append(',').Append(N(y0 + dy * t + py * off)).Append(' ');
+        }
+        return sb.ToString();
+    }
     double Cx(int sq) => (Sq.File(sq) + 0.5) * Size;
     double Cy(int sq) => (Cols - 1 - Sq.Rank(sq) + 0.5) * Size;
     static string N(double d) => d.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);

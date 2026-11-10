@@ -123,7 +123,7 @@ namespace ChessFighter.Core
                 new WeightedKind(PowerupKind.SmallBomb, 8),
                 new WeightedKind(PowerupKind.Ghost, 8),
                 new WeightedKind(PowerupKind.Combo2, 6),
-                new WeightedKind(PowerupKind.Combo4, 2),
+                new WeightedKind(PowerupKind.Combo4, 1),
                 new WeightedKind(PowerupKind.StunBolt, 8),
                 new WeightedKind(PowerupKind.StealGrab, 8),
                 new WeightedKind(PowerupKind.DrawCard, 9),

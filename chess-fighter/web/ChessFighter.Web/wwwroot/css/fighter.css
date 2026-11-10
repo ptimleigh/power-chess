@@ -660,3 +660,12 @@ html, body {
 .log-row.by-white { border-left-color: #4f8bff; }
 .log-row.by-black { border-left-color: #ff4b3e; }
 .log-row .twho { flex: none; margin-right: 0; }
+
+/* Coach: the short guided first game */
+.coach { width: calc(var(--b) + 12px); max-width: 100%; box-sizing: border-box; padding: 10px 12px; display: grid; gap: 8px; background: #150e3cf2; border: 3px solid #000; box-shadow: 0 0 0 2px var(--gold), 4px 4px 0 #000; animation: pxpop .25s steps(4); }
+.coach-text { font-size: 13px; line-height: 1.4; color: var(--text); }
+.coach-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.coach-row .btn { margin-top: 0; }
+.sq.coachsq::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3; box-shadow: inset 0 0 0 4px var(--gold), inset 0 0 0 7px #000; animation: coachpulse .8s steps(2) infinite; }
+@keyframes coachpulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .sq.coachsq::after { animation: none; } }

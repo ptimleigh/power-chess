@@ -136,6 +136,17 @@
         </div>
         <div class="chips">@InvChips(Side.White)</div>
     </section>
+
+    @if (S.CoachStep > 0 && !S.GameOver)
+    {
+        <div class="coach" data-testid="coach" data-step="@S.CoachStep">
+            <div class="coach-text">@S.CoachText</div>
+            <div class="coach-row">
+                <span class="us-dots-btn">@for (int i = 1; i <= S.CoachCount; i++) { <i class="@(i == S.CoachStep ? "on" : "")"></i> }</span>
+                <button class="btn small ghost" data-action="coach-skip" @onclick="S.EndCoach">@(S.CoachStep == 4 ? "Got it" : "Skip tutorial")</button>
+            </div>
+        </div>
+    }
     @Bag(Side.White)
 
     <section class="actions">
@@ -1501,6 +1512,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             else c += " aim";
         }
         if (missileZone.Contains(sq)) c += " missile";
+        if (S.CoachStep > 0 && S.CoachHighlights.Contains(sq)) c += " coachsq";
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;

@@ -430,11 +430,62 @@ public sealed class GameSession
                 State.Content[Sq.Parse(sq)] = (byte)PowerupKind.Fireball;
             }
             ai = Ai.ForLevel(1);
+            CoachStep = 1;
         }
 
     }
 
     static int roundCounter;
+
+    // ---------- coach: a short guided first game on the training board ----------
+
+    /// <summary>0 = off. 1 move a piece, 2 grab a power square, 3 fire it, 4 well done.</summary>
+    public int CoachStep { get; private set; }
+
+    public string CoachText => CoachStep switch
+    {
+        1 => "Welcome! Tap one of your blue pieces, then tap a square to move it. Checkmate the red king to win.",
+        2 => "The gold squares are power squares. Land a piece on one to collect it. Try the flame squares!",
+        3 => "That piece now holds a Fireball. Tap it, press the Fireball button, then tap a red piece to blast it.",
+        4 => "Nice shot! Capture pieces and checkmate the king to win. Tap ? any time for help.",
+        _ => "",
+    };
+
+    public int CoachCount => 4;
+
+    /// <summary>Squares to pulse for the current step.</summary>
+    public HashSet<int> CoachHighlights
+    {
+        get
+        {
+            var set = new HashSet<int>();
+            if (CoachStep == 2)
+            {
+                for (int sq = 0; sq < 64; sq++) if (State.Mystery[sq] && State.Content[sq] != 0) set.Add(sq);
+            }
+            else if (CoachStep == 3)
+            {
+                for (int sq = 0; sq < 64; sq++) { var c = State.Cells[sq]; if (!c.IsEmpty && c.Side == Side.White && c.Has(Buff.Fireball)) set.Add(sq); }
+            }
+            return set;
+        }
+    }
+
+    public void EndCoach()
+    {
+        CoachStep = 0;
+        Changed?.Invoke();
+    }
+
+    /// <summary>Moves the coach on when the player has done what the current step asked.</summary>
+    void AdvanceCoach(GameEvent e)
+    {
+        if (CoachStep == 0 || e.Side != Side.White) return;
+        if (CoachStep == 1 && e.Kind == EventKind.Moved) CoachStep = 2;
+        if (CoachStep == 2 && e.Kind == EventKind.PickupFound && e.Powerup == PowerupKind.Fireball) CoachStep = 3;
+        else if (CoachStep == 3 && e.Kind == EventKind.FireballFired) CoachStep = 4;
+        else if (CoachStep == 4 && e.Kind == EventKind.Moved) CoachStep = 0;
+    }
 
     /// <summary>Counts up across the page's lifetime, each time any game starts. Drives the ROUND n banner (and replays it).</summary>
     public int GameSerial { get; private set; }
@@ -1738,6 +1789,7 @@ public sealed class GameSession
         {
             var e = events[ei];
             // Toasts for this event are about the side that did it; a few events carry a side that is not the actor.
+            AdvanceCoach(e);
             toastSide = e.Kind == EventKind.PoisonTriggered || e.Kind == EventKind.MissileStruck || e.Kind == EventKind.TeleportBlocked || e.Kind == EventKind.DoubleMoveForfeited ? (Side?)null : e.Side;
             switch (e.Kind)
             {

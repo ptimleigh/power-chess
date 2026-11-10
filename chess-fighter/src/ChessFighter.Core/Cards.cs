@@ -84,6 +84,7 @@ namespace ChessFighter.Core
         /// </summary>
         public static int Weight(GameState s, Side drawer, CardKind k)
         {
+            if (!FighterUnlocks.CardOpen(k, s.Config.UnlockLevel)) return 0;
             switch (k)
             {
                 case CardKind.NoMorePowers: return 5;

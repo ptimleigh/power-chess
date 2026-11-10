@@ -49,6 +49,8 @@ namespace ChessFighter.Core
         /// <summary>Moves a ghost piece gets (the pickup move itself does not count). Standing still costs nothing.</summary>
         public int GhostTurns = 3;
         public List<WeightedKind> Pool = DefaultPool();
+        /// <summary>The player's Chess Fighter level, which decides which cards can be drawn and whether a second landing upgrades a power. Below zero: everything is open.</summary>
+        public int UnlockLevel = -1;
 
         /// <summary>The pool before the playtest tuning, kept so BalanceSim can compare old and new weights.</summary>
         public static List<WeightedKind> LegacyPool()

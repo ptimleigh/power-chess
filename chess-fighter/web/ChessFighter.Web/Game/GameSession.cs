@@ -328,14 +328,14 @@ public sealed class GameSession
 
     GameConfig BuildConfig()
     {
-        var cfg = new GameConfig { StartRerolls = opt.Rerolls, Pool = GameConfig.FighterPool() };
+        // The player's level decides which powers, cards and upgrades exist (a level below zero opens everything).
+        var cfg = new GameConfig { StartRerolls = opt.Rerolls, Pool = opt.Level >= 0 ? FighterUnlocks.PoolFor(opt.Level) : GameConfig.FighterPool(), UnlockLevel = opt.Level };
         if (opt.Pairs >= 0) cfg.InitialPairs = opt.Pairs;
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
         cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
         cfg.SwapAllowed[(int)Side.Black] = !VsAi; // nor Swap
         bool tele = opt.Level < 0 || opt.Level >= Progression.TeleporterLevel;
-        // Chess Fighter ignores account-level unlocks for now: every power is in the pool from the first game.
         cfg.PortalChance = opt.Portals && tele ? 0.12 : 0;
         cfg.Squares = opt.Mode;
         cfg.MysteryChance = opt.HiddenChance;

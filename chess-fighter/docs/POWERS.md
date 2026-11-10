@@ -113,3 +113,35 @@ and Triple Move (replaced by Combo), and the account-level unlock tiers (for now
 - Combo assumes **the same piece** makes all the extra moves. Say so if any piece should be allowed.
 - The Power Chess level-up cards, unlock previews and rule presets still exist in the app and refer to the old powers.
 - Tutorials and the demo boards for the new powers are not written yet.
+
+## Level plan (20 levels)
+
+Level 1 is the starter kit; every later level opens one thing. A level below zero (debug links, tests) opens everything. Cards only join the
+deck through Draw Card squares, so they appear once Draw Card (level 7) and their pack are both open. Both sides draw from the same open set.
+
+| Level | Unlock |
+|---|---|
+| 1 | Fireball I, Armor, Poison |
+| 2 | Bomb I |
+| 3 | Ghost |
+| 4 | Teleporters |
+| 5 | Stun Bolt |
+| 6 | Combo +2 |
+| 7 | Draw Card squares, cards: Boulder, Smash Boulder, Promotion |
+| 8 | Harpoon I |
+| 9 | Fireball II |
+| 10 | Square frequency, Calm and Chaos modes |
+| 11 | Steal |
+| 12 | Cards: Nuh-uh, Take Back, Horse Sacrifice, Role Reversal |
+| 13 | Bomb II, Harpoon II |
+| 14 | Ghost Town mode |
+| 15 | Combo +4 |
+| 16 | Cards: Summon Mars, Summon Caïssa, No More Powers |
+| 17 | Fireworks and Royal Court modes |
+| 18 | Cards: Dragon Strike, Summon Shiva |
+| 19 | Cards: Hit Restart, World Turned Upside Down, Missile Strike |
+| 20 | Oops! All Bombs mode, custom rules builder |
+
+Until a power's second tier opens, landing on the same power square again uses the square up ("maxed out") instead of upgrading.
+XP: the first ten levels are unchanged (level 10 at 2700 XP); each level after that costs 450 more (level 20 at 7200 XP).
+Code: `FighterUnlocks` in `Unlocks.cs`.

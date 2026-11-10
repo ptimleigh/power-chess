@@ -799,9 +799,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         {
             if (profile.Level >= Progression.MaxLevel) return "Max level. Everything is unlocked.";
             int next = profile.Level + 1;
-            var names = Names.Guide.Concat(new[] { PowerupKind.TransformPawn })
-                .Where(k => Progression.UnlockLevel(k) == next).Select(Names.Name).Distinct().ToList();
-            if (next == Progression.TeleporterLevel) names.Add("Teleporters");
+            var names = Unlocks.AtLevel(next).Select(i => i.Type == UnlockType.Powerup ? Names.Name(i.Kind) : i.Type == UnlockType.Cards ? string.Join(" / ", i.CardKinds.Select(Names.CardShort)) + " cards" : i.Name).ToList();
             return $"{Progression.XpForLevel(next) - profile.Xp} XP to level {next}" + (names.Count > 0 ? ": unlocks " + string.Join(", ", names) : "");
         }
     }

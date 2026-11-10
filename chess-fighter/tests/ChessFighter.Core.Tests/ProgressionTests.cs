@@ -23,17 +23,11 @@ namespace ChessFighter.Core.Tests
         public void The_pool_only_contains_what_a_level_has_unlocked()
         {
             var l1 = Progression.PoolFor(1).Select(w => w.Kind).ToList();
-            CollectionAssert.DoesNotContain(l1, PowerupKind.SmallBomb);
-            CollectionAssert.DoesNotContain(l1, PowerupKind.Ghost);
-            CollectionAssert.DoesNotContain(l1, PowerupKind.TripleMove);
-            CollectionAssert.Contains(l1, PowerupKind.Poison);
-            CollectionAssert.Contains(l1, PowerupKind.Fireball, "the big hitters are available from the first game");
-            CollectionAssert.Contains(l1, PowerupKind.Steal);
-            Assert.AreEqual(GameConfig.DefaultPool().Count, Progression.PoolFor(Progression.MaxLevel).Count, "everything is unlocked at max level");
+            CollectionAssert.AreEquivalent(new[] { PowerupKind.Fireball, PowerupKind.Poison, PowerupKind.SpikedArmor }, l1, "the starter kit");
+            Assert.AreEqual(GameConfig.FighterPool().Count, Progression.PoolFor(Progression.MaxLevel).Count, "everything is unlocked at max level");
             var l2 = Progression.PoolFor(2).Select(w => w.Kind).ToList();
             CollectionAssert.Contains(l2, PowerupKind.SmallBomb);
-            CollectionAssert.Contains(l2, PowerupKind.Ghost);
-            CollectionAssert.DoesNotContain(l2, PowerupKind.BigBomb);
+            CollectionAssert.DoesNotContain(l2, PowerupKind.Ghost);
         }
 
         [Test]
@@ -94,7 +88,8 @@ namespace ChessFighter.Core.Tests
             var r = Progression.Award(p, m);
             Assert.AreEqual(1, r.OldLevel);
             Assert.AreEqual(3, r.NewLevel, "260 XP skips straight past level 2 (60) to level 3 (180)");
-            Assert.IsTrue(r.NewTeleporters);
+            CollectionAssert.IsSupersetOf(r.NewPowerups, new[] { PowerupKind.SmallBomb, PowerupKind.Ghost });
+            Assert.IsFalse(r.NewTeleporters, "teleporters arrive at level 4");
             var names = r.NewTrophies.Select(t => t.Name).ToList();
             CollectionAssert.IsSubsetOf(new[] { "First Win", "Checkmate", "Flawless" }, names);
             Assert.AreEqual(100 + 15 + 20 + 50 + 25 * r.NewTrophies.Count, r.XpGained);

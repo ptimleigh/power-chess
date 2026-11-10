@@ -14,35 +14,43 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Every_power_is_available_from_the_first_game_so_levels_unlock_no_powerups()
+        public void Twenty_levels_each_unlock_something_and_nothing_twice()
         {
-            var all = Unlocks.Between(0, Progression.MaxLevel);
-            Assert.AreEqual(0, all.Count(i => i.Type == UnlockType.Powerup || i.Type == UnlockType.Transforms));
+            Assert.AreEqual(20, Progression.MaxLevel);
+            for (int l = 2; l <= 20; l++) Assert.Greater(Unlocks.AtLevel(l).Count, 0, "level " + l);
+            var all = Unlocks.Between(0, 20);
+            foreach (var w in GameConfig.FighterPool())
+                Assert.AreEqual(1, all.Count(i => i.Type == UnlockType.Powerup && i.Kind == w.Kind), w.Kind.ToString());
+            for (int c = Cards.First; c <= Cards.Last; c++)
+                if ((CardKind)c != CardKind.None)
+                    Assert.AreEqual(1, all.Count(i => i.Type == UnlockType.Cards && i.CardKinds.Contains((CardKind)c)), ((CardKind)c).ToString());
         }
 
         [Test]
-        public void Level_three_unlocks_teleporters()
+        public void The_plan_puts_each_thing_on_its_level()
         {
-            Assert.IsTrue(Unlocks.AtLevel(3).Any(i => i.Type == UnlockType.Teleporters));
-        }
-
-        [Test]
-        public void Level_five_unlocks_frequency_chaos_and_calm()
-        {
-            var items = Unlocks.AtLevel(5);
-            Assert.IsTrue(items.Any(i => i.Type == UnlockType.Frequency));
-            Assert.IsTrue(items.Any(i => i.PresetId == "chaos"));
-            Assert.IsTrue(items.Any(i => i.PresetId == "calm"));
-        }
-
-        [Test]
-        public void Presets_and_builder_arrive_on_their_levels()
-        {
-            Assert.IsTrue(Unlocks.AtLevel(6).Any(i => i.PresetId == "bigbombs"));
-            Assert.IsTrue(Unlocks.AtLevel(7).Any(i => i.PresetId == "ghosttown"));
-            Assert.IsTrue(Unlocks.AtLevel(8).Any(i => i.PresetId == "fireworks"));
-            Assert.IsTrue(Unlocks.AtLevel(9).Any(i => i.PresetId == "royal"));
-            Assert.IsTrue(Unlocks.AtLevel(10).Any(i => i.Type == UnlockType.Custom));
+            CollectionAssert.AreEquivalent(new[] { PowerupKind.Fireball, PowerupKind.SpikedArmor, PowerupKind.Poison }, Unlocks.AtLevel(1).Where(i => i.Type == UnlockType.Powerup).Select(i => i.Kind).ToList());
+            Assert.IsTrue(Unlocks.AtLevel(2).Any(i => i.Kind == PowerupKind.SmallBomb));
+            Assert.IsTrue(Unlocks.AtLevel(3).Any(i => i.Kind == PowerupKind.Ghost));
+            Assert.IsTrue(Unlocks.AtLevel(4).Any(i => i.Type == UnlockType.Teleporters));
+            Assert.IsTrue(Unlocks.AtLevel(5).Any(i => i.Kind == PowerupKind.StunBolt));
+            Assert.IsTrue(Unlocks.AtLevel(6).Any(i => i.Kind == PowerupKind.Combo2));
+            Assert.IsTrue(Unlocks.AtLevel(7).Any(i => i.Kind == PowerupKind.DrawCard));
+            Assert.IsTrue(Unlocks.AtLevel(7).Any(i => i.Type == UnlockType.Cards && i.CardKinds.Contains(CardKind.Promotion)));
+            Assert.IsTrue(Unlocks.AtLevel(8).Any(i => i.Kind == PowerupKind.Harpoon));
+            Assert.IsTrue(Unlocks.AtLevel(9).Any(i => i.Type == UnlockType.Upgrade && i.Name == "Fireball II"));
+            Assert.IsTrue(Unlocks.AtLevel(10).Any(i => i.Type == UnlockType.Frequency));
+            Assert.IsTrue(Unlocks.AtLevel(10).Any(i => i.PresetId == "chaos") && Unlocks.AtLevel(10).Any(i => i.PresetId == "calm"));
+            Assert.IsTrue(Unlocks.AtLevel(11).Any(i => i.Kind == PowerupKind.StealGrab));
+            Assert.IsTrue(Unlocks.AtLevel(12).Any(i => i.Type == UnlockType.Cards && i.CardKinds.Contains(CardKind.NuhUh) && i.CardKinds.Contains(CardKind.TakeBack)));
+            Assert.AreEqual(2, Unlocks.AtLevel(13).Count(i => i.Type == UnlockType.Upgrade));
+            Assert.IsTrue(Unlocks.AtLevel(14).Any(i => i.PresetId == "ghosttown"));
+            Assert.IsTrue(Unlocks.AtLevel(15).Any(i => i.Kind == PowerupKind.Combo4));
+            Assert.IsTrue(Unlocks.AtLevel(16).Any(i => i.Type == UnlockType.Cards && i.CardKinds.Contains(CardKind.SummonMars)));
+            Assert.IsTrue(Unlocks.AtLevel(17).Any(i => i.PresetId == "fireworks") && Unlocks.AtLevel(17).Any(i => i.PresetId == "royal"));
+            Assert.IsTrue(Unlocks.AtLevel(18).Any(i => i.Type == UnlockType.Cards && i.CardKinds.Contains(CardKind.DragonStrike)));
+            Assert.IsTrue(Unlocks.AtLevel(19).Any(i => i.Type == UnlockType.Cards && i.CardKinds.Contains(CardKind.MissileStrike)));
+            Assert.IsTrue(Unlocks.AtLevel(20).Any(i => i.PresetId == "bigbombs") && Unlocks.AtLevel(20).Any(i => i.Type == UnlockType.Custom));
         }
 
         [Test]
@@ -51,13 +59,13 @@ namespace ChessFighter.Core.Tests
             var items = Unlocks.Between(1, 4);
             Assert.IsTrue(items.Select(i => i.Level).SequenceEqual(items.Select(i => i.Level).OrderBy(l => l)));
             Assert.IsTrue(items.Any(i => i.Type == UnlockType.Teleporters));
-            Assert.AreEqual(0, Unlocks.Between(10, 99).Count);
+            Assert.AreEqual(0, Unlocks.Between(20, 99).Count);
         }
 
         [Test]
         public void Next_unlock_level_skips_empty_levels_and_ends_at_zero()
         {
-            Assert.AreEqual(3, Unlocks.NextUnlockLevel(1));
+            Assert.AreEqual(2, Unlocks.NextUnlockLevel(1));
             Assert.AreEqual(0, Unlocks.NextUnlockLevel(Progression.MaxLevel));
             for (int l = 1; l < Progression.MaxLevel; l++)
             {

@@ -10,10 +10,10 @@ namespace ChessFighter.Core.Tests
         public void Frequency_sets_spawn_and_cap()
         {
             var cfg = new GameConfig();
-            Presets.Apply(cfg, Presets.Classic, Frequency.Chaos, "", 5);
+            Presets.Apply(cfg, Presets.Classic, Frequency.Chaos, "", 10);
             Assert.AreEqual(1, cfg.SpawnInterval);
             Assert.AreEqual(12, cfg.MaxMysterySquares);
-            Presets.Apply(cfg, Presets.Classic, Frequency.Rare, "", 5);
+            Presets.Apply(cfg, Presets.Classic, Frequency.Rare, "", 10);
             Assert.AreEqual(5, cfg.SpawnInterval);
             Assert.AreEqual(5, cfg.MaxMysterySquares);
         }
@@ -26,37 +26,37 @@ namespace ChessFighter.Core.Tests
             Assert.AreEqual(3, cfg.SpawnInterval);
             Assert.Greater(cfg.Pool.Count, 5);
             Assert.IsTrue(Presets.IsStandard("bigbombs", Frequency.Chaos, 3));
-            Assert.IsFalse(Presets.Available("custom", 9));
-            Assert.IsTrue(Presets.Available("custom", 10));
+            Assert.IsFalse(Presets.Available("custom", 19));
+            Assert.IsTrue(Presets.Available("custom", 20));
         }
 
         [Test]
-        public void Bombs_pool_is_only_bombs_even_below_its_unlock_level()
+        public void Bombs_pool_is_only_bombs()
         {
             var cfg = new GameConfig();
-            Presets.Apply(cfg, "bigbombs", Frequency.Normal, "", 6);
+            Presets.Apply(cfg, "bigbombs", Frequency.Normal, "", 20);
             Assert.AreEqual(1, cfg.Pool.Count);
             Assert.AreEqual(PowerupKind.SmallBomb, cfg.Pool[0].Kind);
         }
 
         [Test]
-        public void Every_preset_has_a_pool_and_unlocks_one_per_level_from_five()
+        public void Every_preset_has_a_pool_and_unlocks_between_levels_ten_and_twenty()
         {
             foreach (var p in Presets.All)
             {
                 var cfg = new GameConfig();
-                Presets.Apply(cfg, p.Id, Frequency.Normal, "", 10);
+                Presets.Apply(cfg, p.Id, Frequency.Normal, "", 20);
                 Assert.Greater(cfg.Pool.Count, 0, p.Id);
             }
-            Assert.AreEqual(5, Presets.All.Min(p => p.UnlockLevel));
-            Assert.AreEqual(9, Presets.All.Max(p => p.UnlockLevel));
+            Assert.AreEqual(10, Presets.All.Min(p => p.UnlockLevel));
+            Assert.AreEqual(20, Presets.All.Max(p => p.UnlockLevel));
         }
 
         [Test]
         public void Ghost_town_adds_teleporters()
         {
             var cfg = new GameConfig();
-            Presets.Apply(cfg, "ghosttown", Frequency.Normal, "", 7);
+            Presets.Apply(cfg, "ghosttown", Frequency.Normal, "", 14);
             Assert.Greater(cfg.PortalChance, 0);
         }
 
@@ -73,7 +73,7 @@ namespace ChessFighter.Core.Tests
             Assert.IsFalse(pool.Any(w => w.Kind == PowerupKind.Fireball));
             Assert.AreEqual(24, pool.First(w => w.Kind == PowerupKind.StealGrab).Weight);
             var cfg = new GameConfig();
-            Presets.Apply(cfg, "custom", Frequency.Normal, c, 10);
+            Presets.Apply(cfg, "custom", Frequency.Normal, c, 20);
             Assert.AreEqual(pool.Count, cfg.Pool.Count);
         }
 
@@ -82,16 +82,16 @@ namespace ChessFighter.Core.Tests
         {
             string c = new string('0', Presets.CustomKinds().Count);
             var cfg = new GameConfig();
-            Presets.Apply(cfg, "custom", Frequency.Normal, c, 10);
+            Presets.Apply(cfg, "custom", Frequency.Normal, c, 20);
             Assert.Greater(cfg.Pool.Count, 0);
         }
 
         [Test]
         public void Non_standard_games_pay_half_xp()
         {
-            Assert.AreEqual(1.0, Presets.XpScale(Presets.Classic, Frequency.Normal, 10));
-            Assert.AreEqual(0.5, Presets.XpScale("bigbombs", Frequency.Normal, 10));
-            Assert.AreEqual(0.5, Presets.XpScale(Presets.Classic, Frequency.Chaos, 10));
+            Assert.AreEqual(1.0, Presets.XpScale(Presets.Classic, Frequency.Normal, 20));
+            Assert.AreEqual(0.5, Presets.XpScale("bigbombs", Frequency.Normal, 20));
+            Assert.AreEqual(0.5, Presets.XpScale(Presets.Classic, Frequency.Chaos, 20));
             Assert.AreEqual(1.0, Presets.XpScale("bigbombs", Frequency.Normal, 2));
 
             var full = new MatchSummary { Me = Side.White, Result = GameResult.WhiteWins, Reason = "Checkmate", AiLevel = 2 };
@@ -107,7 +107,7 @@ namespace ChessFighter.Core.Tests
             foreach (var p in Presets.All)
             {
                 var cfg = new GameConfig { Squares = SquareMode.Revealed };
-                Presets.Apply(cfg, p.Id, Frequency.Normal, "", 10);
+                Presets.Apply(cfg, p.Id, Frequency.Normal, "", 20);
                 cfg.MaxPly = 250;
                 for (ulong seed = 1; seed <= 6; seed++)
                     SimulationTests.PlayRandomGame(seed, null, 1500, cfg);

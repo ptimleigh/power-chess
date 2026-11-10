@@ -170,13 +170,14 @@ namespace ChessFighter.Core
 
     public static class Progression
     {
-        public const int MaxLevel = 10;
+        public const int MaxLevel = FighterUnlocks.MaxLevel;
 
         /// <summary>Total XP needed to reach a level (level 1 = 0).</summary>
         public static int XpForLevel(int level)
         {
             if (level <= 1) return 0;
-            return 30 * (level - 1) * level; // 2: 60, 3: 180, 4: 360, 5: 600 ... 10: 2700
+            if (level <= 10) return 30 * (level - 1) * level; // 2: 60, 3: 180, 4: 360, 5: 600 ... 10: 2700
+            return 2700 + 450 * (level - 10); // 11: 3150 ... 20: 7200
         }
 
         public static int LevelForXp(int xp)
@@ -186,48 +187,15 @@ namespace ChessFighter.Core
             return level;
         }
 
-        /// <summary>The level at which each powerup becomes available (a staged unlock keeps the first games simple).</summary>
-        public static int UnlockLevel(PowerupKind k)
-        {
-            switch (k)
-            {
-                case PowerupKind.DoubleMove:
-                case PowerupKind.Poison:
-                case PowerupKind.SpikedArmor:
-                case PowerupKind.Stun:
-                case PowerupKind.Boulder:
-                case PowerupKind.Reroll:
-                case PowerupKind.Fireball:
-                case PowerupKind.Steal:
-                    return 1;
-                case PowerupKind.SmallBomb:
-                case PowerupKind.Ghost:
-                case PowerupKind.TransformPawn:
-                case PowerupKind.TransformKnight:
-                case PowerupKind.TransformBishop:
-                case PowerupKind.TransformRook:
-                    return 2;
-                case PowerupKind.BigBomb:
-                case PowerupKind.TransformQueen:
-                case PowerupKind.Swap:
-                    return 3;
-                default: // Triple Move, Rewind
-                    return 4;
-            }
-        }
+        /// <summary>The level at which each power becomes available (see <see cref="FighterUnlocks"/>).</summary>
+        public static int UnlockLevel(PowerupKind k) { return FighterUnlocks.PowerLevel(k); }
 
-        public const int TeleporterLevel = 3;
+        public const int TeleporterLevel = FighterUnlocks.TeleporterLevel;
 
-        public static bool Unlocked(PowerupKind k, int level) { return UnlockLevel(k) <= level; }
+        public static bool Unlocked(PowerupKind k, int level) { return FighterUnlocks.PowerOpen(k, level); }
 
-        /// <summary>The default pool restricted to what this level has unlocked.</summary>
-        public static List<WeightedKind> PoolFor(int level)
-        {
-            var pool = new List<WeightedKind>();
-            foreach (var w in GameConfig.DefaultPool())
-                if (Unlocked(w.Kind, level)) pool.Add(w);
-            return pool;
-        }
+        /// <summary>The fighter pool restricted to what this level has unlocked.</summary>
+        public static List<WeightedKind> PoolFor(int level) { return FighterUnlocks.PoolFor(level); }
 
         static int Round(double v) { return (int)Math.Round(v); }
 
@@ -279,6 +247,8 @@ namespace ChessFighter.Core
             p.Xp += xp;
             r.XpGained = xp;
             r.NewLevel = p.Level;
+            foreach (var w in GameConfig.FighterPool())
+                if (UnlockLevel(w.Kind) > r.OldLevel && UnlockLevel(w.Kind) <= r.NewLevel) r.NewPowerups.Add(w.Kind);
             r.NewTeleporters = TeleporterLevel > r.OldLevel && TeleporterLevel <= r.NewLevel;
         }
     }

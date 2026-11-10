@@ -738,7 +738,7 @@ namespace ChessFighter.Core
                 case PowerupKind.Fireball:
                     if (p.Has(Buff.Fireball))
                     {
-                        if (p.Tier >= 2) { MaxOut(s, sq, p, kind, ev); return; }
+                        if (p.Tier >= 2 || !FighterUnlocks.TierTwoOpen(kind, s.Config.UnlockLevel)) { MaxOut(s, sq, p, kind, ev); return; }
                         p.Tier = 2;
                         s.Cells[sq] = p;
                         Emit(ev, EventKind.PowerUpgraded, sq, sq, p.Type, me, kind);
@@ -755,7 +755,7 @@ namespace ChessFighter.Core
                 case PowerupKind.Harpoon:
                     if (p.Has(Buff.Harpoon))
                     {
-                        if (p.Tier >= 2) { MaxOut(s, sq, p, kind, ev); return; }
+                        if (p.Tier >= 2 || !FighterUnlocks.TierTwoOpen(kind, s.Config.UnlockLevel)) { MaxOut(s, sq, p, kind, ev); return; }
                         p.Tier = 2;
                         s.Cells[sq] = p;
                         Emit(ev, EventKind.PowerUpgraded, sq, sq, p.Type, me, kind);
@@ -767,6 +767,7 @@ namespace ChessFighter.Core
                     break;
                 case PowerupKind.SmallBomb:
                     if (p.Has(Buff.BigBomb)) { MaxOut(s, sq, p, kind, ev); return; }
+                    if (p.Has(Buff.SmallBomb) && !FighterUnlocks.TierTwoOpen(kind, s.Config.UnlockLevel)) { MaxOut(s, sq, p, kind, ev); return; }
                     if (p.Has(Buff.SmallBomb))
                     {
                         // Landing on Bomb again upgrades it to the big blast.

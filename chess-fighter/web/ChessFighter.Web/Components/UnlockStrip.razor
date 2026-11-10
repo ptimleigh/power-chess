@@ -5,7 +5,7 @@
     <div class="unlock-strip" data-testid="unlock-strip" data-count="@Items.Count">
         <div class="us-head"><b>@Heading</b><small>@(idx + 1) of @Items.Count</small></div>
         <div class="us-card" data-unlock="@Key(it)">
-            @if (it.Type == UnlockType.Powerup || it.Type == UnlockType.Transforms)
+            @if (it.Type == UnlockType.Powerup || it.Type == UnlockType.Transforms || it.Type == UnlockType.Upgrade)
             {
                 <DemoBoard @key="@Key(it)" Kind="it.Kind" />
             }
@@ -15,7 +15,7 @@
             }
             else
             {
-                <div class="us-badge">@Icons.Svg(it.Type == UnlockType.Preset ? "spark" : "dice")</div>
+                <div class="us-badge">@Icons.Svg(it.Type == UnlockType.Preset ? "spark" : it.Type == UnlockType.Cards ? "card" : "dice")</div>
             }
             <div class="us-name">@NameOf(it) <em>Level @it.Level</em></div>
             <div class="us-text">@TextOf(it)</div>
@@ -62,9 +62,9 @@
 
     void Next() { if (idx < Items.Count - 1) idx++; }
 
-    static string Key(UnlockItem it) => it.Type + ":" + (it.PresetId ?? it.Kind.ToString());
+    static string Key(UnlockItem it) => it.Type + ":" + (it.PresetId ?? (it.Type == UnlockType.Cards ? "L" + it.Level : it.Name ?? it.Kind.ToString()));
 
-    static string NameOf(UnlockItem it) => it.Type == UnlockType.Powerup ? Names.Name(it.Kind) : it.Name;
+    static string NameOf(UnlockItem it) => it.Type == UnlockType.Powerup ? Names.Name(it.Kind) : it.Type == UnlockType.Cards ? (it.CardKinds.Count == 1 ? "New card" : "New cards") : it.Name;
 
-    static string TextOf(UnlockItem it) => it.Type == UnlockType.Powerup ? Names.Desc(it.Kind) : it.Blurb;
+    static string TextOf(UnlockItem it) => it.Type == UnlockType.Powerup ? Names.Desc(it.Kind) : it.Type == UnlockType.Cards ? string.Join(", ", it.CardKinds.Select(Names.CardName)) + ". They can now turn up from Draw Card squares." : it.Blurb;
 }

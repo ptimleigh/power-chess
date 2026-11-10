@@ -49,7 +49,7 @@ namespace ChessFighter.Core
             r.XpGained += extra;
             r.Breakdown.Add(new System.Collections.Generic.KeyValuePair<string, int>("Ad bonus", extra));
             r.NewLevel = p.Level;
-            foreach (var w in GameConfig.DefaultPool())
+            foreach (var w in GameConfig.FighterPool())
             {
                 var k = w.Kind;
                 if (Progression.UnlockLevel(k) > r.OldLevel && Progression.UnlockLevel(k) <= r.NewLevel && !r.NewPowerups.Contains(k)) r.NewPowerups.Add(k);

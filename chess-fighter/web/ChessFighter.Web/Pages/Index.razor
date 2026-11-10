@@ -236,16 +236,16 @@
                 <span class="pc">@S.Perk(ActiveSide, PowerupKind.Rewind)</span>
             </button>
         }
-        @if (S.HasFireball)
+        @if (S.HoldsFireball)
         {
-            <button class="perk fire-btn" data-action="fire" @onclick="S.StartFire">
-                <span class="pi">@Icons.Svg("fire")</span><span class="pl">Fireball</span>
+            <button class="perk fire-btn" data-action="fire" disabled="@(!S.HasFireball)" @onclick="S.StartFire">
+                <span class="pi">@Icons.Svg("fire")</span><span class="pl">Fireball@(S.HasFireball ? "" : " (no target)")</span>
             </button>
         }
-        @if (S.HasHarpoon)
+        @if (S.HoldsHarpoon)
         {
-            <button class="perk fire-btn" data-action="harpoon" @onclick="S.StartHarpoon">
-                <span class="pi">@Icons.Svg("hook")</span><span class="pl">Harpoon</span>
+            <button class="perk fire-btn" data-action="harpoon" disabled="@(!S.HasHarpoon)" @onclick="S.StartHarpoon">
+                <span class="pi">@Icons.Svg("hook")</span><span class="pl">Harpoon@(S.HasHarpoon ? "" : " (no target)")</span>
             </button>
         }
         @if (S.HasDetonate)

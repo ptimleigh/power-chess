@@ -445,7 +445,9 @@ public sealed class GameSession
     {
         1 => "Welcome! Tap one of your blue pieces, then tap a square to move it. Checkmate the red king to win.",
         2 => "The gold squares are power squares: land a piece on one to collect it. Your d-pawn can reach the flame square on d4 in one move!",
-        3 => "That piece now holds a Fireball. Tap it, press the Fireball button, then tap a red piece to blast it.",
+        3 => Legal.Any(a => a.Kind == ActionKind.Fireball)
+            ? "That piece now holds a Fireball. Tap it, press the Fireball button, then tap a red piece to blast it."
+            : "That piece now holds a Fireball! It fires like a rook. Line it up with a red piece on the same row or column, then tap it and press Fireball.",
         4 => "Nice shot! Capture pieces and checkmate the king to win. Tap ? any time for help.",
         _ => "",
     };
@@ -725,6 +727,10 @@ public sealed class GameSession
         Sfx?.Invoke("click");
         Changed?.Invoke();
     }
+
+    /// <summary>The selected piece of the player on the move holds a Fireball (whether or not anything is in line yet).</summary>
+    public bool HoldsFireball => Selected >= 0 && Mode == InputMode.Normal && HumanTurn && State.Cells[Selected].Has(Buff.Fireball);
+    public bool HoldsHarpoon => Selected >= 0 && Mode == InputMode.Normal && HumanTurn && State.Cells[Selected].Has(Buff.Harpoon);
 
     /// <summary>The selected piece earned a fireball and has at least one enemy in line.</summary>
     public bool HasFireball => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Fireball && a.From == Selected);
@@ -1103,7 +1109,8 @@ public sealed class GameSession
         bool mine = !State.Cells[sq].IsEmpty && State.Cells[sq].Side == State.ToMove;
         if (!mine) return;
         var acts = Legal.Where(a => a.From == sq && a.Kind == ActionKind.Move).ToList();
-        bool special = Legal.Any(a => (a.Kind == ActionKind.Detonate || a.Kind == ActionKind.Fireball || a.Kind == ActionKind.Harpoon) && a.From == sq);
+        bool special = Legal.Any(a => (a.Kind == ActionKind.Detonate || a.Kind == ActionKind.Fireball || a.Kind == ActionKind.Harpoon) && a.From == sq)
+            || State.Cells[sq].Has(Buff.Fireball) || State.Cells[sq].Has(Buff.Harpoon);
         if (acts.Count == 0 && !special) return;
         Selected = sq;
         foreach (var a in acts) Targets.Add(a.To);

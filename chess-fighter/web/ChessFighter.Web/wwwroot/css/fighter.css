@@ -540,3 +540,14 @@ html, body {
 .sq.quad.qr.qt { box-shadow: inset -4px 4px 0 #ff2e4d; }
 .sq.quad.ql.qb { box-shadow: inset 4px -4px 0 #ff2e4d; }
 .sq.quad.qr.qb { box-shadow: inset -4px -4px 0 #ff2e4d; }
+
+/* Summon splash: the summoned figure slides in over the board */
+.summon-splash { position: fixed; inset: 0; z-index: 58; pointer-events: none; display: grid; place-items: center; background: radial-gradient(circle at 50% 55%, #ffffff33 0, #0a042099 70%); animation: ssbg 2s steps(10) forwards; }
+.summon-splash img { grid-area: 1 / 1; height: min(62vh, 480px); image-rendering: pixelated; filter: drop-shadow(4px 4px 0 #000) drop-shadow(0 0 18px #ffd23f); animation: ssin 2s steps(12) forwards; }
+.summon-splash .ss-name { grid-area: 1 / 1; align-self: end; margin-bottom: 16vh; font-family: var(--px); font-size: 26px; color: var(--gold); text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; animation: ssname 2s steps(10) forwards; }
+.summon-splash.s-summonmars .ss-name { color: #ff5a4a; }
+.summon-splash.s-summonshiva .ss-name { color: #6fb7ff; }
+@keyframes ssbg { 0% { opacity: 0; } 15%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ssin { 0% { transform: translateX(-60vw) scale(1.1); opacity: 0; } 20% { transform: none; opacity: 1; } 80% { transform: none; opacity: 1; } 100% { transform: translateX(10vw); opacity: 0; } }
+@keyframes ssname { 0%, 15% { transform: scale(2.4); opacity: 0; } 30%, 80% { transform: none; opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .summon-splash, .summon-splash img, .summon-splash .ss-name { animation: none; } }

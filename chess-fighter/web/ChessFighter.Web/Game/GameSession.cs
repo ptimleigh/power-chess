@@ -842,7 +842,7 @@ public sealed class GameSession
     {
         string name = Names.CardName(ActiveCard);
         if (step == CardStep.Confirm) return $"Play {name}? It costs your turn.";
-        if (step == CardStep.Extra) return ActiveCard == CardKind.SummonCaissa ? "Caissa: which piece comes back?" : $"{name}: choose what it becomes";
+        if (step == CardStep.Extra) return ActiveCard == CardKind.SummonCaissa ? "Caïssa: which piece comes back?" : $"{name}: choose what it becomes";
         bool second = cardFrom >= 0;
         switch (ActiveCard)
         {
@@ -851,7 +851,7 @@ public sealed class GameSession
             case CardKind.Promotion: return "Promotion: tap the piece to promote";
             case CardKind.RoleReversal: return second ? "Role reversal: tap the piece to swap with" : "Role reversal: tap the first piece";
             case CardKind.HorseSacrifice: return second ? "Horse sacrifice: tap the piece that becomes a rook" : "Horse sacrifice: tap the knight to sacrifice";
-            case CardKind.SummonCaissa: return "Caissa: tap an empty square";
+            case CardKind.SummonCaissa: return "Caïssa: tap an empty square";
             case CardKind.DragonStrike: return "Dragon: tap a row to burn";
             case CardKind.MissileStrike: return "Missile: tap the quadrant to strike";
             default: return name;
@@ -1774,6 +1774,8 @@ public sealed class GameSession
                     Sfx?.Invoke("pickup");
                     break;
                 case EventKind.CardPlayed:
+                    if (e.Card == CardKind.SummonCaissa || e.Card == CardKind.SummonMars || e.Card == CardKind.SummonShiva)
+                        ShowSummon(e.Card);
                     AddToast(Names.CardName(e.Card), (e.Side == Side.White ? "White" : "Black") + " plays a card", "gold", Names.CardIcon(e.Card));
                     Sfx?.Invoke("pickup");
                     break;
@@ -1789,7 +1791,7 @@ public sealed class GameSession
                 case EventKind.PieceRestored:
                     AddFx("ring", e.From, radius: 1, css: "gold");
                     AddFx("burst", e.From, css: "fire");
-                    AddToast("CAISSA!", "A piece returns", "gold", "spark");
+                    AddToast("CAÏSSA!", "A piece returns", "gold", "spark");
                     Sfx?.Invoke("pickup");
                     break;
                 case EventKind.PowersCleared:
@@ -2061,6 +2063,17 @@ public sealed class GameSession
             Shake(heavy ? 2 : 1);
             Sfx?.Invoke("capture");
         });
+    }
+
+    /// <summary>The summon portrait splash: the figure slides in over the board for a moment.</summary>
+    public CardKind SummonSplash { get; private set; }
+    public int SummonSerial { get; private set; }
+
+    void ShowSummon(CardKind kind)
+    {
+        SummonSplash = kind;
+        int serial = ++SummonSerial;
+        Later((int)(2000 * Pace / 0.75), () => { if (SummonSerial == serial) { SummonSplash = CardKind.None; } });
     }
 
     async void Later(int ms, Action act)

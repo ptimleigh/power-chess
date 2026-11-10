@@ -52,13 +52,13 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | Smash boulder | Remove 1 boulder. Draw weight is the same as Place a boulder, but zero while the board has no boulder, so nobody hoards dead cards. | at will |
 | Missile Strike | Pick a quadrant. Each player has 5 turns (10 moves in all) to evacuate the highlighted zone, counting down. If the king cannot get out, the missile shows incoming and freezes before the strike to show the checkmate animation. | at will |
 | Summon Mars | Tells the player the best possible move for 3 turns. | at will |
-| Summon Caissa | Bring back 1 captured piece and place it anywhere on the board. | at will |
+| Summon Caïssa | Bring back 1 captured piece and place it anywhere on the board. | at will |
 | Summon Shiva | Strikes 3 random rival pieces with falling weapons, capturing them (never kings). | at will |
 | Dragon Strike | A dragon wipes out 1 row with dragonfire. Rows 3 to 6 only, and not a row occupied by a king. | at will |
 | Nuh-uh | Cancel the other player's card. Prompted whenever a card is activated. | reaction |
 | Take back | Undo 1 round of moves. | at will |
 
-**All fifteen cards are built:** Place a boulder, Smash boulder, You get a promotion!, Role reversal, Horse Sacrifice, No more powers, Summon Caissa,
+**All fifteen cards are built:** Place a boulder, Smash boulder, You get a promotion!, Role reversal, Horse Sacrifice, No more powers, Summon Caïssa,
 Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World turned upside down and Missile Strike.
 
 ## Assumptions made while building (change any of these)
@@ -97,7 +97,7 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World 
   kings and armored pieces; a king still there **loses the game**, both kings there is a draw. Only one missile at a time. The AI treats the zone
   as danger and heads for the nearest edge.
 - **Role reversal, Horse Sacrifice and Promotion never touch kings;** promotion never touches queens.
-- **Caissa** places the piece on any free square (no powerup square, boulder or teleporter, and no pawn on a back rank). The sacrificed
+- **Caïssa** places the piece on any free square (no powerup square, boulder or teleporter, and no pawn on a back rank). The sacrificed
   knight of Horse Sacrifice counts as lost, so Caissa can bring it back.
 - **No more powers** also removes armor. Powerup squares stay away for one round. Teleporters stay.
 - **Ghost's three moves exclude the pickup move itself**, and a stunned ghost neither moves nor threatens.

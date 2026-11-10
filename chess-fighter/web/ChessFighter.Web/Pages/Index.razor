@@ -65,6 +65,14 @@
         </div>
     }
 
+    @if (S.SummonSplash != CardKind.None)
+    {
+        <div class="summon-splash s-@S.SummonSplash.ToString().ToLowerInvariant()" @key="@("summon" + S.SummonSerial)" aria-hidden="true" data-testid="summon-splash">
+            <img src="img/summons/@(S.SummonSplash == CardKind.SummonShiva ? "shiva" : S.SummonSplash == CardKind.SummonMars ? "mars" : "caissa").png" alt="" />
+            <div class="ss-name">@Names.CardShort(S.SummonSplash).ToUpperInvariant()!</div>
+        </div>
+    }
+
     <div class="board-frame">
         <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">
             @for (int rank = 7; rank >= 0; rank--)

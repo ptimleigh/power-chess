@@ -1086,34 +1086,42 @@ window.pcclip = (function () {
         });
     }
 
-    // Native app: write the file and open the system share sheet. Browser: Web Share with a file, else a download.
-    async function share() {
+    // Native app: write the file and open the system share sheet. Browser: Web Share with the file, which phones answer with their own
+    // share sheet (TikTok, Instagram, Messages...). It must be called straight from a tap, so rendering and sharing are separate steps.
+    async function share(link) {
         if (!lastClip) return 'none';
         const { blob, mime, name } = lastClip;
+        const text = 'My Chess Fighter finish!' + (link ? ' ' + link : '');
         const cap = window.Capacitor;
         try {
             if (cap && cap.isNativePlatform && cap.isNativePlatform() && cap.Plugins && cap.Plugins.Filesystem && cap.Plugins.Share) {
                 const data = await blobToBase64(blob);
                 const saved = await cap.Plugins.Filesystem.writeFile({ path: name, data, directory: 'CACHE' });
-                await cap.Plugins.Share.share({ title: 'Chess Fighter', text: 'My Chess Fighter finish!', files: [saved.uri], dialogTitle: 'Share clip' });
+                await cap.Plugins.Share.share({ title: 'Chess Fighter', text, files: [saved.uri], dialogTitle: 'Share clip' });
                 return 'shared';
             }
             const file = new File([blob], name, { type: mime });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({ files: [file], title: 'Chess Fighter', text: 'My Chess Fighter finish!' });
+                await navigator.share({ files: [file], title: 'Chess Fighter', text });
                 return 'shared';
             }
+            return 'unsupported';
         } catch (e) {
             if (e && e.name === 'AbortError') return 'cancelled';
+            return 'error';
         }
+    }
+
+    function save() {
+        if (!lastClip) return;
+        const { blob, name } = lastClip;
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
-        return 'downloaded';
     }
 
     function clipInfo() { return lastClip ? { mime: lastClip.mime, size: lastClip.blob.size, name: lastClip.name } : null; }
 
-    return { start, stop, record, share, clipInfo, supported: () => !!pickMime() && !!HTMLCanvasElement.prototype.captureStream };
+    return { start, stop, record, share, save, clipInfo, supported: () => !!pickMime() && !!HTMLCanvasElement.prototype.captureStream };
 })();

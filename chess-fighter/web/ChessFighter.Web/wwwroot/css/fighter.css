@@ -605,3 +605,19 @@ html, body {
 .trophy-chip i svg { width: 100%; height: 100%; fill: currentColor; }
 .unlock-strip.compact { margin: 4px 0; }
 .unlock-strip.compact .us-text { font-size: 11px; }
+
+/* Yellow call-to-action button */
+.btn.yellow { background: var(--gold); color: #2a1a00; box-shadow: var(--bevel), 4px 4px 0 #000; animation: none; }
+.btn.yellow:disabled { filter: grayscale(.5); opacity: .7; }
+/* Replay window: the same gold frame as the board */
+.clip-frame { width: fit-content; max-width: 100%; padding: 8px; background: linear-gradient(135deg, var(--frame-a), var(--frame-b)); border: 4px solid #000; box-shadow: inset 3px 3px 0 #fff0a0, inset -3px -3px 0 #6b3004, 6px 6px 0 #000; }
+.clip-frame .clip-canvas { display: block; border: 3px solid #000; border-radius: 0; box-shadow: none; }
+.clip-hint { font-size: 11px; color: var(--dim); text-align: center; max-width: 30ch; }
+/* New-unlock carousel */
+.us-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 10px; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.us-track::-webkit-scrollbar { display: none; }
+.us-slide { flex: 0 0 100%; scroll-snap-align: center; display: grid; gap: 4px; justify-items: center; align-content: start; min-width: 0; }
+.us-dots-btn { display: inline-flex; gap: 8px; padding: 6px 4px; }
+.us-dots-btn i { width: 10px; height: 10px; border: 2px solid #000; background: #ffffff33; display: inline-block; }
+.us-dots-btn i.on { background: var(--gold); }
+.us-swipe { font-size: 10px; color: var(--dim); text-align: center; }

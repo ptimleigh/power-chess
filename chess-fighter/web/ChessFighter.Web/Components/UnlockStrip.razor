@@ -1,36 +1,49 @@
-@* Preview cards for things a level unlocks: a looping demo, a name and a line of text. Step through with Next. *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@* Preview cards for things a level unlocks: a name, a line of text and a looping demo. Swipe sideways (or tap a dot) to move between them; nothing advances by itself, and a demo only plays on the card you are looking at. *@
 @if (Items.Count > 0)
 {
-    var it = Items[idx];
     <div class="unlock-strip @(Compact ? "compact" : "")" data-testid="unlock-strip" data-count="@Items.Count">
         <div class="us-head"><b>@Heading</b><small>@(idx + 1) of @Items.Count</small></div>
-        <div class="us-card" data-unlock="@Key(it)">
-            @if (it.Type == UnlockType.Powerup || it.Type == UnlockType.Transforms || it.Type == UnlockType.Upgrade)
+        <div class="us-track" @ref="track" data-testid="us-track">
+            @for (int n = 0; n < Items.Count; n++)
             {
-                <DemoBoard @key="@Key(it)" Kind="it.Kind" />
-            }
-            else if (it.Type == UnlockType.Teleporters)
-            {
-                <DemoBoard @key="@Key(it)" Teleporter="true" />
-            }
-            else
-            {
-                <div class="us-badge">@Icons.Svg(it.Type == UnlockType.Preset ? "spark" : it.Type == UnlockType.Cards ? "card" : "dice")</div>
-            }
-            <div class="us-name">@NameOf(it) <em>Level @it.Level</em></div>
-            <div class="us-text">@(Compact ? FirstSentence(TextOf(it)) : TextOf(it))</div>
-            @if (it.Type == UnlockType.Preset && OnTry.HasDelegate)
-            {
-                <button class="btn small" data-action="try-preset" @onclick="() => OnTry.InvokeAsync(it.PresetId!)">Try it</button>
+                var it = Items[n];
+                bool active = n == idx;
+                <div class="us-slide us-card" data-unlock="@Key(it)" data-active="@(active ? "1" : "0")">
+                    @if (active && (it.Type == UnlockType.Powerup || it.Type == UnlockType.Transforms || it.Type == UnlockType.Upgrade))
+                    {
+                        <DemoBoard @key="@Key(it)" Kind="it.Kind" />
+                    }
+                    else if (active && it.Type == UnlockType.Teleporters)
+                    {
+                        <DemoBoard @key="@Key(it)" Teleporter="true" />
+                    }
+                    else
+                    {
+                        <div class="us-badge">@Icons.Svg(BadgeIcon(it))</div>
+                    }
+                    <div class="us-name">@NameOf(it) <em>Level @it.Level</em></div>
+                    <div class="us-text">@(Compact ? FirstSentence(TextOf(it)) : TextOf(it))</div>
+                    @if (it.Type == UnlockType.Preset && OnTry.HasDelegate)
+                    {
+                        <button class="btn small" data-action="try-preset" @onclick="() => OnTry.InvokeAsync(it.PresetId!)">Try it</button>
+                    }
+                </div>
             }
         </div>
         @if (Items.Count > 1)
         {
             <div class="us-nav">
-                <button class="btn ghost small" data-action="unlock-prev" disabled="@(idx == 0)" @onclick="() => idx--">Back</button>
-                <span class="us-dots">@for (int i = 0; i < Items.Count; i++) { <i class="@(i == idx ? "on" : "")"></i> }</span>
-                <button class="btn ghost small" data-action="unlock-next" disabled="@(idx == Items.Count - 1)" @onclick="Next">Next</button>
+                <span class="us-dots-btn" data-testid="us-dots">
+                    @for (int i = 0; i < Items.Count; i++)
+                    {
+                        int to = i;
+                        <i class="@(i == idx ? "on" : "")" role="button" aria-label="Show unlock @(i + 1)" @onclick="() => GoTo(to)"></i>
+                    }
+                </span>
             </div>
+            <div class="us-swipe">Swipe for more</div>
         }
     </div>
 }
@@ -40,17 +53,20 @@
     [Parameter] public string Heading { get; set; } = "New unlocks";
     /// <summary>On the results card: one sentence of description instead of the full text.</summary>
     [Parameter] public bool Compact { get; set; }
+    [Parameter] public EventCallback<string> OnTry { get; set; }
+    /// <summary>Raised when the last card has been shown.</summary>
+    [Parameter] public EventCallback OnSeenAll { get; set; }
+
+    ElementReference track;
+    DotNetObjectReference<UnlockStrip>? self;
+    bool wired, notified;
+    int idx;
 
     static string FirstSentence(string text)
     {
         int i = text.IndexOf(". ", StringComparison.Ordinal);
         return i > 0 ? text.Substring(0, i + 1) : text;
     }
-    [Parameter] public EventCallback<string> OnTry { get; set; }
-    /// <summary>Raised when the last card has been shown.</summary>
-    [Parameter] public EventCallback OnSeenAll { get; set; }
-
-    int idx;
 
     protected override void OnParametersSet()
     {
@@ -59,6 +75,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!wired && Items.Count > 0)
+        {
+            wired = true;
+            self = DotNetObjectReference.Create(this);
+            try { await JS.InvokeVoidAsync("pcfx.watchCarousel", track, self); } catch { }
+        }
         if (Items.Count > 0 && idx == Items.Count - 1 && OnSeenAll.HasDelegate && !notified)
         {
             notified = true;
@@ -66,9 +88,33 @@
         }
     }
 
-    bool notified;
+    [JSInvokable]
+    public void SlideChanged(int i)
+    {
+        idx = Math.Clamp(i, 0, Math.Max(0, Items.Count - 1));
+        StateHasChanged();
+    }
 
-    void Next() { if (idx < Items.Count - 1) idx++; }
+    async Task GoTo(int i)
+    {
+        idx = i;
+        try { await JS.InvokeVoidAsync("pcfx.carouselTo", track, i); } catch { }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        self?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+
+    static string BadgeIcon(UnlockItem it) => it.Type switch
+    {
+        UnlockType.Preset => "spark",
+        UnlockType.Cards => "card",
+        UnlockType.Powerup or UnlockType.Upgrade or UnlockType.Transforms => Names.Icon(it.Kind),
+        UnlockType.Teleporters => "portal",
+        _ => "dice",
+    };
 
     static string Key(UnlockItem it) => it.Type + ":" + (it.PresetId ?? (it.Type == UnlockType.Cards ? "L" + it.Level : it.Name ?? it.Kind.ToString()));
 

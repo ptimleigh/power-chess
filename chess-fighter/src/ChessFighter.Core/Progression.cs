@@ -236,7 +236,7 @@ namespace ChessFighter.Core
 
         /// <summary>
         /// Total XP needed to reach a level (level 1 = 0). Going from level n to n+1 costs 200 + 30n XP, so a win (around 150 to 300
-        /// XP) is about one level early on: 2: 230, 3: 490, 4: 780 ... 10: 2430 ... 20: 9500.
+        /// XP) is about one level early on: 2: 230, 3: 490, 4: 780 ... 10: 3150 ... 20: 9500.
         /// </summary>
         public static int XpForLevel(int level)
         {

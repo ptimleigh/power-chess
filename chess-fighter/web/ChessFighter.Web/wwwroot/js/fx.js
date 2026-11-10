@@ -89,6 +89,20 @@ window.pcfx = (function () {
             }
             try { await navigator.clipboard.writeText(url ? text + '\n' + url : text); return 'copied'; } catch (e) { return 'failed'; }
         },
+        // Swipeable carousel: tells .NET which slide is showing once the scroll settles, and can scroll to one.
+        watchCarousel: function (el, ref) {
+            if (!el) return;
+            let timer = 0, last = -1;
+            const onScroll = () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth + 10));
+                    if (i !== last) { last = i; ref.invokeMethodAsync('SlideChanged', i); }
+                }, 80);
+            };
+            el.addEventListener('scroll', onScroll, { passive: true });
+        },
+        carouselTo: function (el, i) { if (el) el.scrollTo({ left: i * (el.clientWidth + 10), behavior: 'smooth' }); },
         copy: function (text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return false; } },
         play: function (name) { try { const f = sounds[name]; if (f) f(); } catch (e) { } },
         setMuted: function (m) { muted = !!m; },

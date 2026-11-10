@@ -198,7 +198,7 @@
                     <button class="rbtn" data-review="next" aria-label="Next move" @onclick="() => S.ReviewStep(1)">@Icons.Svg("next")</button>
                     <button class="rbtn" data-review="last" aria-label="Final position" disabled="@(S.ReviewPosition >= S.HistoryCount)" @onclick="() => S.ReviewTo(S.HistoryCount)">@Icons.Svg("last")</button>
                     <button class="btn primary review-exit" data-action="exit-review" @onclick="S.ExitReview">Back to game</button>
-                    <button class="btn ghost small" data-action="open-clip" @onclick="OpenClip">Replay clip</button>
+                    <button class="btn yellow small" data-action="open-clip" @onclick="OpenClip">Watch Replay!</button>
                 </div>
             </div>
         }
@@ -527,7 +527,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             @if (S.CanReview)
             {
                 <button class="btn ghost" data-action="review-game" @onclick="() => S.ReviewStep(-1)">Review the game</button>
-                <button class="btn ghost" data-action="open-clip" @onclick="OpenClip">Replay clip</button>
+                <button class="btn yellow" data-action="open-clip" @onclick="OpenClip">Watch Replay!</button>
             }
         </div>
     </div>
@@ -673,16 +673,25 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     <div class="modal" data-testid="clip-sheet">
         <div class="card clip-sheet" @onclick:stopPropagation="true">
             <div class="kicker">Replay clip</div>
-            <canvas id="clipCanvas" class="clip-canvas" width="720" height="1280"></canvas>
+            <div class="clip-frame"><canvas id="clipCanvas" class="clip-canvas" width="720" height="1280"></canvas></div>
             <div class="clip-len">
                 <button class="rbtn" data-action="clip-longer" disabled="@(clipPlies >= clipAvail || clipBusy)" @onclick="() => SetClipPlies(clipPlies + 1)" aria-label="Start earlier">@Icons.Svg("prev")</button>
                 <span data-testid="clip-len">Last <b>@clipPlies</b> @(clipPlies == 1 ? "move" : "moves") <small>of @clipAvail</small></span>
                 <button class="rbtn" data-action="clip-shorter" disabled="@(clipPlies <= 1 || clipBusy)" @onclick="() => SetClipPlies(clipPlies - 1)" aria-label="Start later">@Icons.Svg("next")</button>
             </div>
             @if (clipMsg != "") { <div class="clip-msg" data-testid="clip-msg">@clipMsg</div> }
+            @if (clipReady && !clipBusy) { <div class="clip-hint">Share opens your phone's share sheet: TikTok, Instagram, Messages and more.</div> }
             <div class="row newgame-row">
                 <button class="btn ghost" data-action="clip-replay" disabled="@clipBusy" @onclick="PlayClip">Replay</button>
-                <button class="btn primary" data-action="clip-share" disabled="@clipBusy" @onclick="ShareClip">@(clipBusy ? "Rendering..." : "Save / share video")</button>
+                @if (!clipReady)
+                {
+                    <button class="btn yellow" data-action="clip-share" disabled="@clipBusy" @onclick="RenderClip">@(clipBusy ? "Rendering..." : "Make video to share")</button>
+                }
+                else
+                {
+                    <button class="btn yellow" data-action="clip-send" @onclick="SendClip">Share video</button>
+                    <button class="btn" data-action="clip-save" @onclick="SaveClip">Save</button>
+                }
                 <button class="btn ghost" data-action="clip-close" disabled="@clipBusy" @onclick="CloseClip">Close</button>
             </div>
         </div>
@@ -1185,6 +1194,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         clipPlies = Math.Min(6, clipAvail);
         clipMsg = "";
         showClip = true;
+        clipReady = false;
         StateHasChanged();
         await Task.Delay(80);
         await PlayClip();
@@ -1203,12 +1213,17 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     async Task SetClipPlies(int n)
     {
         clipPlies = Math.Clamp(n, 1, clipAvail);
+        clipReady = false;
         await PlayClip();
     }
 
-    async Task ShareClip()
+    bool clipReady;
+
+    /// <summary>Records the clip (this takes as long as the clip, in real time). Sharing is a separate tap: phones only open the share sheet straight after a tap.</summary>
+    async Task RenderClip()
     {
         clipBusy = true;
+        clipReady = false;
         clipMsg = "Rendering your clip in real time...";
         StateHasChanged();
         try { await JS.InvokeVoidAsync("pcclip.stop"); } catch { }
@@ -1216,14 +1231,28 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         {
             var res = await JS.InvokeAsync<ClipResult>("pcclip.record", BuildClipJson());
             if (!res.Ok) clipMsg = res.Error ?? "Recording failed.";
-            else
-            {
-                string how = await JS.InvokeAsync<string>("pcclip.share");
-                clipMsg = how switch { "shared" => "Shared!", "downloaded" => "Saved to your downloads.", "cancelled" => "Share cancelled.", _ => "" };
-            }
+            else { clipReady = true; clipMsg = "Your video is ready."; }
         }
         catch (Exception ex) { clipMsg = "Recording failed: " + ex.Message; }
         clipBusy = false;
+    }
+
+    async Task SendClip()
+    {
+        string how;
+        try { how = await JS.InvokeAsync<string>("pcclip.share", ChessFighter.Web.Game.BuildInfo.Url); } catch { how = "error"; }
+        clipMsg = how switch
+        {
+            "shared" => "Shared!",
+            "cancelled" => "Share cancelled.",
+            "unsupported" => "Your browser can't share videos. Use Save, then post it from your gallery.",
+            _ => "Could not open the share sheet. Use Save, then post it from your gallery.",
+        };
+    }
+
+    async Task SaveClip()
+    {
+        try { await JS.InvokeVoidAsync("pcclip.save"); clipMsg = "Saved to your downloads."; } catch { clipMsg = "Could not save the video."; }
     }
 
     async Task CloseClip()

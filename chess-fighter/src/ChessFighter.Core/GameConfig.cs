@@ -52,7 +52,7 @@ namespace ChessFighter.Core
         /// <summary>The player's Chess Fighter level, which decides which cards can be drawn and whether a second landing upgrades a power. Below zero: everything is open.</summary>
         public int UnlockLevel = -1;
         /// <summary>The longer a game runs (and the further behind a side is), the likelier the rare powers and big cards. See <see cref="LateRamp"/>.</summary>
-        public bool LateRamp = false; // switched on once the simulation shows it helps
+        public bool LateRamp = true;
 
         /// <summary>The pool before the playtest tuning, kept so BalanceSim can compare old and new weights.</summary>
         public static List<WeightedKind> LegacyPool()

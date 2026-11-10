@@ -154,3 +154,10 @@ Added: Nuh-uh!, Card Shark (5 cards in a game), Caïssa's Favor (bring back a qu
 Combo Breaker (5 moves in a row), Level II (upgrade a power), Dragon's Breath (3+ pieces with one Dragon Strike), Smite (3 pieces with Summon Shiva),
 Incoming! (win with a missile), Veteran (level 10), Master of Squares (level 20).
 Each new trophy is worth 25 XP, but one game pays at most 50 XP in trophies.
+
+## Late-game ramp
+
+Rare powers (Combo +4, Steal, Harpoon) and the big cards (Missile Strike, Dragon Strike, Summon Shiva, World Turned Upside Down, Hit Restart) get likelier as a
+game runs: 1x until ply 50 (move 25), rising to 2x at ply 160 (move 80). A card draw by the side behind in material gets up to +0.5 more, with 2x as the
+ceiling. Common powers are unchanged. In 800 simulated Normal games the ramp left game length (78 to 80 plies) and the leader's win rate (81%) about the same,
+and nudged draws from 6% to 5% and missile finishes from 2% to 3%. The effect is small because most games end near ply 75. Code: `LateRamp.cs`.

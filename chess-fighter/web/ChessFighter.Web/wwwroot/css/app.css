@@ -182,7 +182,7 @@ button:disabled { cursor: default; }
 @keyframes beam { 0% { transform: rotate(var(--r)) scaleX(0); opacity: 1; } 35% { transform: rotate(var(--r)) scaleX(1); opacity: 1; } 100% { transform: rotate(var(--r)) scaleX(1); opacity: 0; } }
 
 .toasts { position: absolute; left: 0; right: 0; top: 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 20; }
-.toast { display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: linear-gradient(180deg, #2b1f66ee, #130c36ee); border: 2px solid var(--gold); box-shadow: 0 0 22px #ffd54a66; animation: toast 2.2s ease-out forwards; max-width: 94%; }
+.toast { display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: linear-gradient(180deg, #2b1f66ee, #130c36ee); border: 2px solid var(--gold); box-shadow: 0 0 22px #ffd54a66; animation: toast var(--ms, 2.2s) ease-out forwards; max-width: 94%; pointer-events: auto; cursor: pointer; }
 .toast .ticon { width: 28px; height: 28px; flex: none; color: var(--gold); }
 .toast .ticon svg { width: 100%; height: 100%; }
 .toast .ttext { display: flex; flex-direction: column; line-height: 1.1; }

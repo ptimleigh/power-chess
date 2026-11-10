@@ -53,6 +53,20 @@ public sealed class Toast
     public string Text = "";
     public string Css = "";
     public string Icon = "";
+    /// <summary>Who this is about, with the label shown on the toast ("YOU", "RIVAL", "WHITE", "BLACK"). Null for general notes.</summary>
+    public Side? Who;
+    public string WhoLabel = "";
+    /// <summary>How long it stays on screen, in milliseconds.</summary>
+    public int Ms = 2600;
+}
+
+/// <summary>One line of the event log: what happened and to whom.</summary>
+public sealed class LogEntry
+{
+    public Side? Who;
+    public string WhoLabel = "";
+    public string Text = "";
+    public int Ply;
 }
 
 /// <summary>
@@ -441,6 +455,8 @@ public sealed class GameSession
         Pieces.Clear();
         Effects.Clear();
         Toasts.Clear();
+        toastQueue.Clear();
+        Log.Clear();
         history.Clear();
         viewHistory.Clear();
         reviewIndex = -1;
@@ -584,6 +600,7 @@ public sealed class GameSession
             ai = Ai.ForLevel(opt.Ai);
             Effects.Clear();
             Toasts.Clear();
+            toastQueue.Clear();
             reviewIndex = -1;
             Busy = false;
             Thinking = false;
@@ -1706,6 +1723,12 @@ public sealed class GameSession
 
     void Process(List<GameEvent> events)
     {
+        try { ProcessEvents(events); }
+        finally { toastSide = null; }
+    }
+
+    void ProcessEvents(List<GameEvent> events)
+    {
         int movedId = -1;
         int fireFrom = -1;
         var fireDelay = new Dictionary<int, int>();
@@ -1714,6 +1737,8 @@ public sealed class GameSession
         for (int ei = 0; ei < events.Count; ei++)
         {
             var e = events[ei];
+            // Toasts for this event are about the side that did it; a few events carry a side that is not the actor.
+            toastSide = e.Kind == EventKind.PoisonTriggered || e.Kind == EventKind.MissileStruck || e.Kind == EventKind.TeleportBlocked || e.Kind == EventKind.DoubleMoveForfeited ? (Side?)null : e.Side;
             switch (e.Kind)
             {
                 case EventKind.Moved:
@@ -1865,7 +1890,7 @@ public sealed class GameSession
                     break;
                 case EventKind.CardDrawn:
                     AddFx("ring", e.From, radius: 1, css: "gold");
-                    AddToast("CARD: " + Names.CardName(e.Card), Names.CardDesc(e.Card), "gold", Names.CardIcon(e.Card));
+                    AddToast("DREW: " + Names.CardName(e.Card), Names.CardDesc(e.Card), "gold", Names.CardIcon(e.Card));
                     Sfx?.Invoke("pickup");
                     break;
                 case EventKind.CardPlayed:
@@ -1873,7 +1898,7 @@ public sealed class GameSession
                         ShowSummon(e.Card);
                     // Cards with their own show (portrait splash, dragon) do not also pop a toast over the board.
                     if (e.Card != CardKind.DragonStrike && e.Card != CardKind.SummonCaissa && e.Card != CardKind.SummonMars && e.Card != CardKind.SummonShiva)
-                        AddToast(Names.CardName(e.Card), (e.Side == Side.White ? "White" : "Black") + " plays a card", "gold", Names.CardIcon(e.Card));
+                        AddToast("PLAYED: " + Names.CardName(e.Card), Names.CardDesc(e.Card), "gold", Names.CardIcon(e.Card));
                     else if (e.Card != CardKind.DragonStrike)
                         SummonBy = e.Side;
                     Sfx?.Invoke("pickup");
@@ -1931,7 +1956,8 @@ public sealed class GameSession
                         int burned = 0;
                         for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++) burned++;
                         string who = VsAi ? (e.Side == Side.White ? "Your" : "Rival's") : (e.Side == Side.White ? "White's" : "Black's");
-                        Later(T(dms + 300), () => AddToast("DRAGON STRIKE!", $"{who} dragon burned {burned} {(burned == 1 ? "piece" : "pieces")}", "fire", "hadouken"));
+                        Side dragonSide = e.Side;
+                        Later(T(dms + 300), () => AddToast("DRAGON STRIKE!", $"{who} dragon burned {burned} {(burned == 1 ? "piece" : "pieces")}", "fire", "hadouken", dragonSide, false));
                     }
                     Shake(2);
                     Sfx?.Invoke("fire");
@@ -2121,12 +2147,50 @@ public sealed class GameSession
         Later(Math.Max(1100, durMs + 500), () => Effects.Remove(fx));
     }
 
-    void AddToast(string title, string text, string css, string icon)
+    /// <summary>The side the event being processed belongs to; toasts made during <see cref="Process"/> are tagged with it.</summary>
+    Side? toastSide;
+    readonly Queue<Toast> toastQueue = new();
+    const int MaxToasts = 4;
+
+    public List<LogEntry> Log { get; } = new();
+
+    /// <summary>"YOU" / "RIVAL" against the computer, "WHITE" / "BLACK" between two players.</summary>
+    public string WhoLabelFor(Side side) => VsAi ? (side == Side.White ? "YOU" : "RIVAL") : (side == Side.White ? "WHITE" : "BLACK");
+
+    void AddToast(string title, string text, string css, string icon, Side? who = null, bool useCurrent = true)
     {
-        var t = new Toast { Id = nextId++, Title = title, Text = text, Css = css, Icon = icon };
+        if (who == null && useCurrent) who = toastSide;
+        // Short banners (FIREBALL!, BOOM!) clear quickly; anything with words, and anything about a player, stays long enough to read.
+        // Long help text is cut to its first sentence on the toast (the full text is on the card and in the demos).
+        int cut = text.IndexOf(". ", StringComparison.Ordinal);
+        if (text.Length > 70 && cut > 0) text = text.Substring(0, cut + 1);
+        int ms = text == "" ? 1900 : who != null ? 3600 : 2600;
+        var t = new Toast { Id = nextId++, Title = title, Text = text, Css = css, Icon = icon, Who = who, WhoLabel = who is Side w ? WhoLabelFor(w) : "", Ms = ms };
+        if (who != null)
+        {
+            Log.Add(new LogEntry { Who = who, WhoLabel = t.WhoLabel, Text = title + (text != "" ? " - " + text : ""), Ply = State.Ply });
+            if (Log.Count > 60) Log.RemoveAt(0);
+        }
+        if (Toasts.Count < MaxToasts) ShowToast(t); else toastQueue.Enqueue(t); // a full screen waits its turn instead of dropping the oldest
+    }
+
+    void ShowToast(Toast t)
+    {
         Toasts.Add(t);
-        if (Toasts.Count > 3) Toasts.RemoveAt(0);
-        Later(2200, () => Toasts.Remove(t));
+        Later(t.Ms, () => RemoveToast(t));
+    }
+
+    void RemoveToast(Toast t)
+    {
+        Toasts.Remove(t);
+        while (Toasts.Count < MaxToasts && toastQueue.Count > 0) ShowToast(toastQueue.Dequeue());
+    }
+
+    /// <summary>Tap a toast to clear it.</summary>
+    public void DismissToast(int id)
+    {
+        var t = Toasts.FirstOrDefault(x => x.Id == id);
+        if (t != null) { RemoveToast(t); Changed?.Invoke(); }
     }
 
     void Shake(int level = 1)

@@ -635,3 +635,24 @@ html, body {
 .us-dots-btn i { width: 10px; height: 10px; border: 2px solid #000; background: #ffffff33; display: inline-block; }
 .us-dots-btn i.on { background: var(--gold); }
 .us-swipe { font-size: 10px; color: var(--dim); text-align: center; }
+
+/* Callouts use a wide pixel font: shrink long words so they always fit inside the board (CRUSHED!, SLAIN!, ...) */
+.fx-callout span { font-size: min(calc(var(--b) / 8), calc(var(--b) * .88 / var(--len, 7))); }
+.fx-callout.heavy span { font-size: min(calc(var(--b) / 6.2), calc(var(--b) * .88 / var(--len, 7))); }
+.fx-callout.check span { font-size: min(calc(var(--b) / 9), calc(var(--b) * .88 / var(--len, 7))); }
+
+/* Toasts say who they are about: a colored edge and a YOU / RIVAL tag */
+.toasts { z-index: 20; }
+.toast.by-white { border-left: 8px solid #4f8bff; }
+.toast.by-black { border-left: 8px solid #ff4b3e; }
+.twho { display: inline-block; font-style: normal; font-family: var(--px); font-size: 7px; letter-spacing: 0; padding: 3px 5px 2px; margin-right: 6px; border: 2px solid #000; background: #4f8bff; color: #fff; vertical-align: middle; }
+.toast.by-black .twho, .log-row.by-black .twho { background: #d9231b; }
+.ttext { align-items: flex-start; }
+.ttext .twho { align-self: flex-start; margin-bottom: 3px; }
+.ttext small { display: block; }
+.log-sheet { text-align: left; }
+.log-list { list-style: none; margin: 8px 0 12px; padding: 0; display: grid; gap: 6px; max-height: 50vh; overflow-y: auto; }
+.log-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 2px solid #000; background: #ffffff0f; border-left-width: 8px; font-size: 12px; line-height: 1.3; }
+.log-row.by-white { border-left-color: #4f8bff; }
+.log-row.by-black { border-left-color: #ff4b3e; }
+.log-row .twho { flex: none; margin-right: 0; }

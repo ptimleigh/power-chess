@@ -41,7 +41,7 @@
             <div class="fx-streak" style="left:@(N(Cx(fx.Sq)))%;top:@(N(Cy(fx.Sq)))%;width:@(N(slen))%;--r:@(N(sang))deg"></div>
             break;
         case "callout":
-            <div class="fx-callout @fx.Css"><span>@fx.Text</span></div>
+            <div class="fx-callout @fx.Css" style="--len:@(fx.Text.Length + 1)"><span>@fx.Text</span></div>
             break;
         case "sword":
             <img class="fx-sword" src="img/summons/sword.png" alt="" style="left:@(N(Cx(fx.Sq)))%;--ty:@(N(Cy(fx.Sq)))%;width:@(N(Size * 0.36))%" />

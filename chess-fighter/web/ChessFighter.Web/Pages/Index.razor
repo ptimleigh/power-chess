@@ -120,9 +120,9 @@
             <div class="toasts">
                 @foreach (var t in S.Toasts)
                 {
-                    <div @key="t.Id" class="toast @t.Css">
+                    <div @key="t.Id" class="toast @t.Css @(t.Who is Side tw ? (tw == Side.White ? "by-white" : "by-black") : "")" style="--ms:@(t.Ms)ms" role="status" @onclick="() => S.DismissToast(t.Id)">
                         <span class="ticon">@Icons.Svg(t.Icon)</span>
-                        <span class="ttext"><b>@t.Title</b>@if (t.Text != "") { <small>@t.Text</small> }</span>
+                        <span class="ttext">@if (t.WhoLabel != "") { <i class="twho">@t.WhoLabel</i> }<b>@t.Title</b>@if (t.Text != "") { <small>@t.Text</small> }</span>
                     </div>
                 }
             </div>
@@ -280,6 +280,9 @@
                 <span class="pi">@Icons.Svg("history")</span><span class="pl">Moves</span>
             </button>
         }
+        <button class="perk ghost" data-action="open-log" @onclick="() => showLog = true">
+            <span class="pi">@Icons.Svg("card")</span><span class="pl">Log</span>
+        </button>
         }
     </section>
 
@@ -664,6 +667,29 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 <button class="btn primary" data-action="start-game" @onclick="StartFromSheet">FIGHT!</button>
                 <button class="btn ghost" data-action="cancel-new" @onclick="() => showNew = false">Cancel</button>
             </div>
+        </div>
+    </div>
+}
+
+@if (showLog)
+{
+    <div class="modal" data-testid="log" @onclick="() => showLog = false">
+        <div class="card log-sheet" @onclick:stopPropagation="true">
+            <div class="kicker">What just happened</div>
+            @if (S.Log.Count == 0)
+            {
+                <p class="fine">Nothing yet. Draws, plays and power-ups will show up here.</p>
+            }
+            else
+            {
+                <ul class="log-list" data-testid="log-list">
+                    @foreach (var le in Enumerable.Reverse(S.Log).Take(14))
+                    {
+                        <li class="log-row @(le.Who is Side ls ? (ls == Side.White ? "by-white" : "by-black") : "")"><i class="twho">@le.WhoLabel</i><span>@le.Text</span></li>
+                    }
+                </ul>
+            }
+            <button class="btn primary" data-action="log-close" @onclick="() => showLog = false">Close</button>
         </div>
     </div>
 }
@@ -1183,6 +1209,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     // ---------- replay clip ----------
 
+    bool showLog;
     bool showClip, clipBusy;
     int clipPlies, clipAvail;
     string clipMsg = "";

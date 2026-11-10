@@ -38,16 +38,38 @@ namespace ChessFighter.Core
 
         public Ai(int depth = 2) { Depth = depth; }
 
-        /// <summary>The five opponent levels: 1 Easy, 2 Normal, 3 Hard, 4 Expert, 5 Master.</summary>
+        /// <summary>
+        /// The opponent levels, by stored id (ids never change, so saves keep working): 1 Easy, 6 Normal, 2 Hard, 3 Advanced, 4 Expert, 5 Master.
+        /// Normal (6) is the newest rung, between Easy and Hard. In computer-vs-computer games each rung beats the one below about 80 to 90 percent of the time.
+        /// </summary>
         public static Ai ForLevel(int level)
         {
             switch (level)
             {
                 case 1: return new Ai(1) { RandomChance = 0.25 };
+                case 6: return new Ai(2) { QuiescenceDepth = 0, RandomChance = 0.15 };
                 case 3: return new Ai(3) { QuiescenceDepth = 4, CheckExtension = true, FullEval = true };
                 case 4: return new Ai(6) { QuiescenceDepth = 4, CheckExtension = true, FullEval = true, TimeMs = 1000 };
                 case 5: return new Ai(8) { QuiescenceDepth = 6, CheckExtension = true, FullEval = true, TimeMs = 2000 };
                 default: return new Ai(2) { QuiescenceDepth = 2, CheckExtension = true, SlipChance = 0.20, SlipMarginCp = 80 };
+            }
+        }
+
+        /// <summary>The levels in the order the New game sheet lists them (weakest first), then 0 for two players.</summary>
+        public static readonly int[] Ladder = { 1, 6, 2, 3, 4, 5 };
+
+        /// <summary>Strength order of a stored id: 0 two players, 1 Easy, 2 Normal, 3 Hard, 4 Advanced, 5 Expert, 6 Master.</summary>
+        public static int Rank(int level)
+        {
+            switch (level)
+            {
+                case 0: return 0;
+                case 1: return 1;
+                case 6: return 2;
+                case 2: return 3;
+                case 3: return 4;
+                case 4: return 5;
+                default: return 6;
             }
         }
 
@@ -57,8 +79,9 @@ namespace ChessFighter.Core
             {
                 case 0: return "2 players";
                 case 1: return "Easy";
-                case 2: return "Normal";
-                case 3: return "Hard";
+                case 6: return "Normal";
+                case 2: return "Hard";
+                case 3: return "Advanced";
                 case 4: return "Expert";
                 default: return "Master";
             }
@@ -70,10 +93,11 @@ namespace ChessFighter.Core
             {
                 case 0: return 0.5;
                 case 1: return 0.7;
+                case 6: return 0.85;
                 case 3: return 1.4;
                 case 4: return 1.8;
                 case 5: return 2.2;
-                default: return 1.0;
+                default: return 1.0; // Hard (2)
             }
         }
 

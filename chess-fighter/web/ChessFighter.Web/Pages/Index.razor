@@ -618,7 +618,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <div class="kicker">Choose your fight</div>
             <div class="opt-label">Opponent</div>
             <div class="seg six">
-                @foreach (var lv in new[] { 1, 2, 3, 4, 5, 0 })
+                @foreach (var lv in Ai.Ladder.Append(0))
                 {
                     int level = lv;
                     <button class="@Seg(selAi == level)" data-ai="@level" @onclick="() => selAi = level">@Ai.LevelName(level)</button>
@@ -1066,7 +1066,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     SquareMode selMode = SquareMode.Revealed;
     int selAi = 2;
     bool selDrama = true;
-    const string SettingsKey = "chessfighter.settings.v1";
+    const string SettingsKey = "chessfighter.settings.v2";
+    const string OldSettingsKey = "chessfighter.settings.v1";
     GameSession S = null!;
 
     record PerkBtn(PowerupKind Kind, ActionKind Action, string Label, string Tip);
@@ -1124,6 +1125,17 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 saved = await JS.InvokeAsync<string?>("localStorage.getItem", SaveKey);
                 played = await JS.InvokeAsync<string?>("localStorage.getItem", PlayedKey);
                 settingsText = await JS.InvokeAsync<string?>("localStorage.getItem", SettingsKey);
+                if (settingsText == null)
+                {
+                    // Settings saved before the opponent list changed: "Normal" (2) is now called Hard, so move those players to the new, easier Normal (6).
+                    var oldText = await JS.InvokeAsync<string?>("localStorage.getItem", OldSettingsKey);
+                    if (!string.IsNullOrEmpty(oldText))
+                    {
+                        var parts = oldText.Split(':');
+                        if (parts.Length >= 2 && parts[1] == "2") { parts[1] = "6"; oldText = string.Join(":", parts); }
+                        settingsText = oldText;
+                    }
+                }
             }
         }
         catch { /* storage unavailable: just play */ }
@@ -1143,7 +1155,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         // Remembered choices from the New game sheet (mode and opponent).
         bool haveSettings = false;
         var sp = (settingsText ?? "").Split(':');
-        if (sp.Length >= 2 && sp.Length <= 6 && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 5)
+        if (sp.Length >= 2 && sp.Length <= 6 && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 6)
         {
             if (sp.Length >= 3) opt.Drama = sp[2] != "0";
             if (sp.Length >= 5)

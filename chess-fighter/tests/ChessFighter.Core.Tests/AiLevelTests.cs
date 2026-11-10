@@ -74,7 +74,13 @@ namespace ChessFighter.Core.Tests
         {
             Assert.AreEqual("Master", Ai.LevelName(5));
             Assert.AreEqual("2 players", Ai.LevelName(0));
-            for (int l = 1; l < 5; l++) Assert.Less(Ai.XpMultiplier(l), Ai.XpMultiplier(l + 1));
+            CollectionAssert.AreEqual(new[] { "Easy", "Normal", "Hard", "Advanced", "Expert", "Master" }, Ai.Ladder.Select(Ai.LevelName).ToArray());
+            // the ids never change; the ladder lists them weakest first, and both names and rewards rise along it
+            for (int i = 0; i + 1 < Ai.Ladder.Length; i++)
+            {
+                Assert.Less(Ai.Rank(Ai.Ladder[i]), Ai.Rank(Ai.Ladder[i + 1]));
+                Assert.Less(Ai.XpMultiplier(Ai.Ladder[i]), Ai.XpMultiplier(Ai.Ladder[i + 1]));
+            }
             Assert.Less(Ai.XpMultiplier(0), Ai.XpMultiplier(1));
         }
 

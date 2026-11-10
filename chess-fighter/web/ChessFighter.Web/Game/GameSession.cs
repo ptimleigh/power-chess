@@ -611,7 +611,7 @@ public sealed class GameSession
 
             int oldAi = opt.Ai;
             var oldMode = opt.Mode;
-            opt.Ai = Math.Clamp(savedAi, 0, 5);
+            opt.Ai = Math.Clamp(savedAi, 0, 6);
             opt.Mode = parts.Length == 5 && parts[4] == "r" ? SquareMode.Revealed : SquareMode.Mystery; // older saves were all mystery
             GameState state;
             GameHistory hist;

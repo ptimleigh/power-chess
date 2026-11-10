@@ -10,7 +10,7 @@ public sealed class GameOptions
 {
     public ulong Seed = (ulong)DateTime.UtcNow.Ticks;
     /// <summary>0 = hot-seat (no AI), 1 = easy, 2 = normal, 3 = hard.</summary>
-    public int Ai = 2;
+    public int Ai = 6; // Normal
     public string? Fen;
     public List<PowerupKind> Only = new();
     public int Pairs = -1;
@@ -68,7 +68,7 @@ public sealed class GameOptions
             switch (key)
             {
                 case "seed": if (ulong.TryParse(val, out var seed)) o.Seed = seed; break;
-                case "ai": if (int.TryParse(val, out var ai)) o.Ai = Math.Clamp(ai, 0, 5); break;
+                case "ai": if (int.TryParse(val, out var ai)) o.Ai = Math.Clamp(ai, 0, 6); break;
                 case "fen": o.Fen = val; break;
                 case "pairs": if (int.TryParse(val, out var pairs)) o.Pairs = pairs; break;
                 case "spawn": if (int.TryParse(val, out var spawn)) o.Spawn = spawn; break;

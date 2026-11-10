@@ -110,5 +110,18 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(r2.NewTrophies.Any(t => t.Name == "Veteran"));
             Assert.IsFalse(r2.NewTrophies.Any(t => t.Name == "Master of Squares"));
         }
+
+        [Test]
+        public void Level_trophies_follow_strength_not_the_stored_number()
+        {
+            MatchSummary Won(int level) { var t = new MatchTracker(Side.White, level); return t.Finish(GameResult.WhiteWins, "Checkmate"); }
+            // Normal (id 6) is stronger than Easy but weaker than Hard: it must not count as Advanced or better.
+            Assert.IsFalse(Earns("Advanced Win", Won(6)));
+            Assert.IsFalse(Earns("Advanced Win", Won(2)), "Hard is below Advanced");
+            Assert.IsTrue(Earns("Advanced Win", Won(3)));
+            Assert.IsTrue(Earns("Advanced Win", Won(5)));
+            Assert.IsFalse(Earns("Grandmaster Slayer", Won(4)));
+            Assert.IsTrue(Earns("Grandmaster Slayer", Won(5)));
+        }
     }
 }

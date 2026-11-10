@@ -18,6 +18,22 @@ window.pcclip = (function () {
     // flames: [light, mid, dark]
     const FLAME = { blue: ['#eaffff', '#3df2ff', '#2d6bff'], gold: ['#fffbd0', '#ffe23a', '#ffa400'], purple: ['#f6e1ff', '#b05cff', '#5a1fb0'] };
 
+    // The line at the bottom of every clip. In the Android app it points at the store, not the web address.
+    // (Set window.PCCLIP_FOOTER, or change the text below, once the Play Store link is live.)
+    function footerText() {
+        if (window.PCCLIP_FOOTER) return window.PCCLIP_FOOTER;
+        const cap = window.Capacitor;
+        if (cap && cap.isNativePlatform && cap.isNativePlatform()) return 'Chess Fighter - free on Google Play';
+        return 'Play free: ptimleigh.github.io/power-chess/fighter';
+    }
+
+    function endCardLink() {
+        if (window.PCCLIP_LINK) return window.PCCLIP_LINK;
+        const cap = window.Capacitor;
+        if (cap && cap.isNativePlatform && cap.isNativePlatform()) return 'Get Chess Fighter on Google Play';
+        return 'ptimleigh.github.io/power-chess/fighter';
+    }
+
     // Make sure the pixel font is loaded before the first frame: the canvas silently falls back otherwise.
     function fontReady() {
         if (!document.fonts || !document.fonts.load) return Promise.resolve();
@@ -887,7 +903,7 @@ window.pcclip = (function () {
                     if (data.reason) ptext(data.reason.toUpperCase(), W / 2, 560, 18, '#e8e0ff');
                     ctx.save(); ctx.translate(W / 2, 800); logo('CHESS', 0, -36, 52); logo('FIGHTER', 0, 28, 52); ctx.restore();
                     ptext('16-BIT CHESS WITH POWERUPS', W / 2, 900, 14, CYAN);
-                    ptext('ptimleigh.github.io/power-chess/fighter', W / 2, 1000, 13, '#c9b3ff');
+                    ptext(endCardLink(), W / 2, 1000, 13, '#c9b3ff');
                     break;
                 }
             }
@@ -925,7 +941,7 @@ window.pcclip = (function () {
                 ctx.fillStyle = '#000'; ctx.fillRect(x - 2, 190, pipW + 4, 14);
                 ctx.fillStyle = i < hud.moveNo ? CYAN : '#3a3470'; ctx.fillRect(x, 192, pipW, 10);
             }
-            ptext('Play free: ptimleigh.github.io/power-chess/fighter', W / 2, 1200, 12, 'rgba(201,179,255,.95)');
+            ptext(footerText(), W / 2, 1200, 12, 'rgba(201,179,255,.95)');
             if (phase === 'beats' && hud.moveNo > 0) {
                 const age = Math.min(1, (clock - hud.bannerAt) / 260);
                 ctx.globalAlpha = age;

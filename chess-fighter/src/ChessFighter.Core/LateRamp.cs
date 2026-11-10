@@ -8,6 +8,8 @@ namespace ChessFighter.Core
     public static class LateRamp
     {
         public const double MaxFactor = 2.0;
+        /// <summary>The ply where the time ramp starts and where it reaches its full strength (the simulator changes these to compare settings).</summary>
+        public static int StartPly = 50, FullPly = 160;
         public const int Scale = 20; // weights are multiplied by this so a factor like 1.45 stays whole
 
         public static bool RarePower(PowerupKind k)
@@ -44,7 +46,7 @@ namespace ChessFighter.Core
         public static double Factor(GameState s, Side? side)
         {
             if (s.Config == null || !s.Config.LateRamp) return 1.0;
-            double f = 1.0 + System.Math.Max(0, System.Math.Min(1, (s.Ply - 50) / 110.0));
+            double f = 1.0 + System.Math.Max(0, System.Math.Min(1, (s.Ply - StartPly) / (double)System.Math.Max(1, FullPly - StartPly)));
             if (side is Side me)
             {
                 int behind = Material(s, me.Opponent()) - Material(s, me);

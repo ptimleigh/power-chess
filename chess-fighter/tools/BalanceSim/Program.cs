@@ -4,7 +4,8 @@ using ChessFighter.Core;
 
 // Plays computer-vs-computer Chess Fighter games and reports what the powers and cards do.
 // Usage: dotnet run -c Release --project tools/BalanceSim -- [games=200] [aiLevel=2] [unlockLevel=20] [maxPly=300] [seed=1]
-int games = Arg(0, 200), aiLevel = Arg(1, 2), unlock = Arg(2, 20), maxPly = Arg(3, 300), seed0 = Arg(4, 1), ramp = Arg(5, 1);
+int games = Arg(0, 200), aiLevel = Arg(1, 2), unlock = Arg(2, 20), maxPly = Arg(3, 300), seed0 = Arg(4, 1), ramp = Arg(5, 1), rampStart = Arg(6, 50), rampFull = Arg(7, 160);
+LateRamp.StartPly = rampStart; LateRamp.FullPly = rampFull;
 static int Arg(int i, int d) { var a = Environment.GetCommandLineArgs(); return a.Length > i + 1 && int.TryParse(a[i + 1], out var v) ? v : d; }
 
 var results = new ConcurrentBag<Game>();
@@ -23,7 +24,7 @@ void P(string s = "") { sb.AppendLine(s); Console.WriteLine(s); }
 
 int wWin = all.Count(g => g.Result == GameResult.WhiteWins), bWin = all.Count(g => g.Result == GameResult.BlackWins), draws = all.Count(g => g.Result != GameResult.WhiteWins && g.Result != GameResult.BlackWins);
 P($"# Chess Fighter balance run");
-P($"{games} games, AI level {aiLevel} ({Ai.LevelName(aiLevel)}) on both sides, unlock level {unlock}, ply limit {maxPly}, late-game ramp {(ramp != 0 ? "on" : "off")}, {sw.Elapsed.TotalSeconds:0}s");
+P($"{games} games, AI level {aiLevel} ({Ai.LevelName(aiLevel)}) on both sides, unlock level {unlock}, ply limit {maxPly}, late-game ramp {(ramp != 0 ? $"on (ply {rampStart} to {rampFull})" : "off")}, {sw.Elapsed.TotalSeconds:0}s");
 P();
 P("## Overall");
 P($"- White wins {wWin} ({Pct(wWin, games)}), Black wins {bWin} ({Pct(bWin, games)}), draws {draws} ({Pct(draws, games)})");

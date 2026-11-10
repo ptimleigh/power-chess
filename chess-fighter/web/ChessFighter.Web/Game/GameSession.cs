@@ -1912,11 +1912,11 @@ public sealed class GameSession
                     break;
                 case EventKind.DragonFire:
                 {
-                    // A dragon (green for White, red for Black) sweeps along the row; each piece falls as it passes.
+                    // A dragon (green for White, flying left to right; red for Black, right to left) sweeps along the row; each piece falls as it passes.
                     int rank = Sq.Rank(e.From), dms = 1500;
                     AddFx("dragon", e.From, css: e.Side == Side.White ? "w" : "b", durMs: dms);
                     for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++)
-                        strikeDelay[events[j].From] = (int)(dms * 0.8 * Math.Clamp(((Sq.File(events[j].From) + 0.5) * 12.5 - 6) / 134, 0, 1));
+                        strikeDelay[events[j].From] = (int)(dms * 0.8 * Math.Clamp((((e.Side == Side.White ? Sq.File(events[j].From) : 7 - Sq.File(events[j].From)) + 0.5) * 12.5 - 6) / 134, 0, 1));
                     lastFireMs = Math.Max(lastFireMs, dms);
                     AddToast("DRAGON STRIKE!", "A row burns", "fire", "hadouken");
                     Shake(2);

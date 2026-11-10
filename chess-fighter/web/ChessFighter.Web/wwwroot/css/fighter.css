@@ -573,3 +573,5 @@ html, body {
 
 /* Black's dragon flies right to left: the whole lane is mirrored */
 .fx-dragonrow.b { transform: scaleX(-1); }
+
+.summon-splash .ss-name small { display: block; margin-top: 8px; font-size: 9px; color: #fff; text-align: center; }

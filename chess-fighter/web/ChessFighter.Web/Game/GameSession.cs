@@ -1867,7 +1867,11 @@ public sealed class GameSession
                 case EventKind.CardPlayed:
                     if (e.Card == CardKind.SummonCaissa || e.Card == CardKind.SummonMars || e.Card == CardKind.SummonShiva)
                         ShowSummon(e.Card);
-                    AddToast(Names.CardName(e.Card), (e.Side == Side.White ? "White" : "Black") + " plays a card", "gold", Names.CardIcon(e.Card));
+                    // Cards with their own show (portrait splash, dragon) do not also pop a toast over the board.
+                    if (e.Card != CardKind.DragonStrike && e.Card != CardKind.SummonCaissa && e.Card != CardKind.SummonMars && e.Card != CardKind.SummonShiva)
+                        AddToast(Names.CardName(e.Card), (e.Side == Side.White ? "White" : "Black") + " plays a card", "gold", Names.CardIcon(e.Card));
+                    else if (e.Card != CardKind.DragonStrike)
+                        SummonBy = e.Side;
                     Sfx?.Invoke("pickup");
                     break;
                 case EventKind.CardCancelled:
@@ -1918,7 +1922,13 @@ public sealed class GameSession
                     for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++)
                         strikeDelay[events[j].From] = (int)(dms * 0.8 * Math.Clamp((((e.Side == Side.White ? Sq.File(events[j].From) : 7 - Sq.File(events[j].From)) + 0.5) * 12.5 - 6) / 134, 0, 1));
                     lastFireMs = Math.Max(lastFireMs, dms);
-                    AddToast("DRAGON STRIKE!", "A row burns", "fire", "hadouken");
+                    {
+                        // The toast waits until the dragon has passed, so it never hides the row burning.
+                        int burned = 0;
+                        for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++) burned++;
+                        string who = VsAi ? (e.Side == Side.White ? "Your" : "Rival's") : (e.Side == Side.White ? "White's" : "Black's");
+                        Later(T(dms + 300), () => AddToast("DRAGON STRIKE!", $"{who} dragon burned {burned} {(burned == 1 ? "piece" : "pieces")}", "fire", "hadouken"));
+                    }
                     Shake(2);
                     Sfx?.Invoke("fire");
                     break;
@@ -2171,6 +2181,7 @@ public sealed class GameSession
 
     /// <summary>The summon portrait splash: the figure slides in over the board for a moment.</summary>
     public CardKind SummonSplash { get; private set; }
+    public Side SummonBy { get; private set; }
     public int SummonSerial { get; private set; }
 
     void ShowSummon(CardKind kind)

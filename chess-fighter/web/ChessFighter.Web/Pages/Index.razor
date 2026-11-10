@@ -675,9 +675,9 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             <div class="kicker">Replay clip</div>
             <canvas id="clipCanvas" class="clip-canvas" width="720" height="1280"></canvas>
             <div class="clip-len">
-                <button class="rbtn" data-action="clip-longer" disabled="@(clipPlies >= clipAvail || clipBusy)" @onclick="() => SetClipPlies(clipPlies + 1)" aria-label="Start earlier">@Icons.Svg("prev")</button>
+                <button class="rbtn" data-action="clip-shorter" disabled="@(clipPlies <= 1 || clipBusy)" @onclick="() => SetClipPlies(clipPlies - 1)" aria-label="Show fewer moves">@Icons.Svg("prev")</button>
                 <span data-testid="clip-len">Last <b>@clipPlies</b> @(clipPlies == 1 ? "move" : "moves") <small>of @clipAvail</small></span>
-                <button class="rbtn" data-action="clip-shorter" disabled="@(clipPlies <= 1 || clipBusy)" @onclick="() => SetClipPlies(clipPlies - 1)" aria-label="Start later">@Icons.Svg("next")</button>
+                <button class="rbtn" data-action="clip-longer" disabled="@(clipPlies >= clipAvail || clipBusy)" @onclick="() => SetClipPlies(clipPlies + 1)" aria-label="Show more moves">@Icons.Svg("next")</button>
             </div>
             @if (clipMsg != "") { <div class="clip-msg" data-testid="clip-msg">@clipMsg</div> }
             @if (clipReady && !clipBusy) { <div class="clip-hint">Share opens your phone's share sheet: TikTok, Instagram, Messages and more.</div> }

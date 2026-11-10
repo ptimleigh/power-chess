@@ -1,6 +1,6 @@
 // Network-first service worker: a fresh deploy is picked up on the next open, and once the app has loaded
 // online it keeps working offline from the cache. All URLs are relative so it works under /power-chess/fighter/.
-const CACHE = 'chess-fighter-v1';
+const CACHE = 'chess-fighter-v2';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', 'manifest.webmanifest'])).then(() => self.skipWaiting()));
@@ -16,7 +16,7 @@ self.addEventListener('fetch', e => {
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
-      const res = await fetch(req);
+      const res = await fetch(req, { cache: 'no-cache' }); // always check with the server, so a new deploy is never hidden by the browser's own cache
       if (res && res.ok) cache.put(req, res.clone());
       return res;
     } catch (err) {

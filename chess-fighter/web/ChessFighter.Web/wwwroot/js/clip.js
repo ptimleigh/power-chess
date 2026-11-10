@@ -414,7 +414,7 @@ window.pcclip = (function () {
                 later(T + 160, () => { S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
                 return endAt + 1350;
             }
-            if (beat.check && !beat.mate) later(Math.max(0, T - 100), () => { callout('CHECK!', W / 2, BY - 40, RED, true); S.ding(); vignette = Math.max(vignette, .5); });
+            if (beat.check && !beat.mate) later(Math.max(0, T - 100), () => { callout('CHECK!', W / 2, BY - 4, RED, true); S.ding(); vignette = Math.max(vignette, .5); });
             return endAt;
         }
 

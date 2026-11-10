@@ -624,7 +624,7 @@ html, body {
 .unlock-strip.compact .us-text { font-size: 11px; }
 
 /* Yellow call-to-action button */
-.btn.yellow { background: var(--gold); color: #2a1a00; text-shadow: 1px 1px 0 #fff3a0; box-shadow: var(--bevel), 4px 4px 0 #000; animation: none; }
+.btn.yellow { background: var(--gold); color: #2a1a00; text-shadow: none; box-shadow: var(--bevel), 4px 4px 0 #000; animation: none; }
 .btn.yellow:disabled { filter: grayscale(.5); opacity: .7; }
 .clip-hint { font-size: 11px; color: var(--dim); text-align: center; max-width: 30ch; }
 /* New-unlock carousel */

@@ -613,17 +613,25 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     <div class="modal" data-testid="puzzle-result">
         <div class="card pop result @(S.PuzzleOutcome == PuzzleResult.Solved ? "win" : "lose")">
             <div class="kicker">@rz.Title</div>
-            <h1>@(S.PuzzleOutcome == PuzzleResult.Solved ? "SOLVED!" : "NOT QUITE")</h1>
+            @if (S.PuzzleOutcome == PuzzleResult.Solved && puzzleReward is MatchReward lpr && lpr.NewLevel > lpr.OldLevel)
+            {
+                <div class="res-small">SOLVED!</div>
+                <h1 class="lvl-big" data-testid="levelup">LEVEL UP!</h1>
+                <div class="lvl-sub">You reached level @lpr.NewLevel</div>
+            }
+            else
+            {
+                <h1>@(S.PuzzleOutcome == PuzzleResult.Solved ? "SOLVED!" : "NOT QUITE")</h1>
+            }
             @if (S.PuzzleOutcome == PuzzleResult.Solved)
             {
                 <p>Checkmate in @S.PuzzleMoves of @rz.MaxMoves @(rz.MaxMoves == 1 ? "move" : "moves").</p>
                 @if (puzzleReward is MatchReward pr)
                 {
                     <div class="reward" data-testid="puzzle-reward">
-                        <div class="xp-line"><b>+@pr.XpGained XP</b>
-                            <small>@string.Join(" · ", pr.Breakdown.Select(b => $"{b.Key} {b.Value}"))</small></div>
+                        <div class="xp-line"><b>+@pr.XpGained XP</b></div>
+                        <div class="xp-detail">@string.Join(" · ", pr.Breakdown.Select(b => $"{b.Key} {b.Value}"))</div>
                         <div class="streak-line" data-testid="streak">Daily streak: <b>@profile.DailyStreak</b> @(profile.DailyStreak == 1 ? "day" : "days")</div>
-                        @if (pr.NewLevel > pr.OldLevel) { <div class="levelup">LEVEL UP! You reached level @pr.NewLevel</div> }
                         @foreach (var t in pr.NewTrophies)
                         {
                             <div class="trophy-new" data-trophy-new="@t.Name"><span>@Icons.Svg("star")</span><b>@t.Name</b><small>@t.Description</small></div>
@@ -1080,9 +1088,24 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     void OnPuzzleSolved(PuzzleDef def, int moves)
     {
+        int levelBefore = profile.Level;
         puzzleReward = Daily.AwardSolve(profile, today);
         _ = SetItemAsync(ProfileKey, ProfileCodec.Encode(profile));
         puzzleMoves = moves;
+        if (puzzleReward != null && puzzleReward.NewLevel > puzzleReward.OldLevel)
+        {
+            // a level-up from the daily: spotlight what it unlocked, once the solved card is up
+            newUnlocks = Unlocks.Between(puzzleReward.OldLevel, puzzleReward.NewLevel);
+            if (newUnlocks.Count > 0) { unseenUnlocks = true; _ = SpotlightSoon(); }
+        }
+    }
+
+    async Task SpotlightSoon()
+    {
+        // wait for the solved card to be on screen, then give it a moment before the spotlight covers it
+        for (int i = 0; i < 100 && !(S.PuzzleOutcome != PuzzleResult.None && !S.Busy); i++) await Task.Delay(100);
+        await Task.Delay(1500);
+        if (newUnlocks.Count > 0 && S.Puzzle != null) { spotlightOpen = true; StateHasChanged(); }
     }
     int puzzleMoves;
 

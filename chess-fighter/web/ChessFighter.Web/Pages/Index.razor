@@ -875,6 +875,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 @if (showMenu)
 {
     <div class="start-menu" data-testid="start-menu">
+        <canvas id="menuBg" class="sm-bg" aria-hidden="true"></canvas>
         <img class="sm-logo" src="img/logo.png" alt="Chess Fighter" />
         <div class="sm-tag">16-BIT CHESS WITH POWERUPS</div>
         <div class="sm-buttons">
@@ -1334,7 +1335,18 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     // ---------- start menu, options, about ----------
 
-    bool showMenu, showOptions, showAbout, pendingResume;
+    bool showMenu, showOptions, showAbout, pendingResume, synthRunning;
+
+    // the menu's animated background starts once its canvas is on the page
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (showMenu && !synthRunning)
+        {
+            synthRunning = true;
+            try { await JS.InvokeVoidAsync("pcsynth.start", "menuBg"); } catch { }
+        }
+        else if (!showMenu) synthRunning = false;
+    }
 
     void OpenMenu() { showMenu = true; }
     void CloseAbout() { showAbout = false; shareMsg = ""; }

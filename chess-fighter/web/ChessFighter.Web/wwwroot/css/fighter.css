@@ -830,7 +830,7 @@ html, body {
 
 /* ---------- start menu ---------- */
 .start-menu { position: fixed; inset: 0; z-index: 95; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
-    background: radial-gradient(circle at 50% 38%, #3a2a8a 0, #1a1260 45%, #07041c 100%); animation: fade .25s; }
+    background: #07041c; animation: fade .25s; }
 .start-menu::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, #0003 0 1px, transparent 1px 4px); }
 .sm-logo { width: min(82vw, 380px); height: auto; filter: drop-shadow(0 8px 0 #000); animation: lvlpop .5s steps(5) both; }
 .sm-tag { font-family: var(--px); font-size: 9px; color: #3df2ff; text-shadow: 2px 2px 0 #000; letter-spacing: 1px; text-align: center; margin-bottom: 10px; }
@@ -841,3 +841,10 @@ html, body {
 .about-logo { width: min(70vw, 280px); height: auto; margin: 0 auto 4px; display: block; filter: drop-shadow(0 6px 0 #000); }
 .about-tag { font-size: 12px; color: var(--dim); margin: 0 0 12px; }
 a.btn { color: inherit; text-decoration: none; display: inline-block; }
+
+/* the title background: the synthwave sunset, drawn on a small canvas (js/synthbg.js) and scaled up chunky */
+.sm-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; image-rendering: pixelated; }
+.sm-logo, .sm-tag, .sm-buttons, .sm-ver { position: relative; z-index: 1; }
+.sm-tag { text-shadow: 2px 2px 0 #000, 0 0 10px #000; }
+.sm-buttons .btn { background-color: #1a1260; }
+.sm-buttons .btn.primary { background-color: var(--red, #d6283a); }

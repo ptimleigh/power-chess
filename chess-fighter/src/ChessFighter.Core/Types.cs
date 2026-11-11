@@ -124,6 +124,8 @@ namespace ChessFighter.Core
         public byte PoisonTurns;
         /// <summary>The square this piece started the game on, plus one (0 = unknown). Hit restart sends pieces back to it.</summary>
         public byte Origin;
+        /// <summary>1 while this piece fights for the side that did not start with it (it was stolen). If it dies, the loss counts for its first owner.</summary>
+        public byte Stolen;
 
         public Piece(PieceType type, Side side)
         {
@@ -136,6 +138,7 @@ namespace ChessFighter.Core
             Tier = 0;
             PoisonTurns = 0;
             Origin = 0;
+            Stolen = 0;
         }
 
         public bool IsEmpty { get { return Type == PieceType.None; } }

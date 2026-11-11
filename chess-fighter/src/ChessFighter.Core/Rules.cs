@@ -169,7 +169,7 @@ namespace ChessFighter.Core
 
                 case ActionKind.StealPick:
                 {
-                    var stolen = new Piece(s.Cells[a.To].Type, me) { Origin = s.Cells[a.To].Origin };
+                    var stolen = new Piece(s.Cells[a.To].Type, me) { Origin = s.Cells[a.To].Origin, Stolen = (byte)(s.Cells[a.To].Stolen == 0 ? 1 : 0) };
                     Place(s, a.To, stolen);
                     Emit(ev, EventKind.Converted, a.From, a.To, stolen.Type, me, PowerupKind.StealGrab);
                     s.ClockReset = true;
@@ -182,7 +182,7 @@ namespace ChessFighter.Core
                 case ActionKind.Steal:
                 {
                     s.AddPerk(me, PowerupKind.Steal, -1);
-                    var stolen = new Piece(s.Cells[a.To].Type, me) { Origin = s.Cells[a.To].Origin };
+                    var stolen = new Piece(s.Cells[a.To].Type, me) { Origin = s.Cells[a.To].Origin, Stolen = (byte)(s.Cells[a.To].Stolen == 0 ? 1 : 0) };
                     Place(s, a.To, stolen);
                     Emit(ev, EventKind.Converted, a.From, a.To, stolen.Type, me, PowerupKind.Steal);
                     s.ClockReset = true;
@@ -636,7 +636,8 @@ namespace ChessFighter.Core
         internal static void NoteLost(GameState s, Piece p)
         {
             if (p.Type == PieceType.None || p.Type == PieceType.King) return;
-            int i = (int)p.Side * 8 + (int)p.Type;
+            var owner = p.Stolen != 0 ? p.Side.Opponent() : p.Side; // a stolen piece's loss counts for the side it started with
+            int i = (int)owner * 8 + (int)p.Type;
             if (s.Captured[i] < 255) s.Captured[i]++;
         }
 

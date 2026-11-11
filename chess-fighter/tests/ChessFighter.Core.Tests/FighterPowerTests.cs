@@ -375,6 +375,19 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
+        public void A_stolen_piece_that_dies_counts_as_a_loss_for_the_side_it_started_with()
+        {
+            // White steals Black's a4 pawn; Black's rook on a8 then takes it. The pawn was Black's, so it is Black's loss (Caissa can bring it back).
+            var s = T.Fen("r6k/8/8/8/p7/8/8/R3K3 w - - 0 1");
+            T.Square(s, "a3", PowerupKind.StealGrab);
+            T.Do(s, "a1a3");
+            T.Do(s, "StealPick a3->a4");
+            T.Do(s, "a8a4");
+            Assert.AreEqual(1, s.Captured[(int)Side.Black * 8 + (int)PieceType.Pawn]);
+            Assert.AreEqual(0, s.Captured[(int)Side.White * 8 + (int)PieceType.Pawn]);
+        }
+
+        [Test]
         public void Landing_on_a_Steal_square_lets_you_take_a_neighbouring_rival_but_never_a_king_or_armor()
         {
             // Rook a1 lands on a3 next to a pawn (a4) and an armored rook (b4); a knight on c4 is two files away.

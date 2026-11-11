@@ -9,7 +9,7 @@ namespace ChessFighter.Core
     /// </summary>
     public static class GameStateCodec
     {
-        const byte Version = 8;
+        const byte Version = 9;
         const int MaxHistory = 5000;
 
         public static string EncodeGame(GameState current, GameHistory history)
@@ -52,7 +52,7 @@ namespace ChessFighter.Core
                 using (var r = new BinaryReader(ms))
                 {
                     byte version = r.ReadByte();
-                    if (version < 1 || version > 8) return false; // version 1 saves predate revealed squares
+                    if (version < 1 || version > 9) return false; // version 1 saves predate revealed squares
                     var state = ReadState(r, config, version);
                     if (version >= 8)
                     {
@@ -102,6 +102,7 @@ namespace ChessFighter.Core
                 w.Write(p.Tier);
                 w.Write(p.PoisonTurns);
                 w.Write(p.Origin);
+                w.Write(p.Stolen);
             }
             w.Write(Pack(s.Boulders));
             w.Write(Pack(s.Mystery));
@@ -155,6 +156,7 @@ namespace ChessFighter.Core
                     Tier = version >= 4 ? r.ReadByte() : (byte)0,
                     PoisonTurns = version >= 5 ? r.ReadByte() : (byte)0,
                     Origin = version >= 8 ? r.ReadByte() : (byte)0,
+                    Stolen = version >= 9 ? r.ReadByte() : (byte)0,
                 };
                 if (piece.Origin > 64) throw new InvalidDataException("bad origin");
                 // Saves from before poison wore off: give an existing poison a full fuse.

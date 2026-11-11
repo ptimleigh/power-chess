@@ -676,7 +676,7 @@ html, body {
 .more-options { display: grid; gap: 4px; }
 
 /* The full-colour piece art is tall and narrow: let it stand a little taller in its square */
-.piece-svg.art { transform: scale(1.04); transform-origin: 50% 100%; }
+.piece-svg.art { width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; image-rendering: pixelated; transform: scale(1.04); transform-origin: 50% 100%; user-select: none; -webkit-user-drag: none; }
 
 /* Replay-style labels on the real board: a big pixel-font "?" and "+2" / "+4" with a black outline and shadow */
 .pu-glyph b.pu-q, .pu-glyph b.pu-num { font-family: var(--px); font-weight: 400; color: #fff; line-height: 1; letter-spacing: 0;

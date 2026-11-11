@@ -2,7 +2,7 @@
 @using ChessFighter.Web.Game
 @if (Sprites.HasArt)
 {
-    <svg viewBox="0 0 @Sprites.ArtW @Sprites.ArtH" class="piece-svg art @(Side == Side.White ? "w" : "b")" shape-rendering="crispEdges" preserveAspectRatio="xMidYMax meet" aria-hidden="true">@((MarkupString)Sprites.ArtBody(Type, Side))</svg>
+    <img class="piece-svg art @(Side == Side.White ? "w" : "b")" src="img/pieces/@(Side == Side.White ? "white" : "black")_@(Type.ToString().ToLowerInvariant()).png" alt="" draggable="false" />
 }
 else
 {

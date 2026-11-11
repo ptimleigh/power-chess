@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds the piece sprites from art/pieces-sheet-2.png (ivory pieces on top, black below: king, queen, bishop, knight, rook, pawn).
 Every piece is cut out, recoloured (White steel blue, Black crimson: each pixel's brightness is mapped onto a colour ramp, so the shading
-and outlines survive), shrunk with one common scale so the king is about 46 px tall, limited to 28 colours and written to
+and outlines survive), shrunk with one common scale so the king is about 64 px tall, limited to 36 colours and written to
 web/ChessFighter.Web/Game/Sprites.Art.cs. (tools/make-pieces-sheet1.py built the earlier, first sheet.)
 Usage: python3 -I tools/make-pieces.py"""
 import os
@@ -11,7 +11,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 SHEET = os.path.join(HERE, "..", "art", "pieces-sheet-2.png")
 OUT = os.path.join(HERE, "..", "web", "ChessFighter.Web", "Game", "Sprites.Art.cs")
-CW, CH, KING_PX = 32, 50, 46
+CW, CH, KING_PX, COLORS, GAMMA = 46, 68, 64, 36, 0.8
 CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGH"
 NAMES = ["king", "queen", "bishop", "knight", "rook", "pawn"]
 SEGS = [(46, 155), (162, 275), (282, 389), (397, 513), (517, 630), (638, 739)]
@@ -43,7 +43,7 @@ def recolor(img, side):
     L_king = luminance(king)[king[..., 3] > 0]
     lo, hi = np.percentile(L_king, 2), np.percentile(L_king, 98)
     ramp = np.array([hexrgb(c) for c in RAMPS[side]])
-    t = np.clip((luminance(arr) - lo) / (hi - lo), 0, 1) * (len(ramp) - 1)
+    t = (np.clip((luminance(arr) - lo) / (hi - lo), 0, 1) ** GAMMA) * (len(ramp) - 1)   # GAMMA below 1 lifts the shadows, so they do not turn into dark specks when shrunk
     i0 = np.floor(t).astype(int).clip(0, len(ramp) - 2)
     f = (t - i0)[..., None]
     out = arr.copy()
@@ -60,7 +60,7 @@ for (side, name), img in sorted(pieces.items()):
     w, h = max(1, round(img.width * scale)), max(1, round(img.height * scale))
     small = img.resize((w, h), Image.BOX)
     alpha = np.array(small.getchannel("A")) >= 110
-    q = small.convert("RGB").quantize(28, dither=Image.Dither.NONE)
+    q = small.convert("RGB").quantize(COLORS, dither=Image.Dither.NONE)
     pal = q.getpalette()
     idx = np.array(q)
     used = sorted({int(v) for v in idx[alpha]})
@@ -78,4 +78,17 @@ for (side, name), img in sorted(pieces.items()):
     cs.append(f'        }}, "{legend}");')
 cs += ["    }", "}", ""]
 open(OUT, "w").write("\n".join(cs))
+# the same sprites as PNG files, which the board uses (one image per piece is far lighter than thousands of SVG rects)
+PNG_DIR = os.path.join(HERE, "..", "web", "ChessFighter.Web", "wwwroot", "img", "pieces")
+os.makedirs(PNG_DIR, exist_ok=True)
+for (side, name), img in sorted(pieces.items()):
+    img = recolor(img, side)
+    w, h = max(1, round(img.width * scale)), max(1, round(img.height * scale))
+    small = img.resize((w, h), Image.BOX)
+    alpha = small.getchannel("A").point(lambda v: 255 if v >= 110 else 0)
+    q = small.convert("RGB").quantize(COLORS, dither=Image.Dither.NONE).convert("RGBA")
+    q.putalpha(alpha)
+    canvas = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
+    canvas.alpha_composite(q, ((CW - w) // 2, CH - 1 - h))
+    canvas.save(os.path.join(PNG_DIR, f"{side}_{name}.png"), optimize=True)
 print("wrote", os.path.normpath(OUT), "scale", round(scale, 3))

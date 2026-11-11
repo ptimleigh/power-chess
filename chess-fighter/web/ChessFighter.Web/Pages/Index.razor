@@ -620,7 +620,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 {
                     <p class="fine">Already counted today. Come back tomorrow for a new puzzle.</p>
                 }
-                <button class="btn" data-action="share" @onclick="SharePuzzle">@(shared ? "Copied!" : "Copy result")</button>
+                <button class="btn yellow" data-action="share" @onclick="SharePuzzle">Share replay</button>
             }
             else
             {
@@ -983,11 +983,22 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     }
     int puzzleMoves;
 
+    /// <summary>Opens the replay of the solved puzzle and starts making the video to share, like a normal replay.</summary>
     async Task SharePuzzle()
     {
         var def = Daily.PuzzleFor(today);
-        string text = $"Chess Fighter Daily {DateTime.UnixEpoch.AddDays(today):MMM d}: \"{def.Title}\" solved in {puzzleMoves}/{def.MaxMoves}. Streak {profile.DailyStreak}. https://ptimleigh.github.io/power-chess/fighter/";
-        try { shared = await JS.InvokeAsync<bool>("pcfx.copy", text); } catch { shared = false; }
+        clipOngoing = false;
+        clipHistory = S.History;
+        clipAvail = ClipBuilder.Available(clipHistory);
+        if (clipAvail == 0) return;
+        clipPlies = clipAvail;
+        clipTitle = "DAILY: " + def.Title.ToUpperInvariant();
+        clipMsg = "";
+        showClip = true;
+        clipReady = false;
+        StateHasChanged();
+        await Task.Delay(80);
+        await RenderClip();
     }
 
     void OnGameEnded(MatchSummary m)
@@ -1313,6 +1324,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     async Task OpenClip()
     {
+        clipTitle = null;
         clipOngoing = S.Reviewing && S.ReviewPosition < S.HistoryCount;
         clipHistory = clipOngoing ? S.History.Prefix(S.ReviewPosition, 60) : S.History;
         clipAvail = ClipBuilder.Available(clipHistory);
@@ -1326,8 +1338,9 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         await PlayClip();
     }
 
+    string? clipTitle;   // set for a puzzle replay ("DAILY: ..."); otherwise the title counts the moves
     string BuildClipJson() => ClipBuilder.Build(clipHistory, S.State, clipPlies, clipOngoing ? "" : S.ResultReason, clipOngoing ? GameResult.Ongoing : S.Result, S.VsAi,
-        clipPlies == 1 ? "THE LAST MOVE" : $"THE LAST {clipPlies} MOVES");
+        clipTitle ?? (clipPlies == 1 ? "THE LAST MOVE" : $"THE LAST {clipPlies} MOVES"));
 
     async Task PlayClip()
     {

@@ -811,3 +811,19 @@ html, body {
 .result .lvl-sub { font-family: var(--px); font-size: 12px; color: #fff; margin: 6px 0 12px; text-shadow: 2px 2px 0 #000; }
 @keyframes lvlpop { 0% { transform: scale(2.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .result h1.lvl-big { animation: none; } }
+
+/* ---------- more room: unlock cards, and the piece / square details as a docked sheet ---------- */
+.us-card { gap: 10px; padding: 6px 8px 12px; }
+.us-card .demo-caption { margin-top: 8px; margin-bottom: 6px; min-height: 0; line-height: 1.4; }
+.us-card .us-name { margin-top: 6px; line-height: 1.5; }
+.us-card .us-text { line-height: 1.5; font-size: 12.5px; }
+
+.inspect { position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-width: 560px; margin: 0 auto; z-index: 70; max-height: 38vh; overflow-y: auto;
+    border-radius: 18px 18px 0 0; border-bottom: 0; padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); gap: 14px; box-shadow: 0 -10px 30px #000b; animation: slideup .25s cubic-bezier(.34, 1.3, .64, 1); }
+.inspect-head b { font-size: 13px; color: var(--gold); line-height: 1.4; }
+.inspect-head .x { width: 38px; height: 38px; font-size: 16px; flex: none; }
+.inspect-row { gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: #e8e0ff; }
+.inspect-row > span:not(.gi) { flex: 1; min-width: 0; }
+.inspect-row b { font-family: var(--px); font-weight: 400; font-size: 12px; line-height: 1.4; color: #ffe23a; margin-bottom: 5px; }
+.inspect-row .gi { width: 40px; height: 40px; padding: 7px; flex: none; }
+.inspect .demo-btn { flex: none; min-height: 38px; padding: 6px 12px; }

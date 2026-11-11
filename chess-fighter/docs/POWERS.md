@@ -23,7 +23,7 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 |---|---|---|---|---|
 | **Fireball** | Fires along ranks and files like a rook at the first piece in line (enemy only). One use. | Also fires diagonally, like a queen. | Counts as a rook (I) or queen (II) for check and mate. A king can hold one. | **Built** |
 | **Poison** | If the piece is captured, the capturer is also lost. Lasts 5 of the owner's moves. | None. | A king cannot capture a poisoned piece. | **Built** |
-| **Harpoon** | Fires a small bishop-shaped projectile on a rope along one diagonal at a rival piece and pulls it next to the shooter. If already adjacent, it stays and is stunned. | Fires on all four diagonals at once. | A king can be pulled. A king holding Harpoon cannot pull a piece that would give check to it; show an X where the option would be. | **Built** (see assumptions below) |
+| **Leap** | A checkers jump: the piece jumps diagonally over an adjacent rival into the empty square directly behind it and captures it. Indicator: a stack of checkers under the piece (red for P1, black for P2), one disc per tier. | Tier II chains a second jump in the same turn; tier III keeps jumping as long as a jump is available. After each jump you may stop. | Kings can hold and use it, but never be jumped. Armored pieces and kings cannot be jumped; the landing square must be empty and plain (no boulder, powerup or teleporter); a pawn never leaps onto the last rank. | **Built** |
 | **Bomb** | Detonate: destroys all pieces in the 3x3 around the piece, itself included. Chain-detonates other bomb pieces in the blast. | 5x5. | A king in the blast zone counts as in check (chains too; spell it out to the player). A king landing on a Bomb square gets nothing and the square is used up. A detonation that would destroy your own king is illegal. | **Built** |
 | **Ghost** | 3 moves as a ghost. The counter does not go down if the piece does not move. | None. | A ghost can threaten check and mate. | **Built** |
 
@@ -64,9 +64,9 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World 
 ## Assumptions made while building (change any of these)
 
 - **Poison lasts the pickup turn plus 5 more owner turns**, so the opponent gets 5 replies while it is active.
-- **Harpoon is one use**, like Fireball, and uses the turn. A hooked rival that is already adjacent is stunned for **1 turn**.
-- **A harpoon pulls a rival as far toward the shooter as it can, but never lands it on a powerup square or teleporter** (nothing is triggered); it stops short of one. If it cannot move at all it is stunned where it stands. A hook that would leave your own king in check is not offered, and the interface outlines such a rival and says why when tapped.
-- **Harpoon is not a check threat** (only Fireball, Ghost and Bomb are).
+- **Leap is one use**, like Fireball, and uses the turn (the whole chain is one turn). Each jump must leave your own king safe.
+- **A leap pulls a rival as far toward the shooter as it can, but never lands it on a powerup square or teleporter** (nothing is triggered); it stops short of one. If it cannot move at all it is stunned where it stands. A hook that would leave your own king in check is not offered, and the interface outlines such a rival and says why when tapped.
+- **Leap is not a check threat** (only Fireball, Ghost and Bomb are).
 - **Armored pieces cannot be hooked.** A king can.
 - **Bomb:** the bomber is destroyed by its own blast, except an armored bomber, which survives with the bomb spent. A blast never removes
   a king or an armored piece, and clears boulders. A detonation needs at least one other target, and a stunned bomber cannot detonate or
@@ -128,12 +128,13 @@ deck through Draw Card squares, so they appear once Draw Card (level 7) and thei
 | 5 | Stun Bolt |
 | 6 | Combo +2 |
 | 7 | Draw Card squares, cards: Boulder, Smash Boulder, Promotion |
-| 8 | Harpoon I |
+| 8 | Leap I |
 | 9 | Fireball II |
 | 10 | Square frequency, Calm and Chaos modes |
 | 11 | Steal |
 | 12 | Cards: Nuh-uh, Take Back, Horse Sacrifice, Role Reversal |
-| 13 | Bomb II, Harpoon II |
+| 13 | Bomb II, Leap II |
+| 16 | Leap III |
 | 14 | Ghost Town mode |
 | 15 | Combo +4 |
 | 16 | Cards: Summon Mars, Summon Caïssa, No More Powers |
@@ -150,14 +151,14 @@ Code: `FighterUnlocks` in `Unlocks.cs`.
 
 Original: First Win, Checkmate, Flawless, Pyro (burn 3 pieces with fireballs in one game), Demolition, Collector (5 power squares of any kind),
 Thief, Warp Drive, Phantom, Hard Won, Regular, Daily Dose, On a Roll, Week Warrior, Devoted, Grandmaster Slayer.
-Added: Nuh-uh!, Card Shark (5 cards in a game), Caïssa's Favor (bring back a queen), Upside Down, Take Two, Hook Line, Deep Freeze (stun a queen),
+Added: Nuh-uh!, Card Shark (5 cards in a game), Caïssa's Favor (bring back a queen), Upside Down, Take Two, King Me, Deep Freeze (stun a queen),
 Combo Breaker (5 moves in a row), Level II (upgrade a power), Dragon's Breath (3+ pieces with one Dragon Strike), Smite (3 pieces with Summon Shiva),
 Incoming! (win with a missile), Veteran (level 10), Master of Squares (level 20).
 Each new trophy is worth 25 XP, but one game pays at most 50 XP in trophies.
 
 ## Late-game ramp
 
-Rare powers (Combo +4, Steal, Harpoon) and the big cards (Missile Strike, Dragon Strike, Summon Shiva, World Turned Upside Down, Hit Restart) get likelier as a
+Rare powers (Combo +4, Steal, Leap) and the big cards (Missile Strike, Dragon Strike, Summon Shiva, World Turned Upside Down, Hit Restart) get likelier as a
 game runs: 1x until ply 30 (move 15), rising to 2x at ply 100 (move 50). A card draw by the side behind in material gets up to +0.5 more, with 2x as the
 ceiling. Common powers are unchanged. Code: `LateRamp.cs`; the simulator can compare settings (`BalanceSim ... ramp start full`).
 

@@ -42,7 +42,7 @@ namespace ChessFighter.Core
             new RulePreset { Id = "calm", Name = "Calm Mode", Blurb = "Few squares. Every pickup matters.", UnlockLevel = 10, Freq = Frequency.Rare },
             new RulePreset { Id = "bigbombs", Name = "Oops! All Bombs", Blurb = "Every square is a Bomb. Tread carefully.", UnlockLevel = 20, Pool = () => Only(PowerupKind.SmallBomb) },
             new RulePreset { Id = "ghosttown", Name = "Ghost Town", Blurb = "Ghosts and teleporters only.", UnlockLevel = 14, Pool = () => Only(PowerupKind.Ghost), Portal = 0.45 },
-            new RulePreset { Id = "fireworks", Name = "Fireworks", Blurb = "Fireball, Harpoon and Stun Bolt. Pure attack.", UnlockLevel = 17, Pool = () => Only(PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.StunBolt) },
+            new RulePreset { Id = "fireworks", Name = "Fireworks", Blurb = "Fireball, Leap and Stun Bolt. Pure attack.", UnlockLevel = 17, Pool = () => Only(PowerupKind.Fireball, PowerupKind.Leap, PowerupKind.StunBolt) },
             new RulePreset { Id = "royal", Name = "Royal Court", Blurb = "Armor, Ghost, Combos and bombs: gifts a king can use.", UnlockLevel = 17,
                 Pool = () => Only(PowerupKind.SpikedArmor, PowerupKind.Ghost, PowerupKind.Combo2, PowerupKind.SmallBomb) },
         };

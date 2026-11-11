@@ -10,8 +10,6 @@ namespace ChessFighter.Core
         const int StunDuration = 3;
         /// <summary>Owner turns a Stun square's bolt freezes its target. Change this one number to tune it.</summary>
         public const int StunBoltTurns = 2;
-        /// <summary>Turns a rival already next to a Harpoon shooter is stunned.</summary>
-        public const int HarpoonStunTurns = 1;
         /// <summary>Most extra moves a stack of Combo squares can owe at once.</summary>
         public const int MaxComboMoves = 24;
         /// <summary>A poison fuse: the pickup turn plus 5 more owner turns.</summary>
@@ -94,35 +92,50 @@ namespace ChessFighter.Core
                     return;
                 }
 
-                case ActionKind.Harpoon:
+                case ActionKind.Leap:
                 {
-                    var shooter = s.Cells[a.From];
-                    for (int dir = 4; dir < 8; dir++)
-                    {
-                        if (a.Aux != 8 && a.Aux != dir) continue;
-                        int target = Geometry.HarpoonTarget(s, a.From, dir);
-                        if (target < 0) continue;
-                        int landing = Geometry.HarpoonLanding(s, a.From, target, dir);
-                        Emit(ev, EventKind.HarpoonFired, a.From, target, shooter.Type, me, PowerupKind.Harpoon);
-                        var hooked = s.Cells[target];
-                        if (target == landing)
-                        {
-                            // It cannot be pulled any closer (already next to the shooter, or powerup squares fill the way): stunned instead.
-                            hooked.StunTurns = HarpoonStunTurns;
-                            s.Cells[target] = hooked;
-                            Emit(ev, EventKind.StunStruck, target, target, hooked.Type, me, PowerupKind.Harpoon);
-                        }
-                        else
-                        {
-                            Remove(s, target);
-                            Place(s, landing, hooked);
-                            Emit(ev, EventKind.PulledIn, target, landing, hooked.Type, me, PowerupKind.Harpoon);
-                        }
-                    }
-                    shooter.Buffs &= ~Buff.Harpoon;
-                    shooter.Tier = 0;
-                    s.Cells[a.From] = shooter;
+                    // A checkers jump over the rival on the next diagonal square. The first jump spends the banked power (and the turn);
+                    // tier II may chain a second jump, tier III any number. While a chain is pending the jumper's Tier counts the jumps left.
+                    bool chained = s.EffectKind == PowerupKind.Leap;
+                    var jumper = s.Cells[a.From];
+                    int left = chained ? jumper.Tier : (jumper.Tier >= 3 ? 99 : Math.Max(1, (int)jumper.Tier));
+                    if (!chained) { jumper.Buffs &= ~Buff.Leap; }
+                    left = Math.Max(0, left - 1);
+                    int over = Geometry.LeapOver(a.From, a.To);
+                    Emit(ev, EventKind.Leaped, a.From, a.To, jumper.Type, me, PowerupKind.Leap);
+                    Destroy(s, over, ev);
+                    Remove(s, a.From);
+                    jumper.Tier = (byte)left;
+                    Place(s, a.To, jumper);
                     s.ClockReset = true;
+                    bool more = false;
+                    if (left > 0)
+                        for (int dir = 4; dir < 8 && !more; dir++)
+                            if (Geometry.LeapLanding(s, a.To, dir) >= 0) more = true;
+                    if (more)
+                    {
+                        s.EffectKind = PowerupKind.Leap;
+                        s.EffectSquare = a.To;
+                    }
+                    else
+                    {
+                        s.EffectKind = PowerupKind.None;
+                        s.EffectSquare = -1;
+                        var done = s.Cells[a.To];
+                        done.Tier = 0;
+                        s.Cells[a.To] = done;
+                    }
+                    Finish(s, ev);
+                    return;
+                }
+
+                case ActionKind.LeapStop:
+                {
+                    var done = s.Cells[a.From];
+                    done.Tier = 0;
+                    s.Cells[a.From] = done;
+                    s.EffectKind = PowerupKind.None;
+                    s.EffectSquare = -1;
                     Finish(s, ev);
                     return;
                 }
@@ -443,7 +456,8 @@ namespace ChessFighter.Core
                 if (!s.Probe && MoveGen.LegalActions(s).Count > 0) return;
                 s.EffectKind = PowerupKind.None;
                 s.EffectSquare = -1;
-                if (!s.Probe) Emit(ev, EventKind.EffectFizzled, at, at, s.Cells[at].Type, s.ToMove, kind);
+                if (kind == PowerupKind.Leap) { var jp = s.Cells[at]; jp.Tier = 0; s.Cells[at] = jp; }
+                else if (!s.Probe) Emit(ev, EventKind.EffectFizzled, at, at, s.Cells[at].Type, s.ToMove, kind);
             }
 
             if (s.ComboGain > 0)
@@ -754,17 +768,18 @@ namespace ChessFighter.Core
                     p.Buffs |= Buff.Armor;
                     p.ArmorTurns = ArmorStartTurns;
                     break;
-                case PowerupKind.Harpoon:
-                    if (p.Has(Buff.Harpoon))
+                case PowerupKind.Leap:
+                    if (p.Has(Buff.Leap))
                     {
-                        if (p.Tier >= 2 || !FighterUnlocks.TierTwoOpen(kind, s.Config.UnlockLevel)) { MaxOut(s, sq, p, kind, ev); return; }
-                        p.Tier = 2;
+                        int top = FighterUnlocks.TierThreeOpen(kind, s.Config.UnlockLevel) ? 3 : FighterUnlocks.TierTwoOpen(kind, s.Config.UnlockLevel) ? 2 : 1;
+                        if (p.Tier >= top) { MaxOut(s, sq, p, kind, ev); return; }
+                        p.Tier++;
                         s.Cells[sq] = p;
                         Emit(ev, EventKind.PowerUpgraded, sq, sq, p.Type, me, kind);
                         return;
                     }
                     ClearBanked(ref p);
-                    p.Buffs |= Buff.Harpoon;
+                    p.Buffs |= Buff.Leap;
                     p.Tier = 1;
                     break;
                 case PowerupKind.SmallBomb:
@@ -836,7 +851,7 @@ namespace ChessFighter.Core
             Emit(ev, EventKind.BuffGained, sq, sq, p.Type, me, kind);
         }
 
-        const Buff BankedMask = Buff.Fireball | Buff.Poison | Buff.SmallBomb | Buff.BigBomb | Buff.Ghost | Buff.Harpoon;
+        const Buff BankedMask = Buff.Fireball | Buff.Poison | Buff.SmallBomb | Buff.BigBomb | Buff.Ghost | Buff.Leap;
 
         /// <summary>A piece holds one banked move at a time, so taking a different one wipes the old one.</summary>
         static void ClearBanked(ref Piece p)

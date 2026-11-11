@@ -121,7 +121,7 @@ namespace ChessFighter.Core
             {
                 new WeightedKind(PowerupKind.Fireball, 12),
                 new WeightedKind(PowerupKind.Poison, 6),
-                new WeightedKind(PowerupKind.Harpoon, 9),
+                new WeightedKind(PowerupKind.Leap, 9),
                 new WeightedKind(PowerupKind.SmallBomb, 8),
                 new WeightedKind(PowerupKind.Ghost, 8),
                 new WeightedKind(PowerupKind.Combo2, 6),

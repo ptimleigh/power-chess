@@ -84,7 +84,7 @@ namespace ChessFighter.Core
                     if (!s.Cells[a.To].IsEmpty || a.Aux != 0) return true;
                     return s.Cells[a.From].Type == PieceType.Pawn && Sq.File(a.From) != Sq.File(a.To); // en passant
                 case ActionKind.Fireball:
-                case ActionKind.Harpoon:
+                case ActionKind.Leap:
                 case ActionKind.Detonate:
                 case ActionKind.Steal:
                 case ActionKind.StunBeam:
@@ -124,6 +124,19 @@ namespace ChessFighter.Core
                 {
                     if (Geometry.IsVulnerable(s.Cells[t], me)) pseudo.Add(new GameAction(ActionKind.StealPick, from, t, 0));
                 }
+            }
+            else if (s.EffectKind == PowerupKind.Leap)
+            {
+                // A Leap chain in progress: any further jump, or stop where you are (offered only while a jump is possible).
+                for (int dir = 4; dir < 8; dir++)
+                {
+                    int land = Geometry.LeapLanding(s, from, dir);
+                    if (land >= 0) pseudo.Add(new GameAction(ActionKind.Leap, from, land, dir));
+                }
+                int jumps = 0;
+                foreach (var a in pseudo) if (IsLegal(s, a)) { result.Add(a); jumps++; }
+                if (jumps > 0) result.Add(new GameAction(ActionKind.LeapStop, from, from, 0));
+                return;
             }
             foreach (var a in pseudo) if (IsLegal(s, a)) result.Add(a);
         }
@@ -379,26 +392,12 @@ namespace ChessFighter.Core
                     }
                 }
 
-                if (p.Has(Buff.Harpoon) && !p.IsStunned)
+                if (p.Has(Buff.Leap) && !p.IsStunned)
                 {
-                    // Harpoon I picks one diagonal; Harpoon II fires every diagonal that has a target in a single action.
-                    if (p.Tier >= 2)
+                    for (int dir = 4; dir < 8; dir++)
                     {
-                        int firstTarget = -1;
-                        for (int dir = 4; dir < 8; dir++)
-                        {
-                            int t = Geometry.HarpoonTarget(s, sq, dir);
-                            if (t >= 0 && firstTarget < 0) firstTarget = t;
-                        }
-                        if (firstTarget >= 0) o.Add(new GameAction(ActionKind.Harpoon, sq, firstTarget, 8));
-                    }
-                    else
-                    {
-                        for (int dir = 4; dir < 8; dir++)
-                        {
-                            int t = Geometry.HarpoonTarget(s, sq, dir);
-                            if (t >= 0) o.Add(new GameAction(ActionKind.Harpoon, sq, t, dir));
-                        }
+                        int land = Geometry.LeapLanding(s, sq, dir);
+                        if (land >= 0) o.Add(new GameAction(ActionKind.Leap, sq, land, dir));
                     }
                 }
 

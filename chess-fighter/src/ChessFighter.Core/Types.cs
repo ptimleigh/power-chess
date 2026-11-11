@@ -28,7 +28,7 @@ namespace ChessFighter.Core
         /// <summary>Like Double Move, but three moves in a row.</summary>
         TripleMove = 128,
         /// <summary>Banked: fire a rope and bishop-shaped hook along a diagonal and pull the first rival piece in line next to this piece.</summary>
-        Harpoon = 256,
+        Leap = 256,
     }
 
     /// <summary>What a mystery square can contain. Perks go to the player's inventory, the rest apply to the piece.</summary>
@@ -58,8 +58,8 @@ namespace ChessFighter.Core
         Combo2,
         /// <summary>Instant: like Combo2 but 4 more moves (5 in all).</summary>
         Combo4,
-        /// <summary>Banked: Harpoon I pulls a rival along one diagonal, Harpoon II along all four at once.</summary>
-        Harpoon,
+        /// <summary>Banked checkers jump: leap over an adjacent rival on a diagonal and capture it. Tier II chains two jumps, tier III any number.</summary>
+        Leap,
         /// <summary>Instant: the lander immediately fires a stun bolt in any direction at the first enemy piece in line (a king can be hit). 1 turn.</summary>
         StunBolt,
         /// <summary>Instant: the lander immediately takes over a rival piece (not a king) in the 3x3 around it.</summary>
@@ -74,7 +74,7 @@ namespace ChessFighter.Core
         public static bool IsBanked(PowerupKind k)
         {
             return k == PowerupKind.Fireball || k == PowerupKind.Poison || k == PowerupKind.SmallBomb
-                || k == PowerupKind.BigBomb || k == PowerupKind.Ghost || k == PowerupKind.Harpoon;
+                || k == PowerupKind.BigBomb || k == PowerupKind.Ghost || k == PowerupKind.Leap;
         }
 
         public static bool IsCombo(PowerupKind k) { return k == PowerupKind.Combo2 || k == PowerupKind.Combo4; }
@@ -172,8 +172,8 @@ namespace ChessFighter.Core
         RerollPickup,
         /// <summary>Swap two of your own pieces (From, To). Costs the turn.</summary>
         Swap,
-        /// <summary>Fire a Harpoon from From. Tier I: To = the rival hit, Aux = diagonal direction (4-7). Tier II: Aux = 8, fires every diagonal that has a target.</summary>
-        Harpoon,
+        /// <summary>A checkers jump: From jumps over the rival on the next diagonal square and lands on To (two squares away; Aux = diagonal 4-7), capturing it. Also each further jump of a chain.</summary>
+        Leap,
         /// <summary>Resolve a pending Stun square: From = the lander, To = the piece hit, Aux = direction (0-7).</summary>
         StunBeam,
         /// <summary>Resolve a pending Steal square: From = the lander, To = the rival taken over.</summary>
@@ -184,6 +184,8 @@ namespace ChessFighter.Core
         UseNuhUh,
         /// <summary>The rival lets the card you just activated through.</summary>
         AllowCard,
+        /// <summary>End a Leap chain early (the piece has jumped at least once and may jump again, but stays where it is).</summary>
+        LeapStop,
     }
 
     public struct GameAction : IEquatable<GameAction>
@@ -271,8 +273,8 @@ namespace ChessFighter.Core
         PowerMaxed,
         /// <summary>A piece upgraded the banked move it already held (Fireball I to II, Bomb I to II).</summary>
         PowerUpgraded,
-        /// <summary>A harpoon was fired: From is the shooter, To the rival it hooked.</summary>
-        HarpoonFired,
+        /// <summary>A piece leapt: From is where it jumped from, To where it landed. The rival it jumped is destroyed (Destroyed event).</summary>
+        Leaped,
         /// <summary>A hooked piece was dragged next to the shooter: From is where it was, To where it landed.</summary>
         PulledIn,
         /// <summary>A poisoned piece's poison wore off.</summary>

@@ -192,51 +192,30 @@ namespace ChessFighter.Core
         }
 
         /// <summary>
-        /// The rival piece a Harpoon fired from <paramref name="from"/> along diagonal <paramref name="dir"/> (4-7) would hook, or -1.
-        /// It must be the first piece in line and an enemy (a king can be hooked) that is not armored. Boulders stop the rope.
-        /// Whether the hook leaves your own king in check is decided by the usual legality check, not here.
+        /// Where a checkers-style Leap from <paramref name="from"/> along diagonal <paramref name="dir"/> (4-7) would land, or -1.
+        /// The next square must hold a rival piece that can be captured (not a king, not armored) and the square beyond it must be on the
+        /// board, empty, and plain (no boulder, powerup or teleporter), so nothing triggers mid-jump. A pawn never leaps onto the last rank.
+        /// Whether the jump leaves your own king in check is decided by the usual legality check, not here.
         /// </summary>
-        public static int HarpoonTarget(GameState s, int from, int dir)
+        public static int LeapLanding(GameState s, int from, int dir)
         {
             if (dir < 4 || dir > 7) return -1;
-            var shooter = s.Cells[from];
-            int idx = FirstPieceInLine(s, from, dir);
-            if (idx < 0) return -1;
-            var p = s.Cells[idx];
-            if (p.Side == shooter.Side || p.Has(Buff.Armor)) return -1;
-            // a king cannot be stunned, so a king the hook cannot pull any closer (already adjacent, or powerup squares in the way) is not a target
-            if (p.Type == PieceType.King && HarpoonLanding(s, from, idx, dir) == idx) return -1;
-            return idx;
+            var me = s.Cells[from];
+            if (me.IsEmpty) return -1;
+            int f = Sq.File(from), r = Sq.Rank(from);
+            int nf = f + DirFile[dir], nr = r + DirRank[dir], lf = f + 2 * DirFile[dir], lr = r + 2 * DirRank[dir];
+            if (!Sq.OnBoard(lf, lr)) return -1;
+            int mid = Sq.Make(nf, nr), land = Sq.Make(lf, lr);
+            if (s.Boulders[mid] || !IsVulnerable(s.Cells[mid], me.Side)) return -1;
+            if (!s.Cells[land].IsEmpty || s.Boulders[land] || s.Mystery[land] || s.Portal[land]) return -1;
+            if (me.Type == PieceType.Pawn && (lr == 0 || lr == 7)) return -1;
+            return land;
         }
 
-        /// <summary>
-        /// The first enemy on a diagonal whether or not it can be hooked (armor, or a hook that would be illegal), so the interface can
-        /// say why a rival in line is not on offer. -1 when nothing hostile is first in line.
-        /// </summary>
-        public static int HarpoonRivalInLine(GameState s, int from, int dir)
+        /// <summary>The square a leap from <paramref name="from"/> to <paramref name="land"/> jumps over (they are two diagonal steps apart).</summary>
+        public static int LeapOver(int from, int land)
         {
-            if (dir < 4 || dir > 7) return -1;
-            int idx = FirstPieceInLine(s, from, dir);
-            if (idx < 0) return -1;
-            return s.Cells[idx].Side != s.Cells[from].Side ? idx : -1;
-        }
-
-        /// <summary>
-        /// Where a hooked piece ends up: the free square nearest the shooter along the rope. A powerup square or teleporter is never
-        /// landed on (nothing is triggered), so the piece stops short of it. If it cannot move at all it stays and is stunned instead.
-        /// </summary>
-        public static int HarpoonLanding(GameState s, int from, int target, int dir)
-        {
-            int cf = Sq.File(from) + DirFile[dir], cr = Sq.Rank(from) + DirRank[dir];
-            while (Sq.OnBoard(cf, cr))
-            {
-                int idx = Sq.Make(cf, cr);
-                if (idx == target) return target;
-                if (s.Cells[idx].IsEmpty && !s.Boulders[idx] && !s.Mystery[idx] && !s.Portal[idx]) return idx;
-                cf += DirFile[dir];
-                cr += DirRank[dir];
-            }
-            return target;
+            return Sq.Make((Sq.File(from) + Sq.File(land)) / 2, (Sq.Rank(from) + Sq.Rank(land)) / 2);
         }
 
         /// <summary>The first piece along direction <paramref name="dir"/> (0-7) from <paramref name="from"/>, or -1. Boulders stop the line.</summary>

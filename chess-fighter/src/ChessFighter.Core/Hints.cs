@@ -55,8 +55,10 @@ namespace ChessFighter.Core
                 }
                 case ActionKind.Fireball:
                     return "Fire the fireball from " + Sq.Name(a.From) + " at " + Sq.Name(a.To);
-                case ActionKind.Harpoon:
-                    return "Fire the harpoon from " + Sq.Name(a.From) + (a.Aux == 8 ? " along every diagonal" : " at " + Sq.Name(a.To));
+                case ActionKind.Leap:
+                    return "Leap from " + Sq.Name(a.From) + " over " + Sq.Name(Geometry.LeapOver(a.From, a.To)) + " to " + Sq.Name(a.To);
+                case ActionKind.LeapStop:
+                    return "Stop jumping";
                 case ActionKind.StunBeam:
                     return "Stun the piece on " + Sq.Name(a.To);
                 case ActionKind.StealPick:

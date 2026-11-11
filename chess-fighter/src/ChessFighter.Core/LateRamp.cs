@@ -14,7 +14,7 @@ namespace ChessFighter.Core
 
         public static bool RarePower(PowerupKind k)
         {
-            return k == PowerupKind.Combo4 || k == PowerupKind.StealGrab || k == PowerupKind.Harpoon;
+            return k == PowerupKind.Combo4 || k == PowerupKind.StealGrab || k == PowerupKind.Leap;
         }
 
         public static bool RareCard(CardKind k)

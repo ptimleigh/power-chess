@@ -37,7 +37,7 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(Unlocks.AtLevel(6).Any(i => i.Kind == PowerupKind.Combo2));
             Assert.IsTrue(Unlocks.AtLevel(7).Any(i => i.Kind == PowerupKind.DrawCard));
             Assert.IsTrue(Unlocks.AtLevel(7).Any(i => i.Type == UnlockType.Cards && i.CardKinds.Contains(CardKind.Promotion)));
-            Assert.IsTrue(Unlocks.AtLevel(8).Any(i => i.Kind == PowerupKind.Harpoon));
+            Assert.IsTrue(Unlocks.AtLevel(8).Any(i => i.Kind == PowerupKind.Leap));
             Assert.IsTrue(Unlocks.AtLevel(9).Any(i => i.Type == UnlockType.Upgrade && i.Name == "Fireball II"));
             Assert.IsTrue(Unlocks.AtLevel(10).Any(i => i.Type == UnlockType.Frequency));
             Assert.IsTrue(Unlocks.AtLevel(10).Any(i => i.PresetId == "chaos") && Unlocks.AtLevel(10).Any(i => i.PresetId == "calm"));

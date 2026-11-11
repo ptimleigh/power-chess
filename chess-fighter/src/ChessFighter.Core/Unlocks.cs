@@ -39,7 +39,7 @@ namespace ChessFighter.Core
                 case PowerupKind.StunBolt: return 5;
                 case PowerupKind.Combo2: return 6;
                 case PowerupKind.DrawCard: return 7;
-                case PowerupKind.Harpoon: return 8;
+                case PowerupKind.Leap: return 8;
                 case PowerupKind.StealGrab: return 11;
                 case PowerupKind.BigBomb: return 13;
                 case PowerupKind.Combo4: return 15;
@@ -80,11 +80,15 @@ namespace ChessFighter.Core
                 case PowerupKind.Fireball: return 9;
                 case PowerupKind.SmallBomb:
                 case PowerupKind.BigBomb:
-                case PowerupKind.Harpoon:
+                case PowerupKind.Leap:
                     return 13;
                 default: return 1;
             }
         }
+
+        /// <summary>Leap is the only power with a third tier (an unlimited chain).</summary>
+        public static int TierThreeLevel(PowerupKind k) { return k == PowerupKind.Leap ? 16 : int.MaxValue; }
+        public static bool TierThreeOpen(PowerupKind k, int level) { return level < 0 ? k == PowerupKind.Leap : level >= TierThreeLevel(k); }
 
         public static bool PowerOpen(PowerupKind k, int level) { return level < 0 || level >= PowerLevel(k); }
         public static bool CardOpen(CardKind k, int level) { return level < 0 || level >= CardLevel(k); }
@@ -123,11 +127,13 @@ namespace ChessFighter.Core
             if (cards.CardKinds.Count > 0) list.Add(cards);
             if (level == FighterUnlocks.TierTwoLevel(PowerupKind.Fireball))
                 list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Fireball, Name = "Fireball II", Blurb = "Land on a second Fireball square: the fireball now also fires diagonally." });
-            if (level == FighterUnlocks.TierTwoLevel(PowerupKind.Harpoon))
+            if (level == FighterUnlocks.TierTwoLevel(PowerupKind.Leap))
             {
                 list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.SmallBomb, Name = "Bomb II", Blurb = "Land on a second Bomb square: the blast grows from 3x3 to 5x5." });
-                list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Harpoon, Name = "Harpoon II", Blurb = "Land on a second Harpoon square: it hooks all four diagonals at once." });
+                list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Leap, Name = "Leap II", Blurb = "Land on a second Leap square: the piece can chain two jumps in a row." });
             }
+            if (level == FighterUnlocks.TierThreeLevel(PowerupKind.Leap))
+                list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Leap, Name = "Leap III", Blurb = "Land on a third Leap square: the piece can chain jumps for as long as there are rivals to jump." });
             if (level == Progression.TeleporterLevel)
                 list.Add(new UnlockItem { Type = UnlockType.Teleporters, Level = level, Name = "Teleporters", Blurb = "Land on one teleporter square to jump to its twin on the other side." });
             if (level == Presets.FrequencyLevel)

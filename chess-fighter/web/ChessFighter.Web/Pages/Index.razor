@@ -265,10 +265,16 @@
                 <span class="pi">@Icons.Svg("fire")</span><span class="pl">Fireball@(S.HasFireball ? "" : " (no target)")</span>
             </button>
         }
-        @if (S.HoldsHarpoon)
+        @if (S.HoldsLeap)
         {
-            <button class="perk fire-btn" data-action="harpoon" disabled="@(!S.HasHarpoon)" @onclick="S.StartHarpoon">
-                <span class="pi">@Icons.Svg("hook")</span><span class="pl">Harpoon@(S.HasHarpoon ? "" : " (no target)")</span>
+            <button class="perk fire-btn" data-action="leap" disabled="@(!S.HasLeap)" @onclick="S.StartLeap">
+                <span class="pi">@Icons.Svg("checker")</span><span class="pl">Leap@(S.HasLeap ? "" : " (no target)")</span>
+            </button>
+        }
+        @if (S.EffectPending && S.State.EffectKind == PowerupKind.Leap && S.HumanTurn)
+        {
+            <button class="perk fire-btn" data-action="leap-stop" @onclick="S.LeapStop">
+                <span class="pi">@Icons.Svg("checker")</span><span class="pl">Stop</span>
             </button>
         }
         @if (S.HasDetonate)
@@ -385,7 +391,7 @@
                 <b>@InspectTitle(ip)</b>
                 <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
             </div>
-            @foreach (var flag in new[] { Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.Fireball, Buff.Harpoon, Buff.SmallBomb, Buff.BigBomb })
+            @foreach (var flag in new[] { Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.Fireball, Buff.Leap, Buff.SmallBomb, Buff.BigBomb })
             {
                 if (!ip.Has(flag)) { continue; }
                 var kind = Names.ForBuff(flag);
@@ -862,7 +868,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     </li>
                 }
             </ul>
-            <p class="fine">Kings can use most powers, but not Poison or Bombs. Using a banked power (Fireball, Harpoon, Bomb) or playing a card costs your turn.</p>
+            <p class="fine">Kings can use most powers, but not Poison or Bombs. Using a banked power (Fireball, Leap, Bomb) or playing a card costs your turn.</p>
             <div class="row help-row">
                 <button class="btn" data-action="training" @onclick="StartTraining">Learn the basics</button>
                 <button class="btn" data-action="reset-tutorials" @onclick="ResetTutorials">Reset tutorials</button>
@@ -1060,7 +1066,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     static readonly (string Label, PowerupKind Kind, int Times)[] DebugBuffs =
     {
         ("Fireball I", PowerupKind.Fireball, 1), ("Fireball II", PowerupKind.Fireball, 2),
-        ("Harpoon I", PowerupKind.Harpoon, 1), ("Harpoon II", PowerupKind.Harpoon, 2),
+        ("Leap I", PowerupKind.Leap, 1), ("Leap II", PowerupKind.Leap, 2), ("Leap III", PowerupKind.Leap, 3),
         ("Bomb I", PowerupKind.SmallBomb, 1), ("Bomb II", PowerupKind.SmallBomb, 2),
         ("Poison", PowerupKind.Poison, 1), ("Ghost", PowerupKind.Ghost, 1), ("Armor", PowerupKind.SpikedArmor, 1),
     };
@@ -1068,7 +1074,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     /// <summary>Every kind of powerup square the pool can hand out.</summary>
     static readonly PowerupKind[] DebugSquares =
     {
-        PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
+        PowerupKind.Fireball, PowerupKind.Leap, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
         PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.StunBolt, PowerupKind.StealGrab, PowerupKind.DrawCard, PowerupKind.SpikedArmor,
     };
 
@@ -1222,8 +1228,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     static string TutorialText(PowerupKind k) => PowerupInfo.IsTransform(k)
         ? "The piece that opens one changes into another piece on the spot. Never a king."
-        : k == PowerupKind.Harpoon
-        ? "Harpoon I hooks the first rival along one diagonal and drags it next to this piece. Land on another Harpoon square for II, which hooks all four diagonals at once. A rival that can't be pulled any closer is stunned for a turn. Uses your turn, one use."
+        : k == PowerupKind.Leap
+        ? "Leap I jumps a rival on the next diagonal square, like a checker, and captures it. Land on another Leap square for II (two jumps in a row) and again for III (jump as long as you can). Uses your turn, one use."
         : Names.Desc(k);
 
     // ---------- tester sharing ----------
@@ -1588,7 +1594,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (S.Targets.Contains(sq))
         {
             bool enemy = !cell.IsEmpty && cell.Side != S.Turn;
-            c += S.Mode == InputMode.Armed || S.Mode == InputMode.FireAim || S.Mode == InputMode.HarpoonAim
+            c += S.Mode == InputMode.Armed || S.Mode == InputMode.FireAim || S.Mode == InputMode.LeapAim
                 ? " aim"
                 : enemy ? " target cap" : " target";
         }

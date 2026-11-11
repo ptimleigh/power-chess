@@ -4,7 +4,7 @@ namespace ChessFighter.Web.Game;
 
 public enum PuzzleResult { None, Solved, Failed }
 
-public enum InputMode { Normal, Armed, FireAim, HarpoonAim, BombPreview, Promotion }
+public enum InputMode { Normal, Armed, FireAim, LeapAim, BombPreview, Promotion }
 
 /// <summary>What a debug tap does: give a piece a buff, drop a powerup square pair, drop teleporters, or clean up.</summary>
 public enum DebugTool { None, Buff, Square, Portal, Clear, Unbuff, Stun }
@@ -231,7 +231,7 @@ public sealed class GameSession
         {
             case ActionKind.Move:
             case ActionKind.Fireball:
-            case ActionKind.Harpoon:
+            case ActionKind.Leap:
             case ActionKind.StunBeam:
             case ActionKind.StealPick:
             case ActionKind.Steal:
@@ -351,7 +351,7 @@ public sealed class GameSession
     public bool EffectPending => State.EffectKind != PowerupKind.None && !GameOver;
 
     /// <summary>The squares the pending Stun or Steal can hit.</summary>
-    public IEnumerable<int> EffectTargets => Legal.Where(a => a.Kind == ActionKind.StunBeam || a.Kind == ActionKind.StealPick).Select(a => a.To);
+    public IEnumerable<int> EffectTargets => Legal.Where(a => a.Kind == ActionKind.StunBeam || a.Kind == ActionKind.StealPick || a.Kind == ActionKind.Leap).Select(a => a.To);
     public Side Turn => State.ToMove;
 
     // ---------- setup ----------
@@ -748,7 +748,7 @@ public sealed class GameSession
 
     /// <summary>The selected piece of the player on the move holds a Fireball (whether or not anything is in line yet).</summary>
     public bool HoldsFireball => Selected >= 0 && Mode == InputMode.Normal && HumanTurn && State.Cells[Selected].Has(Buff.Fireball);
-    public bool HoldsHarpoon => Selected >= 0 && Mode == InputMode.Normal && HumanTurn && State.Cells[Selected].Has(Buff.Harpoon);
+    public bool HoldsLeap => Selected >= 0 && Mode == InputMode.Normal && HumanTurn && State.Cells[Selected].Has(Buff.Leap);
 
     /// <summary>The selected piece earned a fireball and has at least one enemy in line.</summary>
     public bool HasFireball => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Fireball && a.From == Selected);
@@ -1031,28 +1031,29 @@ public sealed class GameSession
         }
     }
 
-    /// <summary>The selected piece holds a Harpoon with a rival to hook.</summary>
-    public bool HasHarpoon => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Harpoon && a.From == Selected);
+    /// <summary>The selected piece holds a Leap with a rival to jump.</summary>
+    public bool HasLeap => Selected >= 0 && Mode == InputMode.Normal && Legal.Any(a => a.Kind == ActionKind.Leap && a.From == Selected);
 
-    /// <summary>Harpoon II fires every diagonal at once, so it just fires; Harpoon I lets the player tap which rival to hook.</summary>
-    public async Task StartHarpoon()
+    /// <summary>Show where the Leap can land; the jumped rivals are marked, and tapping a landing square makes the jump.</summary>
+    public async Task StartLeap()
     {
-        if (!HasHarpoon) return;
-        var cands = Legal.Where(a => a.Kind == ActionKind.Harpoon && a.From == Selected).ToList();
-        if (cands.Count == 1 && cands[0].Aux == 8) { await Human(cands[0]); return; }
-        Mode = InputMode.HarpoonAim;
+        if (!HasLeap) return;
+        var cands = Legal.Where(a => a.Kind == ActionKind.Leap && a.From == Selected).ToList();
+        Mode = InputMode.LeapAim;
         Targets.Clear();
         Doomed.Clear();
         Spared.Clear();
-        foreach (var c in cands) Targets.Add(c.To);
-        // A rival that is first in line on a diagonal but not on offer is outlined, with the reason shown if it is tapped.
-        for (int dir = 4; dir < 8; dir++)
-        {
-            int rival = Geometry.HarpoonRivalInLine(State, Selected, dir);
-            if (rival >= 0 && !Targets.Contains(rival)) Spared.Add(rival);
-        }
+        foreach (var c in cands) { Targets.Add(c.To); Doomed.Add(Geometry.LeapOver(c.From, c.To)); }
         Sfx?.Invoke("click");
         Changed?.Invoke();
+        await Task.CompletedTask;
+    }
+
+    /// <summary>A Leap chain is waiting: stop jumping and keep the piece where it is.</summary>
+    public async Task LeapStop()
+    {
+        var stop = Legal.FirstOrDefault(a => a.Kind == ActionKind.LeapStop);
+        if (stop.Kind == ActionKind.LeapStop && HumanTurn) await Human(stop);
     }
 
     public void ClearSelection()
@@ -1127,14 +1128,14 @@ public sealed class GameSession
         bool mine = !State.Cells[sq].IsEmpty && State.Cells[sq].Side == State.ToMove;
         if (!mine) return;
         var acts = Legal.Where(a => a.From == sq && a.Kind == ActionKind.Move).ToList();
-        bool special = Legal.Any(a => (a.Kind == ActionKind.Detonate || a.Kind == ActionKind.Fireball || a.Kind == ActionKind.Harpoon) && a.From == sq)
-            || State.Cells[sq].Has(Buff.Fireball) || State.Cells[sq].Has(Buff.Harpoon);
+        bool special = Legal.Any(a => (a.Kind == ActionKind.Detonate || a.Kind == ActionKind.Fireball || a.Kind == ActionKind.Leap) && a.From == sq)
+            || State.Cells[sq].Has(Buff.Fireball) || State.Cells[sq].Has(Buff.Leap);
         if (acts.Count == 0 && !special) return;
         Selected = sq;
         foreach (var a in acts) Targets.Add(a.To);
         Sfx?.Invoke("click");
         var held = State.Cells[sq];
-        foreach (var flag in new[] { Buff.Fireball, Buff.Harpoon, Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
+        foreach (var flag in new[] { Buff.Fireball, Buff.Leap, Buff.DoubleMove, Buff.TripleMove, Buff.Ghost, Buff.Poison, Buff.Armor, Buff.SmallBomb, Buff.BigBomb })
         {
             if (!held.Has(flag)) continue;
             var kind = flag == Buff.Armor ? PowerupKind.SpikedArmor : Names.ForBuff(flag);
@@ -1146,7 +1147,7 @@ public sealed class GameSession
 
     public DebugTool DebugArmed { get; private set; }
     public PowerupKind DebugKind { get; private set; }
-    /// <summary>How many times a Buff tap applies its power: 2 turns Fireball I into II, Bomb I into II, Harpoon I into II.</summary>
+    /// <summary>How many times a Buff tap applies its power: 2 turns Fireball I into II, Bomb I into II, Leap I into II.</summary>
     public int DebugTimes { get; private set; } = 1;
     /// <summary>Cards from the debug panel go to the rival's bag instead of yours.</summary>
     public bool DebugCardsToRival { get; private set; }
@@ -1237,7 +1238,7 @@ public sealed class GameSession
 
     public string DebugHint => DebugArmed switch
     {
-        DebugTool.Buff => $"Debug: tap a piece to give it {(DebugKind == PowerupKind.Fireball || DebugKind == PowerupKind.Harpoon || DebugKind == PowerupKind.SmallBomb ? Names.TierName(DebugKind, DebugTimes) : Names.Name(DebugKind))}",
+        DebugTool.Buff => $"Debug: tap a piece to give it {(DebugKind == PowerupKind.Fireball || DebugKind == PowerupKind.Leap || DebugKind == PowerupKind.SmallBomb ? Names.TierName(DebugKind, DebugTimes) : Names.Name(DebugKind))}",
         DebugTool.Square => DebugKind == PowerupKind.None ? "Debug: tap an empty square for a mystery pair" : $"Debug: tap an empty square for a {Names.Name(DebugKind)} pair",
         DebugTool.Portal => "Debug: tap an empty square for a teleporter pair",
         DebugTool.Clear => "Debug: tap a powerup square, teleporter or boulder to remove it",
@@ -1336,8 +1337,8 @@ public sealed class GameSession
         if (EffectPending)
         {
             // Aim the Stun bolt or pick the piece to steal. Nothing else can be done until it is resolved.
-            var pick = Legal.FirstOrDefault(a => (a.Kind == ActionKind.StunBeam || a.Kind == ActionKind.StealPick) && a.To == sq);
-            if (pick.Kind == ActionKind.StunBeam || pick.Kind == ActionKind.StealPick) await Human(pick);
+            var pick = Legal.FirstOrDefault(a => (a.Kind == ActionKind.StunBeam || a.Kind == ActionKind.StealPick || a.Kind == ActionKind.Leap) && a.To == sq);
+            if (pick.Kind == ActionKind.StunBeam || pick.Kind == ActionKind.StealPick || pick.Kind == ActionKind.Leap) await Human(pick);
             else Sfx?.Invoke("click");
             return;
         }
@@ -1376,19 +1377,10 @@ public sealed class GameSession
             return;
         }
 
-        if (Mode == InputMode.HarpoonAim)
+        if (Mode == InputMode.LeapAim)
         {
-            if (Spared.Contains(sq))
-            {
-                // Say why this rival cannot be hooked instead of silently ignoring the tap.
-                bool armored = State.Cells[sq].Has(Buff.Armor);
-                AddToast("Can't hook that piece", armored ? "It is armored." : "Pulling it in would leave your king in check.", "gold", "hook");
-                Sfx?.Invoke("click");
-                Changed?.Invoke();
-                return;
-            }
             if (!Targets.Contains(sq)) { Cancel(); return; }
-            await Human(Legal.First(a => a.Kind == ActionKind.Harpoon && a.From == Selected && a.To == sq));
+            await Human(Legal.First(a => a.Kind == ActionKind.Leap && a.From == Selected && a.To == sq));
             return;
         }
 
@@ -1644,7 +1636,7 @@ public sealed class GameSession
                 var st = NextCardStep(out _, out _);
                 if (st != CardStep.None) return CardPrompt(st);
             }
-            if (EffectPending) return State.EffectKind == PowerupKind.StunBolt ? "Stun! Tap an enemy piece to zap it" : "Steal! Tap a rival piece next to you to take it";
+            if (EffectPending) return State.EffectKind == PowerupKind.StunBolt ? "Stun! Tap an enemy piece to zap it" : State.EffectKind == PowerupKind.Leap ? "Jump again! Tap where to land, or Stop" : "Steal! Tap a rival piece next to you to take it";
             if (PickupPending) return "You found a powerup!";
             if (Mode == InputMode.Armed)
                 return ArmedKind switch
@@ -1657,7 +1649,7 @@ public sealed class GameSession
                     _ => "",
                 };
             if (Mode == InputMode.FireAim) return "Fireball: tap an enemy to choose the direction";
-            if (Mode == InputMode.HarpoonAim) return Spared.Count > 0 ? "Harpoon: tap the rival to hook (outlined pieces cannot be hooked)" : "Harpoon: tap the rival to hook";
+            if (Mode == InputMode.LeapAim) return "Leap: tap the square to land on (the marked rival is captured)";
             if (Mode == InputMode.BombPreview)
                 return $"Bomb: destroys {BombOwnLosses} of your pieces (the bomber too) and {BombEnemyLosses} of theirs"
                     + (BombChain > 0 ? $", and sets off {BombChain} more {(BombChain == 1 ? "bomb" : "bombs")}" : "") + ". Confirm or cancel.";
@@ -1692,7 +1684,7 @@ public sealed class GameSession
         {
             case ActionKind.Move:
             case ActionKind.Fireball:
-            case ActionKind.Harpoon:
+            case ActionKind.Leap:
             case ActionKind.StunBeam:
             case ActionKind.StealPick:
             case ActionKind.Steal:
@@ -1755,7 +1747,8 @@ public sealed class GameSession
             ActionKind.Move => $"{e.Before.Cells[a.From].Type} {Sq.Name(a.From)} to {Sq.Name(a.To)}"
                 + (!e.Before.Cells[a.To].IsEmpty ? " (capture)" : ""),
             ActionKind.Fireball => $"Fireball from {Sq.Name(a.From)}",
-            ActionKind.Harpoon => $"Harpoon from {Sq.Name(a.From)}",
+            ActionKind.Leap => $"Leap {Sq.Name(a.From)} to {Sq.Name(a.To)}",
+            ActionKind.LeapStop => "Stopped jumping",
             ActionKind.Stun => $"Stun on {Sq.Name(a.To)}",
             ActionKind.Steal => $"Steal on {Sq.Name(a.To)}",
             ActionKind.PlaceBoulder => $"Boulder on {Sq.Name(a.To)}",
@@ -1940,7 +1933,7 @@ public sealed class GameSession
                 }
                 case EventKind.StunStruck:
                     AddFx("stars", e.To, css: "stun");
-                    AddToast("STUNNED!", e.Powerup == PowerupKind.Stun ? "Frozen for 3 turns" : $"Frozen for {(e.Powerup == PowerupKind.StunBolt ? Rules.StunBoltTurns : Rules.HarpoonStunTurns)} {((e.Powerup == PowerupKind.StunBolt ? Rules.StunBoltTurns : Rules.HarpoonStunTurns) == 1 ? "turn" : "turns")}", "stun", "star");
+                    AddToast("STUNNED!", e.Powerup == PowerupKind.Stun ? "Frozen for 3 turns" : $"Frozen for {Rules.StunBoltTurns} turns", "stun", "star");
                     Shake();
                     Sfx?.Invoke("stun");
                     break;
@@ -1960,9 +1953,9 @@ public sealed class GameSession
                     AddToast(Names.TierName(e.Powerup, 2) + "!", Names.Desc(e.Powerup, 2), "gold", Names.Icon(e.Powerup));
                     Sfx?.Invoke("pickup");
                     break;
-                case EventKind.HarpoonFired:
-                    AddFx("beam", e.From, e.To, css: "rope");
-                    AddToast("HARPOON!", "", "gold", "hook");
+                case EventKind.Leaped:
+                    AddFx("ring", e.To, radius: 1, css: "gold");
+                    AddToast("LEAP!", "", "gold", "checker");
                     Sfx?.Invoke("steal");
                     break;
                 case EventKind.CardDrawn:

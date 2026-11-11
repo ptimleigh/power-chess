@@ -616,151 +616,180 @@ namespace ChessFighter.Core.Tests
             Assert.IsFalse(Geometry.IsKingAttacked(rook, Side.Black));
         }
 
-        // ---------- Harpoon ----------
+        // ---------- Leap (a checkers jump) ----------
 
         [Test]
-        public void Harpoon_I_pulls_the_first_rival_on_a_diagonal_next_to_the_shooter()
+        public void Leap_jumps_a_rival_on_the_next_diagonal_square_and_captures_it()
         {
-            var s = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
-            T.Give(s, "d1", Buff.Harpoon);
-            T.Tier(s, "d1", 1);
-            var ev = T.Do(s, "Harpoon d1->g4");
-            Assert.IsTrue(T.At(s, "g4").IsEmpty);
-            Assert.AreEqual(PieceType.Knight, T.At(s, "e2").Type, "pulled to the square next to the shooter");
-            Assert.AreEqual(Side.Black, T.At(s, "e2").Side);
-            Assert.AreEqual(PieceType.Rook, T.At(s, "d1").Type, "the shooter stays put");
-            Assert.IsFalse(T.At(s, "d1").Has(Buff.Harpoon), "one use");
-            Assert.AreEqual(Side.Black, s.ToMove, "firing uses the turn");
-            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.HarpoonFired));
-            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.PulledIn));
-        }
-
-        [Test]
-        public void A_rival_already_next_to_the_shooter_is_stunned_instead()
-        {
-            var s = T.Fen("7k/8/8/8/8/8/4b3/3RK3 w - - 0 1");
-            T.Give(s, "d1", Buff.Harpoon);
-            T.Do(s, "Harpoon d1->e2");
-            Assert.AreEqual(PieceType.Bishop, T.At(s, "e2").Type, "it stays where it was");
-            Assert.IsTrue(T.At(s, "e2").IsStunned);
-        }
-
-        [Test]
-        public void Harpoon_is_stopped_by_friends_boulders_and_armor()
-        {
-            var friend = T.Fen("7k/8/8/8/6n1/5P2/8/3RK3 w - - 0 1");
-            T.Give(friend, "d1", Buff.Harpoon);
-            Assert.IsFalse(MoveGen.LegalActions(friend).Any(a => a.Kind == ActionKind.Harpoon), "own pawn is first in line");
-
-            var rock = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
-            rock.Boulders[Sq.Parse("f3")] = true;
-            T.Give(rock, "d1", Buff.Harpoon);
-            Assert.IsFalse(MoveGen.LegalActions(rock).Any(a => a.Kind == ActionKind.Harpoon));
-
-            var armor = T.Fen("7k/8/8/8/6n1/8/8/3RK3 w - - 0 1");
-            T.Give(armor, "g4", Buff.Armor, 3);
-            T.Give(armor, "d1", Buff.Harpoon);
-            Assert.IsFalse(MoveGen.LegalActions(armor).Any(a => a.Kind == ActionKind.Harpoon), "armor shrugs it off");
-
-        }
-
-        [Test]
-        public void A_hooked_piece_stops_short_of_a_powerup_square_and_is_stunned_if_it_cannot_move_at_all()
-        {
-            // Powerup square on e2, right next to the shooter: the knight is pulled as far as f3, not refused.
-            var s = T.Fen("7k/8/8/8/6n1/8/8/3R3K w - - 0 1");
-            T.Square(s, "e2", PowerupKind.Fireball);
-            T.Give(s, "d1", Buff.Harpoon);
-            T.Do(s, "Harpoon d1->g4");
-            Assert.AreEqual(PieceType.Knight, T.At(s, "f3").Type, "pulled to the nearest free square");
-            Assert.IsTrue(s.Mystery[Sq.Parse("e2")], "and the powerup square is untouched");
-
-            // Powerup squares fill the whole way: nowhere to go, so it is stunned where it stands.
-            var jam = T.Fen("7k/8/8/8/6n1/8/8/3R3K w - - 0 1");
-            T.Square(jam, "e2", PowerupKind.Fireball);
-            T.Square(jam, "f3", PowerupKind.Fireball);
-            T.Give(jam, "d1", Buff.Harpoon);
-            T.Do(jam, "Harpoon d1->g4");
-            Assert.AreEqual(PieceType.Knight, T.At(jam, "g4").Type, "it stays where it was");
-            Assert.IsTrue(T.At(jam, "g4").IsStunned);
-        }
-
-        [Test]
-        public void Harpoon_I_offers_every_rival_in_line_even_when_a_powerup_square_is_beside_the_shooter()
-        {
-            // Two rivals on two diagonals, and a powerup square next to the shooter on one of them: both are still on offer.
-            var s = T.Fen("7k/6n1/8/8/3R4/8/1b6/7K w - - 0 1");
-            T.Give(s, "d4", Buff.Harpoon);
+            var s = T.Fen("7k/8/8/4n3/3R4/8/8/7K w - - 0 1");
+            T.Give(s, "d4", Buff.Leap);
             T.Tier(s, "d4", 1);
-            T.Square(s, "e5", PowerupKind.Fireball);
-            var targets = MoveGen.LegalActions(s).Where(a => a.Kind == ActionKind.Harpoon).Select(a => Sq.Name(a.To)).OrderBy(x => x).ToArray();
-            CollectionAssert.AreEqual(new[] { "b2", "g7" }, targets);
+            var ev = T.Do(s, "Leap d4->f6");
+            Assert.IsTrue(T.At(s, "e5").IsEmpty, "the jumped knight is gone");
+            Assert.AreEqual(PieceType.Rook, T.At(s, "f6").Type, "the jumper lands on the far side");
+            Assert.IsTrue(T.At(s, "d4").IsEmpty);
+            Assert.IsFalse(T.At(s, "f6").Has(Buff.Leap), "one use");
+            Assert.AreEqual(Side.Black, s.ToMove, "leaping uses the turn");
+            Assert.AreEqual(PowerupKind.None, s.EffectKind);
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.Leaped));
+            Assert.IsTrue(ev.Any(e => e.Kind == EventKind.Destroyed && e.Piece == PieceType.Knight));
         }
 
         [Test]
-        public void A_king_can_be_hooked_but_the_shooter_may_not_be_left_in_check()
+        public void Leap_needs_an_enemy_that_can_be_captured_and_an_empty_plain_square_behind_it()
         {
-            var kingHook = T.Fen("8/8/8/8/6k1/8/8/3R3K w - - 0 1");
-            T.Give(kingHook, "d1", Buff.Harpoon);
-            T.Do(kingHook, "Harpoon d1->g4");
-            Assert.AreEqual(PieceType.King, T.At(kingHook, "e2").Type, "a king is pulled like any other piece");
-
-            // A king holding the harpoon cannot pull a pawn that would then attack it.
-            var self = T.Fen("7k/8/8/8/6p1/8/8/3K4 w - - 0 1");
-            T.Give(self, "d1", Buff.Harpoon);
-            Assert.IsFalse(T.IsLegal(self, "Harpoon d1->g4"), "the pawn pulled to e2 would check the king");
+            System.Func<string, System.Action<GameState>, bool> hasLeap = (fen, setup) =>
+            {
+                var g = T.Fen(fen);
+                T.Give(g, "d4", Buff.Leap);
+                if (setup != null) setup(g);
+                return MoveGen.LegalActions(g).Any(a => a.Kind == ActionKind.Leap);
+            };
+            Assert.IsTrue(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", null));
+            Assert.IsFalse(hasLeap("7k/8/8/4N3/3R4/8/8/7K w - - 0 1", null), "a friend cannot be jumped");
+            Assert.IsFalse(hasLeap("8/8/8/4k3/3R4/8/8/7K w - - 0 1", null), "a king cannot be jumped");
+            Assert.IsFalse(hasLeap("7k/8/5p2/4n3/3R4/8/8/7K w - - 0 1", null), "the landing square must be empty");
+            Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => T.Give(g, "e5", Buff.Armor, 3)), "armor cannot be jumped");
+            Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => g.Boulders[Sq.Parse("f6")] = true), "no landing on a boulder");
+            Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => T.Square(g, "f6", PowerupKind.Fireball)), "no landing on a powerup square");
+            Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => { var st = g.Cells[Sq.Parse("d4")]; st.StunTurns = 2; g.Cells[Sq.Parse("d4")] = st; }), "a stunned piece cannot leap");
         }
 
         [Test]
-        public void Harpoon_II_fires_every_diagonal_at_once()
+        public void A_leap_may_not_leave_your_own_king_in_check()
         {
-            var s = T.Fen("7k/6n1/8/8/3R4/8/1b6/7K w - - 0 1");
-            T.Give(s, "d4", Buff.Harpoon);
+            // The rook on e4 is pinned against the rook on e8: leaping off the file is not allowed.
+            var s = T.Fen("4r2k/8/8/5n2/4R3/8/8/4K3 w - - 0 1");
+            T.Give(s, "e4", Buff.Leap);
+            Assert.IsFalse(T.IsLegal(s, "Leap e4->g6"));
+        }
+
+        [Test]
+        public void A_pawn_never_leaps_onto_the_last_rank()
+        {
+            var s = T.Fen("7k/8/2n5/1P6/8/8/8/7K w - - 0 1");
+            T.Give(s, "b5", Buff.Leap);
+            // b5 over c6 would land on d7, which is fine; but from d7 over e8 would be the last rank.
+            Assert.IsTrue(MoveGen.LegalActions(s).Any(a => a.Kind == ActionKind.Leap));
+            var end = T.Fen("4n3/3P4/8/8/8/8/8/k6K w - - 0 1");
+            T.Give(end, "d7", Buff.Leap);
+            Assert.IsFalse(MoveGen.LegalActions(end).Any(a => a.Kind == ActionKind.Leap), "f8 is the last rank");
+        }
+
+        [Test]
+        public void Leap_II_chains_a_second_jump_and_the_player_may_stop()
+        {
+            var s = T.Fen("k7/6n1/8/4n3/3R4/8/8/7K w - - 0 1");
+            T.Give(s, "d4", Buff.Leap);
             T.Tier(s, "d4", 2);
-            var ev = T.Do(s, "Harpoon d4->g7");
-            Assert.AreEqual(PieceType.Knight, T.At(s, "e5").Type, "up-right target pulled in");
-            Assert.AreEqual(PieceType.Bishop, T.At(s, "c3").Type, "down-left target pulled in");
+            T.Do(s, "Leap d4->f6");
+            Assert.AreEqual(PowerupKind.Leap, s.EffectKind, "a chain is pending");
+            Assert.AreEqual(Side.White, s.ToMove, "still the jumper's turn");
+            var acts = MoveGen.LegalActions(s);
+            Assert.IsTrue(acts.Any(a => a.Kind == ActionKind.Leap && a.To == Sq.Parse("h8")));
+            Assert.IsTrue(acts.Any(a => a.Kind == ActionKind.LeapStop));
+            Assert.IsFalse(acts.Any(a => a.Kind == ActionKind.Move), "only the chain may continue");
+
+            var stop = s.Clone();
+            T.Do(stop, "LeapStop f6->f6");
+            Assert.AreEqual(Side.Black, stop.ToMove);
+            Assert.AreEqual(PieceType.Knight, T.At(stop, "g7").Type, "the second knight is untouched");
+
+            T.Do(s, "Leap f6->h8");
+            Assert.AreEqual(Side.Black, s.ToMove, "tier II stops after two jumps");
             Assert.IsTrue(T.At(s, "g7").IsEmpty);
-            Assert.IsTrue(T.At(s, "b2").IsEmpty);
-            Assert.AreEqual(2, ev.Count(e => e.Kind == EventKind.PulledIn));
+            Assert.AreEqual(PieceType.Rook, T.At(s, "h8").Type);
         }
 
         [Test]
-        public void Harpoon_tiers_upgrade_replace_and_a_king_can_hold_one()
+        public void Leap_I_makes_one_jump_and_a_chain_ends_by_itself_when_no_jump_is_left()
+        {
+            var one = T.Fen("k7/6n1/8/4n3/3R4/8/8/7K w - - 0 1");
+            T.Give(one, "d4", Buff.Leap);
+            T.Tier(one, "d4", 1);
+            T.Do(one, "Leap d4->f6");
+            Assert.AreEqual(Side.Black, one.ToMove, "tier I never chains");
+
+            var none = T.Fen("k7/8/8/4n3/3R4/8/8/7K w - - 0 1");
+            T.Give(none, "d4", Buff.Leap);
+            T.Tier(none, "d4", 2);
+            T.Do(none, "Leap d4->f6");
+            Assert.AreEqual(Side.Black, none.ToMove, "no second jump available, so the turn simply ends");
+            Assert.AreEqual(PowerupKind.None, none.EffectKind);
+            Assert.AreEqual(0, T.At(none, "f6").Tier);
+        }
+
+        [Test]
+        public void Leap_III_chains_as_long_as_there_are_jumps()
+        {
+            // d2 over e3 to f4, over g5 to h6, then over g7 to f8: three jumps.
+            var s = T.Fen("k7/6n1/8/6n1/8/4n3/3B4/7K w - - 0 1");
+            T.Give(s, "d2", Buff.Leap);
+            T.Tier(s, "d2", 3);
+            T.Do(s, "Leap d2->f4");
+            T.Do(s, "Leap f4->h6");
+            Assert.AreEqual(PowerupKind.Leap, s.EffectKind, "a third jump is still on offer");
+            T.Do(s, "Leap h6->f8");
+            Assert.AreEqual(Side.Black, s.ToMove);
+            Assert.AreEqual(0, Enumerable.Range(0, 64).Count(i => s.Cells[i].Type == PieceType.Knight), "all three knights were captured");
+        }
+
+        [Test]
+        public void A_pending_leap_chain_survives_a_save()
+        {
+            var cfg = T.Cfg();
+            var s = T.Fen("k7/6n1/8/4n3/3R4/8/8/7K w - - 0 1", cfg);
+            T.Give(s, "d4", Buff.Leap);
+            T.Tier(s, "d4", 2);
+            T.Do(s, "Leap d4->f6");
+            GameState s2;
+            GameHistory h2;
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(s, new GameHistory()), cfg, out s2, out h2));
+            Assert.AreEqual(PowerupKind.Leap, s2.EffectKind);
+            Assert.AreEqual(Sq.Parse("f6"), s2.EffectSquare);
+            Assert.IsTrue(MoveGen.LegalActions(s2).Any(a => a.Kind == ActionKind.LeapStop));
+        }
+
+        [Test]
+        public void Leap_tiers_upgrade_replace_and_a_king_can_hold_one()
         {
             var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
-            T.Square(s, "a3", PowerupKind.Harpoon);
-            T.Square(s, "a5", PowerupKind.Harpoon);
-            T.Square(s, "a6", PowerupKind.Harpoon);
+            T.Square(s, "a3", PowerupKind.Leap);
+            T.Square(s, "a5", PowerupKind.Leap);
+            T.Square(s, "a6", PowerupKind.Leap);
+            T.Square(s, "a7", PowerupKind.Leap);
             T.Do(s, "a1a3");
             Assert.AreEqual(1, T.At(s, "a3").Tier);
             T.Do(s, "h8h7");
             T.Do(s, "a3a5");
             Assert.AreEqual(2, T.At(s, "a5").Tier);
             T.Do(s, "h7h8");
-            var ev = T.Do(s, "a5a6");
-            Assert.AreEqual(2, T.At(s, "a6").Tier);
+            T.Do(s, "a5a6");
+            Assert.AreEqual(3, T.At(s, "a6").Tier, "Leap has a third tier");
+            T.Do(s, "h8h7");
+            var ev = T.Do(s, "a6a7");
+            Assert.AreEqual(3, T.At(s, "a7").Tier);
             Assert.IsTrue(ev.Any(e => e.Kind == EventKind.PowerMaxed));
 
-            Assert.IsTrue(Rules.Eligible(s, T.At(s, "e1"), 4, PowerupKind.Harpoon), "kings can hold a harpoon");
+            Assert.IsTrue(Rules.Eligible(s, T.At(s, "e1"), 4, PowerupKind.Leap), "kings can hold a leap");
 
             var fire = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
-            T.Give(fire, "a1", Buff.Harpoon);
+            T.Give(fire, "a1", Buff.Leap);
             T.Square(fire, "a3", PowerupKind.Fireball);
             T.Do(fire, "a1a3");
-            Assert.IsFalse(T.At(fire, "a3").Has(Buff.Harpoon), "a different banked power replaces it");
+            Assert.IsFalse(T.At(fire, "a3").Has(Buff.Leap), "a different banked power replaces it");
             Assert.IsTrue(T.At(fire, "a3").Has(Buff.Fireball));
         }
 
         // ---------- saves must keep every new kind (regression: Combo squares and mid-combo states once failed to reload) ----------
 
         [Test]
-        public void Saves_keep_combo_squares_mid_combo_state_harpoon_and_poison_fuses()
+        public void Saves_keep_combo_squares_mid_combo_state_leap_and_poison_fuses()
         {
             var cfg = T.Cfg();
             var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1", cfg);
             T.Square(s, "a3", PowerupKind.Combo4);
-            T.Square(s, "c5", PowerupKind.Harpoon);
+            T.Square(s, "c5", PowerupKind.Leap);
             T.Square(s, "d5", PowerupKind.Combo2);
             T.Do(s, "a1a3"); // mid-combo: four more moves owed
             Assert.AreEqual(4, s.MultiLeft);
@@ -772,24 +801,24 @@ namespace ChessFighter.Core.Tests
             Assert.AreEqual(4, s2.MultiLeft);
             Assert.AreEqual(Sq.Parse("a3"), s2.ForcedMover);
             Assert.AreEqual((byte)PowerupKind.Combo2, s2.Content[Sq.Parse("d5")], "revealed Combo square survives");
-            Assert.AreEqual((byte)PowerupKind.Harpoon, s2.Content[Sq.Parse("c5")], "revealed Harpoon square survives");
+            Assert.AreEqual((byte)PowerupKind.Leap, s2.Content[Sq.Parse("c5")], "revealed Leap square survives");
 
             var banked = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1", cfg);
-            T.Give(banked, "a1", Buff.Harpoon);
+            T.Give(banked, "a1", Buff.Leap);
             T.Tier(banked, "a1", 2);
             var po = banked.Cells[Sq.Parse("e1")];
             po.Buffs |= Buff.Poison; po.PoisonTurns = 4;
             banked.Cells[Sq.Parse("e1")] = po;
             Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(banked, new GameHistory()), cfg, out s2, out h2));
-            Assert.IsTrue(T.At(s2, "a1").Has(Buff.Harpoon), "the buff past the old 8-bit range survives");
+            Assert.IsTrue(T.At(s2, "a1").Has(Buff.Leap), "the buff past the old 8-bit range survives");
             Assert.AreEqual(2, T.At(s2, "a1").Tier);
             Assert.AreEqual(4, T.At(s2, "e1").PoisonTurns);
 
             // And a history entry for the new action kind round-trips.
             var hist = new GameHistory();
-            var before = T.Fen("7k/6n1/8/8/3R4/8/1b6/7K w - - 0 1", cfg);
-            T.Give(before, "d4", Buff.Harpoon);
-            hist.Record(before.Clone(), T.Find(before, "Harpoon d4->g7"));
+            var before = T.Fen("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", cfg);
+            T.Give(before, "d4", Buff.Leap);
+            hist.Record(before.Clone(), T.Find(before, "Leap d4->f6"));
             Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(before, hist), cfg, out s2, out h2));
             Assert.AreEqual(1, h2.Count);
         }

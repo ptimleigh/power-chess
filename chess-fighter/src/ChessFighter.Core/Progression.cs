@@ -27,7 +27,7 @@ namespace ChessFighter.Core
         /// <summary>Cards the player played, cards they cancelled with Nuh-uh, and which of the big ones they used.</summary>
         public int CardsPlayed, CardsCancelled;
         public bool UsedWorld, UsedTakeBack, RestoredQueen;
-        public int HarpoonHooks, Upgrades;
+        public int Leaps, Upgrades;
         public bool FrozeKing;
         /// <summary>The longest run of the player's own moves with no rival move between (a combo makes these).</summary>
         public int BestRun;
@@ -112,8 +112,8 @@ namespace ChessFighter.Core
                     case EventKind.PickupRerolled:
                         if (e.Side == me && s.PowerupsCollected > 0) s.PowerupsCollected--;
                         break;
-                    case EventKind.HarpoonFired:
-                        if (e.Side == me) s.HarpoonHooks++;
+                    case EventKind.Leaped:
+                        if (e.Side == me) s.Leaps++;
                         break;
                     case EventKind.StunStruck:
                         if (e.Side == me && e.Powerup == PowerupKind.StunBolt && e.Piece == PieceType.Queen) s.FrozeKing = true;
@@ -218,7 +218,7 @@ namespace ChessFighter.Core
             new Trophy(18, "Caïssa's Favor", "Bring back a queen with Summon Caïssa.", (m, p) => m.RestoredQueen),
             new Trophy(19, "Upside Down", "Win after playing World Turned Upside Down.", (m, p) => m.Won && m.UsedWorld),
             new Trophy(20, "Take Two", "Win after playing Take Back.", (m, p) => m.Won && m.UsedTakeBack),
-            new Trophy(21, "Hook, Line", "Hook a rival with a Harpoon.", (m, p) => m.HarpoonHooks > 0),
+            new Trophy(21, "King Me", "Capture a rival with a Leap.", (m, p) => m.Leaps > 0),
             new Trophy(22, "Deep Freeze", "Freeze a queen with a Stun Bolt.", (m, p) => m.FrozeKing),
             new Trophy(23, "Combo Breaker", "Make 5 moves in a row with a +4 combo.", (m, p) => m.BestRun >= 5),
             new Trophy(24, "Level II", "Upgrade a power to its second tier.", (m, p) => m.Upgrades > 0),

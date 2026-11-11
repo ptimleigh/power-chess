@@ -185,7 +185,7 @@ window.pcclip = (function () {
             const handled = [];              // squares whose destruction a fireball already animated
             hud.moveNo = index + 1; hud.label = beat.label; hud.mover = beat.mover;
             hud.bannerAt = clock;
-            const BIG = ['Captured', 'Destroyed', 'Converted', 'FireballFired', 'Detonated', 'MissileStruck', 'DragonFire', 'ShivaStrike', 'HarpoonFired', 'ZapFired', 'BoardFlipped'];
+            const BIG = ['Captured', 'Destroyed', 'Converted', 'FireballFired', 'Detonated', 'MissileStruck', 'DragonFire', 'ShivaStrike', 'Leaped', 'ZapFired', 'BoardFlipped'];
             const dramatic = evs.some(e => BIG.indexOf(e.k) >= 0);
             const cardName = e => ((data.cards && data.cards[e.c]) || '').toUpperCase();
             const mid = { x: W / 2, y: BY + BOARD / 2 };
@@ -315,10 +315,10 @@ window.pcclip = (function () {
                         T += 480;
                         break;
                     }
-                    case 'HarpoonFired': {
+                    case 'Leaped': {
                         const a = sqC(e.f), b = sqC(e.t);
-                        later(T, () => { addFx({ kind: 'rope', from: a, to: b, dur: 560 }); callout('HARPOON!', a.x, a.y - 70, GOLD, true); S.slash(); });
-                        T += 420;
+                        later(T, () => { const p = at(e.f); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); });
+                        T += 450;
                         break;
                     }
                     case 'PulledIn': {

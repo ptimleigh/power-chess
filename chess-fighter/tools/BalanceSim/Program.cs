@@ -88,7 +88,7 @@ for (int c = Cards.First; c <= Cards.Last; c++)
 }
 P();
 P("## How often powers are actually used (per game)");
-P($"- Fireball shots {all.Average(g => g.FireShots):0.00}, Harpoon shots {all.Average(g => g.HarpoonShots):0.00}, Stun bolts {all.Average(g => g.Zaps):0.00}, Bomb detonations {all.Average(g => g.Detonations):0.00}, Steals {all.Average(g => g.Grabs):0.00}");
+P($"- Fireball shots {all.Average(g => g.FireShots):0.00}, Leap shots {all.Average(g => g.LeapShots):0.00}, Stun bolts {all.Average(g => g.Zaps):0.00}, Bomb detonations {all.Average(g => g.Detonations):0.00}, Steals {all.Average(g => g.Grabs):0.00}");
 P();
 P("## Pieces destroyed by");
 P($"- Normal captures per game: {all.Average(g => g.Captures):0.0}; fireball {all.Average(g => g.Fireball):0.00}, bombs {all.Average(g => g.Bomb):0.00}, dragon {all.Average(g => g.Dragon):0.00}, shiva {all.Average(g => g.Shiva):0.00}, missile {all.Average(g => g.Missile):0.00}, poison {all.Average(g => g.Poison):0.00}");
@@ -125,7 +125,7 @@ static Game PlayOne(ulong seed, int aiLevel, int aiLevelB, int unlock, int maxPl
                 case EventKind.CardCancelled: cards[CardKind.NuhUh] = cards.GetValueOrDefault(CardKind.NuhUh) + 1; break;
                 case EventKind.Captured: g.Captures++; break;
                 case EventKind.FireballFired: g.FireShots++; break;
-                case EventKind.HarpoonFired: g.HarpoonShots++; break;
+                case EventKind.Leaped: g.LeapShots++; break;
                 case EventKind.ZapFired: g.Zaps++; break;
                 case EventKind.Detonated: g.Detonations++; break;
                 case EventKind.Converted: g.Grabs++; break;
@@ -165,5 +165,5 @@ sealed class Game
     public Dictionary<PowerupKind, int> PickedW = new(), PickedB = new();
     public Dictionary<CardKind, int> CardsW = new(), CardsB = new();
     public int Captures, Fireball, Bomb, Dragon, Shiva, Missile, Poison;
-    public int FireShots, HarpoonShots, Zaps, Detonations, Grabs, MovesW, MovesB;
+    public int FireShots, LeapShots, Zaps, Detonations, Grabs, MovesW, MovesB;
 }

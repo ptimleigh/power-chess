@@ -200,7 +200,7 @@ namespace ChessFighter.Core
             if (version >= 6)
             {
                 var effect = r.ReadByte();
-                if (effect != 0 && effect != (byte)PowerupKind.StunBolt && effect != (byte)PowerupKind.StealGrab) throw new InvalidDataException("bad effect");
+                if (effect != 0 && effect != (byte)PowerupKind.StunBolt && effect != (byte)PowerupKind.StealGrab && effect != (byte)PowerupKind.Leap) throw new InvalidDataException("bad effect");
                 s.EffectKind = (PowerupKind)effect;
                 s.EffectSquare = CheckSquare(r.ReadInt16());
                 if (s.EffectKind != PowerupKind.None && s.EffectSquare < 0) throw new InvalidDataException("bad effect square");

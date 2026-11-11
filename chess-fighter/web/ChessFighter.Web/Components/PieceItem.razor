@@ -9,14 +9,10 @@
     {
         <div class="aura pz" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     }
-    @if (P.Buffs.HasFlag(Buff.Harpoon))
+    @if (P.Buffs.HasFlag(Buff.Leap))
     {
-        <div class="orbit tier@(P.Tier >= 2 ? 2 : 1)" aria-hidden="true">
-            @for (int i = 0; i < (P.Tier >= 2 ? 4 : 1); i++)
-            {
-                <span class="orb" style="--a:@(i * 90)deg"><PieceSvg Type="PieceType.Bishop" Side="P.Side" /></span>
-            }
-        </div>
+        @* a stack of checkers under the piece: red for P1, black for P2, one disc per tier (like a kinged checker) *@
+        <div class="checkers @(P.Side == Side.White ? "red" : "black") tier@(Math.Max(1, (int)P.Tier))" aria-hidden="true">@for (int i = 0; i < Math.Min(3, Math.Max(1, (int)P.Tier)); i++) { <i style="--n:@i"></i> }</div>
     }
     @if (P.Buffs.HasFlag(Buff.SmallBomb) || P.Buffs.HasFlag(Buff.BigBomb))
     {
@@ -30,7 +26,7 @@
         @if (P.Buffs.HasFlag(Buff.TripleMove)) { <span class="badge dm" title="Triple Move">@Icons.Svg("x3")</span> }
         @if (P.Buffs.HasFlag(Buff.Ghost)) { <span class="badge gh" title="Ghost">@Icons.Svg("ghost")</span> }
         @if (P.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
-        @if (P.Buffs.HasFlag(Buff.Harpoon)) { <span class="badge fb tier@(P.Tier >= 2 ? 2 : 1)" title="@Names.TierName(PowerupKind.Harpoon, P.Tier)">@(P.Tier >= 2 ? "II" : "I")</span> }
+        @if (P.Buffs.HasFlag(Buff.Leap)) { <span class="badge fb tier@(P.Tier >= 2 ? 2 : 1)" title="@Names.TierName(PowerupKind.Leap, P.Tier)">@(P.Tier >= 3 ? "III" : P.Tier >= 2 ? "II" : "I")</span> }
         @if (P.Buffs.HasFlag(Buff.Fireball)) { <span class="badge fb tier@(P.Tier >= 2 ? 2 : 1)" title="@Names.TierName(PowerupKind.Fireball, P.Tier)">@(P.Tier >= 2 ? "II" : "I")</span> }
         @if (P.Buffs.HasFlag(Buff.SmallBomb)) { <span class="badge bm" title="Small Bomb">@Icons.Svg("bomb")</span> }
         @if (P.Buffs.HasFlag(Buff.BigBomb)) { <span class="badge bb" title="Big Bomb">@Icons.Svg("bigbomb")</span> }

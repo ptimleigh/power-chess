@@ -27,7 +27,7 @@ public static class Names
         PowerupKind.Swap => "Swap",
         PowerupKind.Combo2 => "Combo +2",
         PowerupKind.Combo4 => "Combo +4",
-        PowerupKind.Harpoon => "Harpoon",
+        PowerupKind.Leap => "Leap",
         PowerupKind.StunBolt => "Stun",
         PowerupKind.StealGrab => "Steal",
         PowerupKind.DrawCard => "Draw Card",
@@ -38,17 +38,19 @@ public static class Names
     public static string TierName(PowerupKind k, int tier) => k switch
     {
         PowerupKind.Fireball => tier >= 2 ? "Fireball II" : "Fireball I",
-        PowerupKind.Harpoon => tier >= 2 ? "Harpoon II" : "Harpoon I",
+        PowerupKind.Leap => tier >= 3 ? "Leap III" : tier >= 2 ? "Leap II" : "Leap I",
         PowerupKind.SmallBomb => "Bomb I",
         PowerupKind.BigBomb => "Bomb II",
         _ => Name(k),
     };
 
     /// <summary>Description for a power at a given tier.</summary>
-    public static string Desc(PowerupKind k, int tier) => k == PowerupKind.Harpoon
-        ? (tier >= 2
-            ? "Harpoon II: fire a hook on every diagonal at once. Each rival it hooks is dragged toward this piece; one that cannot be pulled any closer is stunned for a turn. Uses your turn, one use."
-            : "Harpoon I: fire a hook along one diagonal and drag the first rival in line toward this piece. A rival that cannot be pulled any closer is stunned for a turn. Land on another Harpoon square for II. Uses your turn, one use.")
+    public static string Desc(PowerupKind k, int tier) => k == PowerupKind.Leap
+        ? (tier >= 3
+            ? "Leap III: jump diagonally over an adjacent rival and capture it, like checkers, and keep jumping for as long as there is another rival to jump. Uses your turn, one use."
+            : tier >= 2
+            ? "Leap II: jump diagonally over an adjacent rival and capture it, like checkers, then jump a second rival in the same turn if one is lined up. Uses your turn, one use."
+            : "Leap I: jump diagonally over an adjacent rival into the empty square behind it and capture it, like checkers. Land on another Leap square to upgrade. Uses your turn, one use.")
         : k == PowerupKind.Fireball
         ? (tier >= 2
             ? "Fireball II: fire along ranks, files and diagonals (like a queen). Destroys the first enemy in line instead of moving. Counts as a threat for check. Lost if the piece is destroyed."
@@ -88,7 +90,7 @@ public static class Names
         PowerupKind.SmallBomb => "bomb",
         PowerupKind.BigBomb => "bigbomb",
         PowerupKind.Fireball => "hadouken",
-        PowerupKind.Harpoon => "hook",
+        PowerupKind.Leap => "checker",
         PowerupKind.StunBolt => "bolt",
         PowerupKind.StealGrab => "steal",
         PowerupKind.DrawCard => "card",
@@ -117,14 +119,14 @@ public static class Names
         Buff.Armor => PowerupKind.SpikedArmor,
         Buff.SmallBomb => PowerupKind.SmallBomb,
         Buff.BigBomb => PowerupKind.BigBomb,
-        Buff.Harpoon => PowerupKind.Harpoon,
+        Buff.Leap => PowerupKind.Leap,
         _ => PowerupKind.None,
     };
 
     /// <summary>The powers listed in the help sheet, banked moves first, then instant moves.</summary>
     public static readonly PowerupKind[] Guide =
     {
-        PowerupKind.Fireball, PowerupKind.Harpoon, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
+        PowerupKind.Fireball, PowerupKind.Leap, PowerupKind.SmallBomb, PowerupKind.Poison, PowerupKind.Ghost,
         PowerupKind.Combo2, PowerupKind.Combo4, PowerupKind.StunBolt, PowerupKind.StealGrab, PowerupKind.DrawCard, PowerupKind.SpikedArmor,
     };
 

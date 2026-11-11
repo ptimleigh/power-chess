@@ -147,7 +147,7 @@ namespace ChessFighter.Core
                     Rules.Apply(child, a);
                     int score;
                     GameResult ended = child.ToMove != root.ToMove ? Rules.GetResult(child) : GameResult.Ongoing;
-                    if (ended == GameResult.Ongoing) score = ScoreChild(root, child, d - 1 + (a.Kind == ActionKind.Harpoon ? 1 : 0), alpha, Inf, 0);
+                    if (ended == GameResult.Ongoing) score = ScoreChild(root, child, d - 1 + (a.Kind == ActionKind.Leap || a.Kind == ActionKind.LeapStop ? 1 : 0), alpha, Inf, 0);
                     else score = ended == GameResult.Draw ? 0 : Mate; // take a mate, and never stalemate a won position away
                     if (aborted) { complete = false; break; }
                     if (score > alpha)
@@ -257,7 +257,7 @@ namespace ChessFighter.Core
                 var child = s.Clone();
                 Rules.Apply(child, a);
                 // A hook is only worth its turn through what follows (the pulled piece is now in reach), so look one ply further.
-                int score = ScoreChild(s, child, depth - 1 + (a.Kind == ActionKind.Harpoon ? 1 : 0), alpha, beta, ext);
+                int score = ScoreChild(s, child, depth - 1 + (a.Kind == ActionKind.Leap || a.Kind == ActionKind.LeapStop ? 1 : 0), alpha, beta, ext);
                 if (aborted) return 0;
                 if (score > best) best = score;
                 if (best > alpha) alpha = best;
@@ -323,7 +323,7 @@ namespace ChessFighter.Core
                 case ActionKind.StealPick: return 450;
                 case ActionKind.PlayCard: return 0;
                 case ActionKind.StunBeam: return 300;
-                case ActionKind.Harpoon: return 350;
+                case ActionKind.Leap: return 400;
                 case ActionKind.Stun: return 300;
                 case ActionKind.Detonate: return 200;
                 case ActionKind.Swap: return -50;
@@ -394,7 +394,7 @@ namespace ChessFighter.Core
                 if (p.Has(Buff.TripleMove)) v += 55;
                 if (p.Has(Buff.Ghost)) v += 8 * p.GhostTurns;
                 if (p.Has(Buff.Fireball)) v += 90;
-                if (p.Has(Buff.Harpoon)) v += p.Tier >= 2 ? 80 : 40;
+                if (p.Has(Buff.Leap)) v += p.Tier >= 3 ? 120 : p.Tier >= 2 ? 80 : 40;
                 if (p.Has(Buff.Poison)) v += 30;
                 if (p.Has(Buff.Armor)) v += 15 * p.ArmorTurns;
                 if (p.Has(Buff.SmallBomb)) v += 50;

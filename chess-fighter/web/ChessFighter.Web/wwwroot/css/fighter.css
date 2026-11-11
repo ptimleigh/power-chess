@@ -107,8 +107,9 @@ body::after {
 #blazor-error-ui { background: #7a0018; border-top: 4px solid #fff; font-family: var(--px); font-size: 9px; }
 
 /* ---------- top bar ---------- */
-.logo { font-size: 11px; line-height: 1.45; }
-.logo span { font-size: 11px; }
+.logo { line-height: 0; }
+.logo img { height: 40px; width: auto; display: block; user-select: none; -webkit-user-drag: none; }
+.boot-logo img { width: min(78vw, 340px); height: auto; display: block; }
 .sel, .icon-btn {
     font-family: var(--px);
     font-size: 8px;
@@ -303,8 +304,7 @@ body::after {
 .board.shaking { animation-timing-function: steps(2); }
 
 @media (max-width: 430px) {
-    .logo { font-size: 9px; }
-    .logo span { font-size: 9px; }
+    .logo img { height: 32px; }
     .pname { font-size: 8px; }
 }
 

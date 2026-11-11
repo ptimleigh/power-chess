@@ -8,7 +8,7 @@
 
 <div class="app" data-cardstep="@PrepCardAim()">
     <header class="topbar">
-        <div class="logo" data-action="logo" @onclick="LogoTap">CHESS<span>FIGHTER</span></div>
+        <div class="logo" data-action="logo" @onclick="LogoTap"><img src="img/logo.png" alt="Chess Fighter" draggable="false" /></div>
         <div class="controls">
             <button class="icon-btn @(muted ? "muted" : "")" @onclick="ToggleMute" title="Sound" aria-label="Toggle sound">SFX</button>
             <button class="icon-btn daily" data-action="daily" title="Daily challenge" @onclick="OpenDaily"><span>Daily</span>@if (!Daily.SolvedToday(profile, today)) { <i class="dot"></i> }</button>

@@ -7,7 +7,14 @@
     function visible(el) { return el && el.offsetParent !== null && !el.disabled; }
     function push() { try { history.pushState({ cf: 1 }, ''); } catch (e) { } }
     push();
+    // Chrome on a phone skips history entries that were added before the person touched the page ("history manipulation" protection),
+    // so the entry made at load can be skipped and Back would leave the site. Add one more on the first real tap, and again after
+    // each handled Back. Extra entries are harmless: on the menu, Back keeps stepping back until the page is left.
+    var needPush = true;
+    function ensure() { if (needPush) { needPush = false; push(); } }
+    ['click', 'touchend', 'keydown'].forEach(function (ev) { window.addEventListener(ev, ensure, { capture: true, passive: true }); });
     window.addEventListener('popstate', function () {
+        needPush = true;
         var modal = document.querySelector('.modal');
         if (modal) {
             // a safe close button first, then the backdrop of a sheet that closes when tapped; never "Play again" and the like

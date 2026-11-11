@@ -1538,13 +1538,15 @@ public sealed class GameSession
             bool struck = ev.Any(e => e.Kind == EventKind.Captured);
             Later(struck ? 700 : 150, () => AddFx("callout", State.ToMove == Side.White ? 3 : 59, css: "check", text: "CHECK!"));
         }
-        if (opt.Drama && GameOver && Result != GameResult.Draw)
+        bool finale = opt.Drama && GameOver && Result != GameResult.Draw && ResultReason != "Resigned" && ResultReason != "Missile strike";
+        if (opt.Drama && GameOver && Result != GameResult.Draw && !finale)
         {
             Later(ev.Any(e => e.Kind == EventKind.Captured) ? 650 : 150, () => { Freeze(420, true); AddFx("callout", 28, css: "heavy mate", text: "K.O.!"); Shake(2); });
             wait += 500;
         }
         if (lastFireMs > 0) wait = Math.Max(wait, lastFireMs + 800); // let the fireball land and the pieces burn
         await Task.Delay(T(wait));
+        if (finale) await RunFinale(a.Kind == ActionKind.Move ? a.To : -1);
         while (Draw is { Pick: true }) await Task.Delay(60); // the rival waits for the player's card pick
 
         if (Puzzle != null && PuzzleOutcome == PuzzleResult.None)
@@ -1574,6 +1576,92 @@ public sealed class GameSession
             Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == Side.Black ? "lose" : "win"));
         }
         Busy = false;
+        Save();
+        Changed?.Invoke();
+    }
+
+    // ---------- the finishing blow: the room dims, the king falls over, the big K.O. slams in (skippable) ----------
+
+    /// <summary>True while the finale plays: the board dims except the king and the attacker's squares.</summary>
+    public bool FinaleOn { get; private set; }
+    /// <summary>The mated king's square and the square the last piece landed on (both stay lit).</summary>
+    public int FinaleKingSq { get; private set; } = -1;
+    public int FinaleAtkSq { get; private set; } = -1;
+    /// <summary>The king is falling (it ends lying on its side). -1 falls left, 1 falls right, 0 not yet.</summary>
+    public int FinaleFall { get; private set; }
+    public bool FinaleKo { get; private set; }
+    bool finaleSkip;
+
+    public void SkipFinale()
+    {
+        if (!FinaleOn) return;
+        finaleSkip = true;
+    }
+
+    async Task FinaleWait(int ms)
+    {
+        for (int waited = 0; waited < ms && !finaleSkip; waited += 40) await Task.Delay(40);
+    }
+
+    /// <summary>Plays the finish after a checkmate. Returns false (and plays nothing) when there is no king to knock over.</summary>
+    async Task<bool> RunFinale(int attackerSq)
+    {
+        int king = -1;
+        var loser = Result == GameResult.WhiteWins ? Side.Black : Side.White;
+        for (int i = 0; i < 64; i++) if (State.Cells[i].Type == PieceType.King && State.Cells[i].Side == loser) king = i;
+        if (king < 0) return false;
+        finaleSkip = false;
+        FinaleKingSq = king; FinaleAtkSq = attackerSq; FinaleFall = 0; FinaleKo = false;
+        FinaleOn = true;
+        Changed?.Invoke();
+        await FinaleWait(T(650));                         // the room dims and holds a beat
+        if (!finaleSkip)
+        {
+            Freeze(260, true); Shake(3); Sfx?.Invoke("thud");
+            await FinaleWait(T(260));
+        }
+        if (!finaleSkip)
+        {
+            int dx = Sq.File(king) - (attackerSq >= 0 ? Sq.File(attackerSq) : Sq.File(king));
+            FinaleFall = dx != 0 ? Math.Sign(dx) : (Sq.File(king) < 4 ? 1 : -1);   // falls away from the attacker
+            Changed?.Invoke();
+            await FinaleWait(T(850));
+        }
+        if (!finaleSkip)
+        {
+            FinaleKo = true; Shake(3); Sfx?.Invoke("thud");
+            Changed?.Invoke();
+            await FinaleWait(T(1500));
+        }
+        FinaleOn = false; FinaleKo = false; FinaleFall = 0;
+        FinaleKingSq = FinaleAtkSq = -1;
+        Changed?.Invoke();
+        return true;
+    }
+
+    // ---------- resign ----------
+
+    /// <summary>Resigning is offered in a normal game (not a puzzle) while it is still running.</summary>
+    public bool CanResign => !GameOver && Puzzle == null && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None;
+
+    /// <summary>Give up the game: it ends as a loss for you (or for whoever is on move in a two-player game).</summary>
+    public void Resign()
+    {
+        if (!CanResign) return;
+        var side = VsAi ? Side.White : State.ToMove;
+        Rules.Resign(State, side);
+        ClearSelection();
+        Inspect = -1;
+        Refresh();
+        if (!endReported && tracker != null)
+        {
+            endReported = true;
+            var summary = tracker.Finish(Result, ResultReason);
+            summary.XpScale = Presets.XpScale(opt.Preset, opt.Freq, opt.Level);
+            summary.HintsUsed = HintsUsed;
+            GameEnded?.Invoke(summary);
+        }
+        Sfx?.Invoke(VsAi ? "lose" : "win");
         Save();
         Changed?.Invoke();
     }
@@ -1699,10 +1787,10 @@ public sealed class GameSession
         }
     }
 
-    /// <summary>Move the review position by <paramref name="delta"/>. Stepping past the newest position returns to the live game.</summary>
+    /// <summary>Move the review position by <paramref name="delta"/>. Stepping forward to the newest position returns to the live game.</summary>
     public void ReviewStep(int delta)
     {
-        if (Reviewing && ReviewPosition + delta > history.Count) ExitReview();
+        if (Reviewing && ReviewPosition + delta >= history.Count) ExitReview();
         else ReviewTo(ReviewPosition + delta);
     }
 

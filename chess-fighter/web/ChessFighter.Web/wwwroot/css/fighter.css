@@ -736,3 +736,39 @@ html, body {
 @keyframes drawbg { 0% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes cardbob { 50% { margin-top: -80px; } }
 @media (prefers-reduced-motion: reduce) { .draw-deck { animation: none; } .dcard { animation: none; transition: none; } }
+
+/* ---------- history nav: back / History (or Back to game) / forward ---------- */
+.hist-nav { display: flex; align-items: center; gap: 6px; }
+.hist-nav .rbtn { width: 44px; min-height: 44px; display: grid; place-items: center; }
+.hist-nav .rbtn[disabled] { opacity: .35; }
+.review-btns { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.resign-btn { color: #ff9a8a; }
+
+/* ---------- the finishing blow: dim the room, king falls over, big K.O. ---------- */
+.board .sq, .board .piece { transition: filter .35s; }
+.board.finale .sq:not(.fin-lit), .board.finale .piece:not(.fin-lit) { filter: brightness(.32) saturate(.7); }
+.board.finale .piece.fin-lit { z-index: 5; }
+.piece.ko-fall .piece-body { transform-origin: 50% 60%; animation: kofall-l .85s cubic-bezier(.3, .1, .6, 1) forwards !important; }
+.piece.ko-fall.ko-right .piece-body { animation-name: kofall-r !important; }
+@keyframes kofall-r {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    35% { transform: translate(14%, -75%) rotate(40deg); }
+    80% { transform: translate(24%, 6%) rotate(86deg); }
+    90% { transform: translate(24%, -9%) rotate(90deg); }
+    100% { transform: translate(24%, 4%) rotate(90deg); }
+}
+@keyframes kofall-l {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    35% { transform: translate(-14%, -75%) rotate(-40deg); }
+    80% { transform: translate(-24%, 6%) rotate(-86deg); }
+    90% { transform: translate(-24%, -9%) rotate(-90deg); }
+    100% { transform: translate(-24%, 4%) rotate(-90deg); }
+}
+.finale-hit { position: absolute; inset: 0; z-index: 30; cursor: pointer; }
+.ko-big { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; justify-content: center; gap: 2%; pointer-events: none; }
+.ko-big img { width: 36%; image-rendering: pixelated; filter: drop-shadow(0 6px 0 #000); }
+.ko-k { animation: koslam .22s steps(4) both, kojitter .09s steps(2) infinite .22s; }
+.ko-o { animation: koslam .22s steps(4) .38s both, kojitter .09s steps(2) infinite .6s; }
+@keyframes koslam { 0% { transform: scale(2.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes kojitter { 0% { translate: -2% 1%; rotate: -2deg; } 100% { translate: 2% -1%; rotate: 2deg; } }
+@media (prefers-reduced-motion: reduce) { .ko-k, .ko-o { animation: koslam .22s steps(4) both; } }

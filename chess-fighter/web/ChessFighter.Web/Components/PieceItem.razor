@@ -57,6 +57,10 @@
 @code {
     [Parameter, EditorRequired] public PieceView P { get; set; } = null!;
     [Parameter] public bool Lifted { get; set; }
+    /// <summary>Stays lit while the rest of the board dims for the finishing blow.</summary>
+    [Parameter] public bool Lit { get; set; }
+    /// <summary>The mated king falls over: -1 to the left, 1 to the right.</summary>
+    [Parameter] public int FallDir { get; set; }
     /// <summary>Squares per side of the board this piece sits on (8 for the real board).</summary>
     [Parameter] public int Cols { get; set; } = 8;
     /// <summary>Demo boards use different data attributes so tests can tell them from the real board.</summary>
@@ -89,6 +93,8 @@
             if (P.Buffs.HasFlag(Buff.Ghost)) c += " ghosted";
             if (P.Warping) c += " warping";
             if (Lifted) c += " lifted";
+            if (Lit) c += " fin-lit";
+            if (FallDir != 0) c += FallDir > 0 ? " ko-fall ko-right" : " ko-fall ko-left";
             return c;
         }
     }

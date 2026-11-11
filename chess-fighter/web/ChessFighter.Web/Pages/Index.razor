@@ -74,7 +74,7 @@
     }
 
     <div class="board-frame">
-        <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "")" data-testid="board">
+        <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "") @(S.FinaleOn ? "finale" : "")" data-testid="board">
             @for (int rank = 7; rank >= 0; rank--)
             {
                 for (int file = 0; file < 8; file++)
@@ -109,13 +109,23 @@
             <div class="layer pieces">
                 @foreach (var p in S.ViewPieces)
                 {
-                    <PieceItem @key="p.Id" P="p" Lifted="@(p.Square == S.Selected)" />
+                    <PieceItem @key="p.Id" P="p" Lifted="@(p.Square == S.Selected)" Lit="@(S.FinaleOn && (p.Square == S.FinaleKingSq || p.Square == S.FinaleAtkSq))" FallDir="@(S.FinaleOn && p.Square == S.FinaleKingSq ? S.FinaleFall : 0)" />
                 }
             </div>
 
             <div class="layer fx">
                 <FxLayer Items="S.Effects" />
             </div>
+
+            @if (S.FinaleOn)
+            {
+                <div class="finale-hit" data-testid="finale" @onclick="S.SkipFinale">
+                    @if (S.FinaleKo)
+                    {
+                        <div class="ko-big"><img class="ko-k" src="img/ko_k.png" alt="K" /><img class="ko-o" src="img/ko_o.png" alt="O" /></div>
+                    }
+                </div>
+            }
 
         </div>
             <div class="toasts">
@@ -227,13 +237,9 @@
                     <span>@S.ReviewLabel</span>
                 </div>
                 <div class="review-btns">
-                    <button class="rbtn" data-review="first" disabled="@(S.ReviewPosition <= 0)" aria-label="First" @onclick="() => S.ReviewTo(0)">@Icons.Svg("first")</button>
-                    <button class="rbtn" data-review="prev" disabled="@(S.ReviewPosition <= 0)" aria-label="Previous move" @onclick="() => S.ReviewStep(-1)">@Icons.Svg("prev")</button>
-                    <button class="rbtn" data-review="next" aria-label="Next move" @onclick="() => S.ReviewStep(1)">@Icons.Svg("next")</button>
-                    <button class="rbtn" data-review="last" aria-label="Final position" disabled="@(S.ReviewPosition >= S.HistoryCount)" @onclick="() => S.ReviewTo(S.HistoryCount)">@Icons.Svg("last")</button>
-                    <button class="btn primary review-exit" data-action="exit-review" @onclick="S.ExitReview">Back to game</button>
                     <button class="btn yellow small" data-action="open-clip" @onclick="OpenClip">Watch Replay!</button>
                 </div>
+                @HistoryNav
             </div>
         }
         else
@@ -314,15 +320,13 @@
                 </button>
             }
         }
-        @if (S.CanReview)
+        @HistoryNav
+        @if (S.CanResign)
         {
-            <button class="perk ghost" data-action="review" @onclick="() => S.ReviewStep(-1)">
-                <span class="pi">@Icons.Svg("history")</span><span class="pl">Moves</span>
+            <button class="perk ghost resign-btn" data-action="resign" @onclick="() => showResign = true">
+                <span class="pi">@Icons.Svg("flag")</span><span class="pl">Resign</span>
             </button>
         }
-        <button class="perk ghost" data-action="open-log" @onclick="() => showLog = true">
-            <span class="pi">@Icons.Svg("card")</span><span class="pl">Log</span>
-        </button>
         }
     </section>
 
@@ -576,6 +580,20 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     </div>
 }
 
+@if (showResign && S.CanResign)
+{
+    <div class="modal" data-testid="resign-confirm" @onclick="() => showResign = false">
+        <div class="modal-card" @onclick:stopPropagation="true">
+            <h2>Resign?</h2>
+            <p>You'll lose this game.</p>
+            <div class="row">
+                <button class="btn primary" data-action="resign-yes" @onclick="() => { showResign = false; S.Resign(); }">Resign</button>
+                <button class="btn ghost" data-action="resign-no" @onclick="() => showResign = false">Keep playing</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (S.Puzzle is PuzzleDef rz && S.PuzzleOutcome != PuzzleResult.None && !S.Busy)
 {
     <div class="modal" data-testid="puzzle-result">
@@ -733,28 +751,6 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     </div>
 }
 
-@if (showLog)
-{
-    <div class="modal" data-testid="log" @onclick="() => showLog = false">
-        <div class="card log-sheet" @onclick:stopPropagation="true">
-            <div class="kicker">What just happened</div>
-            @if (S.Log.Count == 0)
-            {
-                <p class="fine">Nothing yet. Draws, plays and power-ups will show up here.</p>
-            }
-            else
-            {
-                <ul class="log-list" data-testid="log-list">
-                    @foreach (var le in Enumerable.Reverse(S.Log).Take(14))
-                    {
-                        <li class="log-row @(le.Who is Side ls ? (ls == Side.White ? "by-white" : "by-black") : "")"><i class="twho">@le.WhoLabel</i><span>@le.Text</span></li>
-                    }
-                </ul>
-            }
-            <button class="btn primary" data-action="log-close" @onclick="() => showLog = false">Close</button>
-        </div>
-    </div>
-}
 
 @if (showClip)
 {
@@ -1292,7 +1288,21 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     // ---------- replay clip ----------
 
-    bool showLog;
+    bool showResign;
+
+    /// <summary>Back and forward arrows around the History button. Going back enters history mode, where the button reads "Back to game"; forward is dimmed while the game is up to date.</summary>
+    RenderFragment HistoryNav => @<div class="hist-nav">
+        <button class="rbtn" data-review="prev" aria-label="Back one move" disabled="@(!S.CanReview && !S.Reviewing || S.Reviewing && S.ReviewPosition <= 0)" @onclick="() => S.ReviewStep(-1)">@Icons.Svg("prev")</button>
+        @if (S.Reviewing)
+        {
+            <button class="perk ghost hist-btn" data-action="exit-review" @onclick="S.ExitReview"><span class="pi">@Icons.Svg("history")</span><span class="pl">Back to game</span></button>
+        }
+        else
+        {
+            <button class="perk ghost hist-btn" data-action="review" disabled="@(!S.CanReview)" @onclick="() => S.ReviewTo(S.HistoryCount)"><span class="pi">@Icons.Svg("history")</span><span class="pl">History</span></button>
+        }
+        <button class="rbtn" data-review="next" aria-label="Forward one move" disabled="@(!S.Reviewing || S.ReviewPosition >= S.HistoryCount)" @onclick="() => S.ReviewStep(1)">@Icons.Svg("next")</button>
+    </div>;
     bool showClip, clipBusy;
     int clipPlies, clipAvail;
     string clipMsg = "";
@@ -1573,6 +1583,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (S.View.Boulders[sq]) c += " rock";
         if (sq == S.ViewLastFrom || sq == S.ViewLastTo) c += " last";
         if (sq == S.Selected) c += " selected";
+        if (S.FinaleOn && (sq == S.FinaleKingSq || sq == S.FinaleAtkSq)) c += " fin-lit";
         if (sq == S.HintFrom || sq == S.HintTo) c += " hint";
         if (S.EffectPending && S.HumanTurn && S.EffectTargets.Contains(sq)) c += " aim";
         if (cardAim.Contains(sq))

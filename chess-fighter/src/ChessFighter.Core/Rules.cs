@@ -972,6 +972,13 @@ namespace ChessFighter.Core
             return GetResult(s, out reason);
         }
 
+        /// <summary>A side gives up: the game ends at once and the other side wins.</summary>
+        public static void Resign(GameState s, Side side)
+        {
+            s.LostSide = (int)side;
+            s.LostWhy = 2;
+        }
+
         /// <summary>Result plus a short human-readable reason ("Checkmate", "Stalemate", ...). Empty while ongoing.</summary>
         public static GameResult GetResult(GameState s, out string reason)
         {
@@ -983,7 +990,7 @@ namespace ChessFighter.Core
             }
             if (s.LostSide >= 0)
             {
-                reason = s.LostWhy == 1 ? "Missile strike" : "Checkmate";
+                reason = s.LostWhy == 1 ? "Missile strike" : s.LostWhy == 2 ? "Resigned" : "Checkmate";
                 return s.LostSide == (int)Side.White ? GameResult.BlackWins : GameResult.WhiteWins;
             }
             if (s.PendingSquare < 0 && s.ForcedMover < 0 && s.EffectKind == PowerupKind.None && s.PendingCard == CardKind.None && s.RespCard == CardKind.None)

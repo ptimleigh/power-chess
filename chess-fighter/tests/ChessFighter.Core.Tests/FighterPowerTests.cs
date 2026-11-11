@@ -616,6 +616,21 @@ namespace ChessFighter.Core.Tests
             Assert.IsFalse(Geometry.IsKingAttacked(rook, Side.Black));
         }
 
+        [Test]
+        public void Resigning_ends_the_game_with_a_win_for_the_other_side_and_survives_a_save()
+        {
+            var cfg = T.Cfg();
+            var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1", cfg);
+            Rules.Resign(s, Side.White);
+            string reason;
+            Assert.AreEqual(GameResult.BlackWins, Rules.GetResult(s, out reason));
+            Assert.AreEqual("Resigned", reason);
+            GameState s2; GameHistory h2;
+            Assert.IsTrue(GameStateCodec.TryDecodeGame(GameStateCodec.EncodeGame(s, new GameHistory()), cfg, out s2, out h2));
+            Assert.AreEqual(GameResult.BlackWins, Rules.GetResult(s2, out reason));
+            Assert.AreEqual("Resigned", reason);
+        }
+
         // ---------- Leap (a checkers jump) ----------
 
         [Test]

@@ -488,7 +488,7 @@ window.pcclip = (function () {
                 // 3. the king pops up and falls over on its square
                 if (kingA) later(T + 70, () => knockOver(kingA[0], atkSq));
                 // 4. it lands, and the big K.O. slams in
-                later(T + 70 + 650, () => { scaleTarget = 1; scaleRamp = 300; dimTarget = .55; S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; if (koReady()) { addFx({ kind: 'ko', dur: 1800 }); later(380, () => { S.hit(true); doShake(26); doFlash('255,240,200', .45); }); } else callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
+                later(T + 70 + 650, () => { scaleTarget = 1; scaleRamp = 300; dimTarget = .55; S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; if (koReady()) { addFx({ kind: 'ko', dur: 1800 }); later(380, () => { S.hit(true); doShake(26); }); } else callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
                 return endAt + 1350 + 1000;
             }
             if (beat.check && !beat.mate) later(Math.max(0, T - 100), () => { callout('CHECK!', W / 2, BY - 4, RED, true); S.ding(); vignette = Math.max(vignette, .5); });
@@ -1307,7 +1307,7 @@ window.pcclip = (function () {
                 ctx.fill('evenodd');
                 for (const p of spot) if (!p.dying) drawPiece(p);
             }
-            for (const f of fx) if (f.kind !== 'title' && f.kind !== 'outro' && f.kind !== 'summon' && f.kind !== 'text' && f.kind !== 'banner') drawFx(f);
+            for (const f of fx) if (f.kind !== 'title' && f.kind !== 'outro' && f.kind !== 'summon' && f.kind !== 'ko' && f.kind !== 'text' && f.kind !== 'banner') drawFx(f);
             for (const f of fx) if (f.kind === 'banner' || f.kind === 'text') drawFx(f);
             ctx.restore();
             // screen-space layers
@@ -1321,6 +1321,7 @@ window.pcclip = (function () {
             }
             for (const f of live) drawFx(f);
             if (flash > 0) { ctx.fillStyle = `rgba(${flashColor},${flash})`; ctx.fillRect(0, 0, W, H); }
+            for (const f of fx) if (f.kind === 'ko') { ctx.save(); drawFx(f); ctx.restore(); }   // the big K.O. sits above the screen flash, so the flash never washes it out
             // CRT scanlines over everything
             ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.16)';
             for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1);

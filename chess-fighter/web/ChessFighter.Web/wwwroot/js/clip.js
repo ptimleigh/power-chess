@@ -103,7 +103,7 @@ window.pcclip = (function () {
         let hud = { moveNo: 0, label: '', mover: '', banner: '', bannerAt: -1e9, hpShow: [100, 100], hpTarget: [100, 100] };
         let phase = 'intro';
         let quietRun = 0, comboHits = 0, comboMover = null;
-        let dim = 0, dimTarget = 0, spot = [];   // the finishing move: the room dims and only the king and the piece that struck it stay lit
+        let dim = 0, dimTarget = 0, spot = [], spotSq = [];   // the finishing move: the room dims and only the king and the piece that struck it stay lit
         let finished = false, stopped = false, resolveDone = null;
         let startSnap = data.start;
         const total = data.beats.length;
@@ -209,7 +209,11 @@ window.pcclip = (function () {
                 // the finishing move plays in slow motion with the room dimmed and the king (and its attacker) in the light
                 const kingP = pieces.find(p => !p.dying && p.type === 6 && p.side !== moverSide);
                 spot = kingP ? [kingP] : [];
+                const lm = evs.slice().reverse().find(e => e.k === 'Moved' || e.k === 'Leaped');
+                spotSq = [kingP ? kingP.sq : -1, lm ? lm.t : -1].filter(q => q >= 0);   // the king's square and where the striker ends up stay lit
                 later(0, () => { scaleTarget = .35; scaleRamp = 300; dimTarget = 1; });
+                T = 330;   // the room dims, then a beat or two of suspense before the move
+
             }
             const countHit = ms => later(ms, () => { comboHits++; if (comboHits >= 2) { addFx({ kind: 'combo', n: comboHits, last: comboHits >= 3 && !comboGoesOn, dur: 1100 }); snd.tone(420 + comboHits * 110, .14, 'square', .1); } });
             const bigPunch = (sq, z, sc, ms) => { punched = true; punch(sq, z, sc, ms); };
@@ -1235,17 +1239,12 @@ window.pcclip = (function () {
             drawBoard();
             for (const p of pieces.slice().sort((a, b) => a.y - b.y)) drawPiece(p);
             if (dim > .01) {
-                ctx.fillStyle = `rgba(4,2,16,${dim * .8})`; ctx.fillRect(-W, -H, W * 3, H * 3);
-                for (const p of spot) {
-                    if (p.dying) continue;
-                    const gx = p.x + (p.ox || 0), gy = p.y;
-                    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-                    const g = ctx.createRadialGradient(gx, gy, 4, gx, gy, SQ * 1.25);
-                    g.addColorStop(0, `rgba(255,225,150,${.34 * dim})`); g.addColorStop(1, 'rgba(255,225,150,0)');
-                    ctx.fillStyle = g; ctx.fillRect(gx - SQ * 1.3, gy - SQ * 1.3, SQ * 2.6, SQ * 2.6);
-                    ctx.restore();
-                    drawPiece(p);
-                }
+                // dim everything except the squares the king and its attacker end on (cut out of the overlay), then redraw those two pieces on top
+                ctx.fillStyle = `rgba(4,2,16,${dim * .8})`;
+                ctx.beginPath(); ctx.rect(-W, -H, W * 3, H * 3);
+                for (const q of spotSq) { const o = sqXY(q); ctx.rect(o.x, o.y, SQ, SQ); }
+                ctx.fill('evenodd');
+                for (const p of spot) if (!p.dying) drawPiece(p);
             }
             for (const f of fx) if (f.kind !== 'title' && f.kind !== 'outro' && f.kind !== 'text' && f.kind !== 'banner') drawFx(f);
             for (const f of fx) if (f.kind === 'banner' || f.kind === 'text') drawFx(f);

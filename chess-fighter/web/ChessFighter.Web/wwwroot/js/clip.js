@@ -108,7 +108,10 @@ window.pcclip = (function () {
         let startSnap = data.start;
         const total = data.beats.length;
 
-        const sqXY = sq => ({ x: BX + (sq & 7) * SQ, y: BY + (7 - (sq >> 3)) * SQ });
+        // Playing Black against the AI: the board is shown from Black's side (Black at the bottom), like in the game.
+        const FLIP = !!data.vsAi && data.you === 'b';
+        const mirrorPt = (x, y) => FLIP ? { x: 2 * BX + BOARD - x, y: 2 * BY + BOARD - y } : { x, y };
+        const sqXY = sq => FLIP ? ({ x: BX + (7 - (sq & 7)) * SQ, y: BY + (sq >> 3) * SQ }) : ({ x: BX + (sq & 7) * SQ, y: BY + (7 - (sq >> 3)) * SQ });
         const sqC = sq => { const p = sqXY(sq); return { x: p.x + SQ / 2, y: p.y + SQ / 2 }; };
         const later = (ms, fn) => timers.push({ at: clock + ms, fn });
         const addFx = o => { o.t0 = clock; fx.push(o); return o; };
@@ -458,7 +461,7 @@ window.pcclip = (function () {
                     }
                     case 'MissileStruck': {
                         const f0 = (e.f & 7), r0 = (e.f >> 3);
-                        const c = { x: BX + (f0 + 2) * SQ, y: BY + (7 - r0 - 1.5) * SQ };
+                        const c = mirrorPt(BX + (f0 + 2) * SQ, BY + (7 - r0 - 1.5) * SQ);
                         later(T, () => { addFx({ kind: 'ring', x: c.x, y: c.y, dur: 900, color: '#ff8c3a', max: SQ * 4.5 }); burst(c.x, c.y, '#ff7a1c', 40, 600); doFlash('255,170,70', .95); doShake(40); S.boom(); callout('MISSILE STRIKE!', c.x, c.y, RED, true); freeze(160); });
                         T += 800;
                         break;
@@ -758,7 +761,7 @@ window.pcclip = (function () {
             ctx.fillStyle = '#000'; ctx.fillRect(BX - 4, BY - 4, BOARD + 8, BOARD + 8);
             for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
                 ctx.fillStyle = (f + r) % 2 === 1 ? '#7a6bb8' : '#3f3280';
-                ctx.fillRect(BX + f * SQ, BY + (7 - r) * SQ, SQ, SQ);
+                ctx.fillRect(BX + (FLIP ? 7 - f : f) * SQ, BY + (FLIP ? r : 7 - r) * SQ, SQ, SQ);
             }
             // powerup squares: hatched, with a hard white edge and a short label
             const blink = Math.floor(real / 320) % 2 === 0;
@@ -791,7 +794,8 @@ window.pcclip = (function () {
             // a missile in flight: the quadrant it will hit, with the countdown
             if (deco.ml > 0 && deco.ma >= 0) {
                 const f0 = deco.ma & 7, r0 = deco.ma >> 3;
-                const zx = BX + f0 * SQ, zy = BY + (7 - (r0 + 3)) * SQ;
+                let zx = BX + f0 * SQ, zy = BY + (7 - (r0 + 3)) * SQ;
+                if (FLIP) { zx = 2 * BX + BOARD - zx - SQ * 4; zy = 2 * BY + BOARD - zy - SQ * 4; }
                 ctx.save();
                 ctx.globalAlpha = .5; ctx.fillStyle = hatch('#7a0f22', '#ff2e4d'); ctx.fillRect(zx, zy, SQ * 4, SQ * 4);
                 ctx.globalAlpha = 1; ctx.lineWidth = 6; ctx.strokeStyle = Math.floor(real / 250) % 2 ? '#fff' : RED; ctx.strokeRect(zx + 3, zy + 3, SQ * 4 - 6, SQ * 4 - 6);
@@ -1112,7 +1116,7 @@ window.pcclip = (function () {
                 }
                 case 'dragon': {
                     // the summoned dragon sweeps the row (white flies left to right, black right to left), breathing fire behind it
-                    const dir = f.side === 0 ? 1 : -1;
+                    const dir = (f.side === 0 ? 1 : -1) * (FLIP ? -1 : 1);
                     const grow = Math.min(1, k / .8);
                     ctx.globalAlpha = k < .8 ? 1 : 1 - (k - .8) / .2;
                     const x0 = dir > 0 ? BX - SQ * 1.5 : BX + BOARD + SQ * 1.5, x1 = dir > 0 ? BX + BOARD + SQ * 2.2 : BX - SQ * 2.2;

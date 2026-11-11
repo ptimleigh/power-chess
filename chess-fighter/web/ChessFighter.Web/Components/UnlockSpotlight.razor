@@ -1,0 +1,141 @@
+@* After a level-up: one card per thing earned, big and clear, with a plain explanation. Next steps through them; Skip closes the lot. *@
+@if (pages.Count > 0)
+{
+    var pg = pages[idx];
+    <div class="modal spotlight" data-testid="spotlight">
+        <div class="card pop sp-card" data-testid="spotlight-card" data-page="@(idx + 1)">
+            <div class="sp-top">
+                <span class="sp-label @pg.Css">@pg.Label</span>
+                <span class="sp-level">Level @pg.Level</span>
+            </div>
+            <div class="sp-visual">
+                @if (pg.DemoKind is PowerupKind dk)
+                {
+                    <DemoBoard @key="@pg.Key" Kind="dk" />
+                }
+                else if (pg.Teleporter)
+                {
+                    <DemoBoard @key="@pg.Key" Teleporter="true" />
+                }
+                else
+                {
+                    <div class="sp-badge">@Icons.Svg(pg.Icon)</div>
+                }
+            </div>
+            <h2 class="sp-name">@pg.Title</h2>
+            <p class="sp-lead">@pg.Lead</p>
+            @if (pg.Rest != "") { <p class="sp-rest">@pg.Rest</p> }
+            @if (pg.PresetId != null && OnTry.HasDelegate)
+            {
+                <button class="btn small" data-action="spotlight-try" @onclick="() => TryIt(pg.PresetId)">Try it</button>
+            }
+            <div class="sp-nav">
+                <span class="sp-dots">@for (int i = 0; i < pages.Count; i++) { <i class="@(i == idx ? "on" : "")"></i> }</span>
+                <small>@(idx + 1) of @pages.Count</small>
+            </div>
+            <div class="row">
+                @if (idx < pages.Count - 1)
+                {
+                    <button class="btn primary" data-action="spotlight-next" @onclick="() => idx++">Next</button>
+                }
+                else
+                {
+                    <button class="btn primary" data-action="spotlight-done" @onclick="Close">Got it!</button>
+                }
+                @if (pages.Count > 1 && idx < pages.Count - 1)
+                {
+                    <button class="btn ghost" data-action="spotlight-skip" @onclick="Close">Skip</button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<UnlockItem> Items { get; set; } = new();
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnTry { get; set; }
+
+    sealed class Page
+    {
+        public string Key = "", Label = "", Css = "", Title = "", Lead = "", Rest = "", Icon = "star";
+        public int Level;
+        public PowerupKind? DemoKind;
+        public bool Teleporter;
+        public string? PresetId;
+    }
+
+    List<Page> pages = new();
+    int idx;
+
+    protected override void OnParametersSet()
+    {
+        pages = Build(Items);
+        if (idx >= pages.Count) idx = 0;
+    }
+
+    /// <summary>The sentence that matters is shown large; the detail under it smaller.</summary>
+    static (string lead, string rest) Split(string text)
+    {
+        int i = text.IndexOf(". ", StringComparison.Ordinal);
+        return i > 0 ? (text.Substring(0, i + 1), text.Substring(i + 2)) : (text, "");
+    }
+
+    static List<Page> Build(List<UnlockItem> items)
+    {
+        var list = new List<Page>();
+        foreach (var it in items)
+        {
+            switch (it.Type)
+            {
+                case UnlockType.Powerup:
+                case UnlockType.Transforms:
+                {
+                    var (lead, rest) = Split(Names.Desc(it.Kind));
+                    list.Add(new Page { Key = "p" + it.Kind, Label = "NEW POWER", Css = "power", Title = Names.Name(it.Kind), Lead = lead, Rest = rest, Icon = Names.Icon(it.Kind), Level = it.Level, DemoKind = it.Kind });
+                    break;
+                }
+                case UnlockType.Upgrade:
+                {
+                    var (lead, rest) = Split(it.Blurb ?? "");
+                    list.Add(new Page { Key = "u" + it.Name, Label = "UPGRADE", Css = "upgrade", Title = it.Name ?? "", Lead = lead, Rest = rest, Icon = Names.Icon(it.Kind), Level = it.Level, DemoKind = it.Kind });
+                    break;
+                }
+                case UnlockType.Cards:
+                    foreach (var c in it.CardKinds)
+                    {
+                        var (lead, rest) = Split(Names.CardDesc(c));
+                        list.Add(new Page { Key = "c" + c, Label = "NEW CARD", Css = "card", Title = Names.CardName(c), Lead = lead, Rest = rest + (rest == "" ? "" : " ") + "It can now turn up from Draw Card squares.", Icon = Names.CardIcon(c), Level = it.Level });
+                    }
+                    break;
+                case UnlockType.Teleporters:
+                {
+                    var (lead, rest) = Split(it.Blurb ?? "");
+                    list.Add(new Page { Key = "tele", Label = "NEW SQUARE", Css = "power", Title = it.Name ?? "Teleporters", Lead = lead, Rest = rest, Icon = "portal", Level = it.Level, Teleporter = true });
+                    break;
+                }
+                case UnlockType.Preset:
+                {
+                    var (lead, rest) = Split(it.Blurb ?? "");
+                    list.Add(new Page { Key = "r" + it.PresetId, Label = "NEW RULES", Css = "rules", Title = it.Name ?? "", Lead = lead, Rest = rest, Icon = "spark", Level = it.Level, PresetId = it.PresetId });
+                    break;
+                }
+                default:
+                {
+                    var (lead, rest) = Split(it.Blurb ?? "");
+                    list.Add(new Page { Key = "o" + it.Name, Label = "NEW OPTION", Css = "rules", Title = it.Name ?? "", Lead = lead, Rest = rest, Icon = "dice", Level = it.Level });
+                    break;
+                }
+            }
+        }
+        return list;
+    }
+
+    async Task Close() => await OnClose.InvokeAsync();
+
+    async Task TryIt(string id)
+    {
+        await OnTry.InvokeAsync(id);
+        await Close();
+    }
+}

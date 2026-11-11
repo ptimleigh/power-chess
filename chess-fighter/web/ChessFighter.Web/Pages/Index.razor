@@ -580,6 +580,11 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     </div>
 }
 
+@if (spotlightOpen && newUnlocks.Count > 0)
+{
+    <UnlockSpotlight Items="newUnlocks" OnClose="() => { spotlightOpen = false; unseenUnlocks = false; }" OnTry="TryPreset" />
+}
+
 @if (showResign && S.CanResign)
 {
     <div class="modal" data-testid="resign-confirm" @onclick="() => showResign = false">
@@ -1066,7 +1071,14 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (serial != xpAnimSerial) return;
         xpAnimDone = true;
         StateHasChanged();
+        // a level-up: spotlight everything earned, one card at a time
+        if (newUnlocks.Count > 0)
+        {
+            await Task.Delay(900);
+            if (serial == xpAnimSerial) { spotlightOpen = true; StateHasChanged(); }
+        }
     }
+    bool spotlightOpen;
 
     void DebugXp(int xp, bool reset = false)
     {

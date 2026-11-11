@@ -782,3 +782,24 @@ html, body {
 @keyframes swordfall-r { 0% { top: 130%; opacity: 1; } 50% { top: var(--ty); opacity: 1; } 80% { top: var(--ty); opacity: 1; } 100% { top: var(--ty); opacity: 0; } }
 .seg.three { display: grid; grid-template-columns: repeat(3, 1fr); }
 .board.pov-black .finale-hit { rotate: 180deg; }
+
+/* ---------- level-up spotlight: one earned thing per card, big and plain ---------- */
+.modal.spotlight { z-index: 120; background: #07041cdd; }
+.sp-card { width: min(92vw, 380px); text-align: center; }
+.sp-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.sp-label { font-family: var(--px); font-size: 10px; padding: 6px 10px; border: 3px solid #000; background: var(--gold); color: #2a1a00; box-shadow: 3px 3px 0 #000; }
+.sp-label.upgrade { background: #3df2ff; }
+.sp-label.card { background: #ff8a3d; }
+.sp-label.rules { background: #b05cff; color: #fff; }
+.sp-level { font-family: var(--px); font-size: 9px; color: var(--dim); }
+.sp-visual { display: grid; place-items: center; margin: 6px 0 10px; }
+.sp-visual .demo-wrap { width: min(70vw, 240px); }
+.sp-badge { width: 96px; height: 96px; display: grid; place-items: center; background: #0a0420; border: 4px solid #000; box-shadow: 0 0 0 3px var(--gold), 5px 5px 0 #000; }
+.sp-badge svg { width: 64%; height: 64%; fill: var(--gold); }
+.sp-name { font-family: var(--px); font-weight: 400; font-size: 24px; line-height: 1.25; color: var(--gold); margin: 6px 0 10px; text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+.sp-card .sp-lead { font-family: var(--mono); font-style: normal; font-size: 18px; line-height: 1.35; color: #fff; margin: 0 0 10px; font-weight: 800; }
+.sp-card .sp-rest { font-family: var(--mono); font-style: normal; font-size: 12px; line-height: 1.5; color: var(--dim); margin: 0 0 10px; }
+.sp-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px 0 10px; }
+.sp-dots i { display: inline-block; width: 9px; height: 9px; margin: 0 3px; background: #ffffff33; border: 2px solid #000; }
+.sp-dots i.on { background: var(--gold); }
+.sp-nav small { color: var(--dim); font-size: 11px; }

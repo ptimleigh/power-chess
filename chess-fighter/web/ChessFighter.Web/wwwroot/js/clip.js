@@ -103,6 +103,7 @@ window.pcclip = (function () {
         let hud = { moveNo: 0, label: '', mover: '', banner: '', bannerAt: -1e9, hpShow: [100, 100], hpTarget: [100, 100] };
         let phase = 'intro';
         let quietRun = 0, comboHits = 0, comboMover = null;
+        let dim = 0, dimTarget = 0, spot = [];   // the finishing move: the room dims and only the king and the piece that struck it stay lit
         let finished = false, stopped = false, resolveDone = null;
         let startSnap = data.start;
         const total = data.beats.length;
@@ -204,6 +205,12 @@ window.pcclip = (function () {
             const nb = data.beats[index + 1];
             const comboGoesOn = !!nb && nb.mover === beat.mover && nb.ev.some(isHit);
             let punched = false;
+            if (isLast && beat.mate) {
+                // the finishing move plays in slow motion with the room dimmed and the king (and its attacker) in the light
+                const kingP = pieces.find(p => !p.dying && p.type === 6 && p.side !== moverSide);
+                spot = kingP ? [kingP] : [];
+                later(0, () => { scaleTarget = .35; scaleRamp = 300; dimTarget = 1; });
+            }
             const countHit = ms => later(ms, () => { comboHits++; if (comboHits >= 2) { addFx({ kind: 'combo', n: comboHits, last: comboHits >= 3 && !comboGoesOn, dur: 1100 }); snd.tone(420 + comboHits * 110, .14, 'square', .1); } });
             const bigPunch = (sq, z, sc, ms) => { punched = true; punch(sq, z, sc, ms); };
             const cardName = e => ((data.cards && data.cards[e.c]) || '').toUpperCase();
@@ -217,6 +224,7 @@ window.pcclip = (function () {
                         const p = at(e.f);
                         if (!p) break;
                         mover = p;
+                        if (isLast && beat.mate && spot.indexOf(p) < 0) spot.push(p);
                         const striking = next && next.k === 'Captured';
                         const dur = striking ? 240 : 430;
                         const t = T;
@@ -224,7 +232,7 @@ window.pcclip = (function () {
                         later(t, () => {
                             S.move();
                             if (striking) addFx({ kind: 'streak', from: sqC(e.f), to: sqC(e.t), dur: 320 });
-                            if (finalStrike) { slowmo(.4, 900); zoomTarget = 1.12; const c = sqC(e.t); camX = c.x / W; camY = c.y / H; }
+                            if (finalStrike) { zoomTarget = 1.12; const c = sqC(e.t); camX = c.x / W; camY = c.y / H; }
                             slide(p, e.t, striking ? (finalStrike ? 520 : 240) : 430, striking ? easeIn : easeInOut, striking ? 0 : 14);
                         });
                         T += striking ? (finalStrike ? 520 : 240) : 430;
@@ -341,7 +349,7 @@ window.pcclip = (function () {
                     case 'Leaped': {
                         const a = sqC(e.f), b = sqC(e.t);
                         const chainLast = evs.slice(i + 1).every(x => x.k !== 'Leaped'), chainLen = evs.filter(x => x.k === 'Leaped').length;
-                        later(T, () => { const p = at(e.f); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); if (chainLast && (chainLen >= 2 || comboHits >= 1)) bigPunch(e.t, 1.09, .5, 700); });
+                        later(T, () => { const p = at(e.f); if (p && isLast && beat.mate && spot.indexOf(p) < 0) spot.push(p); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); if (chainLast && (chainLen >= 2 || comboHits >= 1)) bigPunch(e.t, 1.09, .5, 700); });
                         T += 450;
                         break;
                     }
@@ -456,7 +464,7 @@ window.pcclip = (function () {
                 const lastMove = evs.slice().reverse().find(e => e.k === 'Moved' || e.k === 'Leaped');
                 const atkSq = lastMove ? lastMove.t : (kingA ? kingA[0] : 0);
                 // 1. slow down and zoom in on the king as the last piece lands (a capture mate already did)
-                if (zoomTarget === 1 && kingA) later(Math.max(0, T - 120), () => punch(kingA[0], 1.1, .4, 1000));
+                if (zoomTarget === 1 && kingA) later(Math.max(0, T - 120), () => { const c = sqC(kingA[0]); zoomTarget = 1.1; camX = c.x / W; camY = c.y / H; });
                 // 2. impact: freeze, starburst, flash
                 later(T, () => {
                     freeze(300); doFlash('255,255,255', .7); doShake(24); S.hit(true);
@@ -465,7 +473,7 @@ window.pcclip = (function () {
                 // 3. the king pops up and falls over on its square
                 if (kingA) later(T + 70, () => knockOver(kingA[0], atkSq));
                 // 4. it lands, and the big K.O. slams in
-                later(T + 1130, () => { S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; if (koReady()) { addFx({ kind: 'ko', dur: 1800 }); later(380, () => { S.hit(true); doShake(26); doFlash('255,240,200', .45); }); } else callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
+                later(T + 70 + 650, () => { scaleTarget = 1; scaleRamp = 300; dimTarget = .55; S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; if (koReady()) { addFx({ kind: 'ko', dur: 1800 }); later(380, () => { S.hit(true); doShake(26); doFlash('255,240,200', .45); }); } else callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
                 return endAt + 1350 + 1000;
             }
             if (beat.check && !beat.mate) later(Math.max(0, T - 100), () => { callout('CHECK!', W / 2, BY - 4, RED, true); S.ding(); vignette = Math.max(vignette, .5); });
@@ -871,8 +879,8 @@ window.pcclip = (function () {
             const kc = sqC(kingSq), ac = sqC(atkSq);
             const dx = kc.x - ac.x, dir = dx !== 0 ? Math.sign(dx) : (kc.x < W / 2 ? 1 : -1);   // falls away from the attacker
             const amp = Math.min(SQ * 1.15, Math.max(SQ * .45, kc.y - BY + SQ * .1));   // a king on the top rank pops up less, so it stays on the board
-            tween(950, t => { k.air = Math.sin(t * Math.PI) * amp; k.ox = dir * SQ * .3 * Math.sin(t * Math.PI); k.rot = dir * (Math.PI / 2) * (t * t * (3 - 2 * t)); }, x => x);
-            later(960, () => {
+            tween(850, t => { k.air = Math.sin(t * Math.PI) * amp; k.ox = dir * SQ * .3 * Math.sin(t * Math.PI); k.rot = dir * (Math.PI / 2) * (t * t * (3 - 2 * t)); }, x => x);
+            later(860, () => {
                 k.air = 0; k.ox = 0; k.rot = dir * Math.PI / 2;
                 S.hit(false); doShake(16);
                 burst(kc.x, kc.y + SQ * .3, '#e8e0ff', 16, 300);
@@ -1226,12 +1234,26 @@ window.pcclip = (function () {
             ctx.translate(-W / 2 - fx0, -H / 2 - fy0);
             drawBoard();
             for (const p of pieces.slice().sort((a, b) => a.y - b.y)) drawPiece(p);
+            if (dim > .01) {
+                ctx.fillStyle = `rgba(4,2,16,${dim * .8})`; ctx.fillRect(-W, -H, W * 3, H * 3);
+                for (const p of spot) {
+                    if (p.dying) continue;
+                    const gx = p.x + (p.ox || 0), gy = p.y;
+                    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+                    const g = ctx.createRadialGradient(gx, gy, 4, gx, gy, SQ * 1.25);
+                    g.addColorStop(0, `rgba(255,225,150,${.34 * dim})`); g.addColorStop(1, 'rgba(255,225,150,0)');
+                    ctx.fillStyle = g; ctx.fillRect(gx - SQ * 1.3, gy - SQ * 1.3, SQ * 2.6, SQ * 2.6);
+                    ctx.restore();
+                    drawPiece(p);
+                }
+            }
             for (const f of fx) if (f.kind !== 'title' && f.kind !== 'outro' && f.kind !== 'text' && f.kind !== 'banner') drawFx(f);
             for (const f of fx) if (f.kind === 'banner' || f.kind === 'text') drawFx(f);
             ctx.restore();
             // screen-space layers
             const live = fx.filter(f => f.kind === 'title' || f.kind === 'outro');
             drawHud();
+            if (dim > .01) { ctx.fillStyle = `rgba(4,2,16,${dim * .7})`; ctx.fillRect(0, 0, W, BY - 6); }
             if (vignette > 0) {
                 const v = ctx.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .75);
                 v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, `rgba(${vignette > .3 ? '120,0,30' : '0,0,0'},${.25 + vignette * .4})`);
@@ -1275,6 +1297,7 @@ window.pcclip = (function () {
             if (flash > 0) flash = Math.max(0, flash - dt / 420);
             if (vignette > 0) vignette = Math.max(0, vignette - dt / 1500);
             zoom += (zoomTarget - zoom) * Math.min(1, dt / 260);
+            dim += (dimTarget - dim) * Math.min(1, dt / 300);
             for (let i = 0; i < 2; i++) {
                 const diff = hud.hpTarget[i] - hud.hpShow[i];
                 hud.hpShow[i] += Math.sign(diff) * Math.min(Math.abs(diff), dt * .05);

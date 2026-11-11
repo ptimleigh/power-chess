@@ -651,8 +651,26 @@ namespace ChessFighter.Core.Tests
             Assert.IsFalse(hasLeap("7k/8/5p2/4n3/3R4/8/8/7K w - - 0 1", null), "the landing square must be empty");
             Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => T.Give(g, "e5", Buff.Armor, 3)), "armor cannot be jumped");
             Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => g.Boulders[Sq.Parse("f6")] = true), "no landing on a boulder");
-            Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => T.Square(g, "f6", PowerupKind.Fireball)), "no landing on a powerup square");
             Assert.IsFalse(hasLeap("7k/8/8/4n3/3R4/8/8/7K w - - 0 1", g => { var st = g.Cells[Sq.Parse("d4")]; st.StunTurns = 2; g.Cells[Sq.Parse("d4")] = st; }), "a stunned piece cannot leap");
+        }
+
+        [Test]
+        public void A_leap_may_land_on_a_powerup_square_or_teleporter_and_triggers_it_and_ends_the_chain()
+        {
+            var s = T.Fen("k7/6n1/8/4n3/3R4/8/8/7K w - - 0 1");
+            T.Give(s, "d4", Buff.Leap);
+            T.Tier(s, "d4", 2);
+            T.Square(s, "f6", PowerupKind.Fireball);
+            T.Do(s, "Leap d4->f6");
+            Assert.IsTrue(T.At(s, "f6").Has(Buff.Fireball), "the square's power was picked up");
+            Assert.AreEqual(Side.Black, s.ToMove, "landing on a powerup square ends the chain");
+            Assert.AreEqual(PowerupKind.None, s.EffectKind);
+
+            var tp = T.Fen("7k/8/8/4n3/3R4/8/8/7K w - - 0 1");
+            T.Give(tp, "d4", Buff.Leap);
+            tp.Portal[Sq.Parse("f6")] = true;
+            T.Do(tp, "Leap d4->f6");
+            Assert.AreEqual(PieceType.Rook, T.At(tp, Sq.Name(Sq.Mirror(Sq.Parse("f6")))).Type, "teleported to its twin");
         }
 
         [Test]

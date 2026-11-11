@@ -112,6 +112,7 @@ namespace ChessFighter.Core
                     if (left > 0)
                         for (int dir = 4; dir < 8 && !more; dir++)
                             if (Geometry.LeapLanding(s, a.To, dir) >= 0) more = true;
+                    if (s.Mystery[a.To] || s.Portal[a.To]) more = false; // landing on a powerup square or teleporter ends the chain
                     if (more)
                     {
                         s.EffectKind = PowerupKind.Leap;
@@ -124,6 +125,7 @@ namespace ChessFighter.Core
                         var done = s.Cells[a.To];
                         done.Tier = 0;
                         s.Cells[a.To] = done;
+                        if (!ResolveLanding(s, a.To, me, 0, true, ev)) return;
                     }
                     Finish(s, ev);
                     return;
@@ -348,21 +350,31 @@ namespace ChessFighter.Core
                 Emit(ev, EventKind.PoisonTriggered, a.To, a.To, mover.Type, me, PowerupKind.Poison);
             }
 
-            int land = a.To;
-            if (alive && s.Portal[a.To])
+            if (!ResolveLanding(s, a.To, me, owed, alive, ev)) return;
+            Finish(s, ev);
+        }
+
+        /// <summary>
+        /// What a piece that has just arrived on <paramref name="to"/> triggers: a teleporter, a Combo's extra moves, a powerup square.
+        /// Returns false when the move is left waiting for the player (a pickup they may reroll); the turn is then not finished yet.
+        /// </summary>
+        static bool ResolveLanding(GameState s, int to, Side me, int owed, bool alive, List<GameEvent> ev)
+        {
+            int land = to;
+            if (alive && s.Portal[to])
             {
-                int dest = Sq.Mirror(a.To);
-                s.Portal[a.To] = false;
+                int dest = Sq.Mirror(to);
+                s.Portal[to] = false;
                 s.Portal[dest] = false;
                 if (s.Cells[dest].IsEmpty && !s.Boulders[dest] && !s.Mystery[dest])
                 {
-                    Piece moved = s.Cells[a.To];
-                    Remove(s, a.To);
+                    Piece moved = s.Cells[to];
+                    Remove(s, to);
                     Place(s, dest, moved);
                     land = dest;
-                    Emit(ev, EventKind.Teleported, a.To, dest, moved.Type, me, PowerupKind.None);
+                    Emit(ev, EventKind.Teleported, to, dest, moved.Type, me, PowerupKind.None);
                 }
-                else Emit(ev, EventKind.TeleportBlocked, a.To, dest, s.Cells[a.To].Type, me, PowerupKind.None);
+                else Emit(ev, EventKind.TeleportBlocked, to, dest, s.Cells[to].Type, me, PowerupKind.None);
             }
 
             if (alive && owed > 0)
@@ -371,65 +383,65 @@ namespace ChessFighter.Core
                 s.MultiLeft = owed;
             }
 
-            if (alive && s.Mystery[a.To])
+            if (alive && s.Mystery[to])
             {
-                var shown = (PowerupKind)s.Content[a.To];
+                var shown = (PowerupKind)s.Content[to];
                 if (shown == PowerupKind.None)
                 {
                     // A hidden mystery: the powerup is drawn now.
-                    s.Mystery[a.To] = false;
+                    s.Mystery[to] = false;
                     if (!s.SearchMode)
                     {
-                        var kind = Draw(s, s.Cells[a.To], a.To);
+                        var kind = Draw(s, s.Cells[to], to);
                         if (kind != PowerupKind.None)
                         {
-                            Emit(ev, EventKind.PickupFound, a.To, a.To, s.Cells[a.To].Type, me, kind);
+                            Emit(ev, EventKind.PickupFound, to, to, s.Cells[to].Type, me, kind);
                             if (s.Perks(me, PowerupKind.Reroll) > 0)
                             {
-                                s.PendingSquare = a.To;
+                                s.PendingSquare = to;
                                 s.PendingKind = kind;
-                                return;
+                                return false;
                             }
-                            ApplyPickup(s, me, a.To, kind, ev);
+                            ApplyPickup(s, me, to, kind, ev);
                         }
                     }
                 }
-                else if (Eligible(s, s.Cells[a.To], a.To, shown))
+                else if (Eligible(s, s.Cells[to], to, shown))
                 {
                     // A revealed square: the player knew what it held. The AI's lookahead applies it too (no randomness).
-                    s.Mystery[a.To] = false;
-                    s.Content[a.To] = 0;
+                    s.Mystery[to] = false;
+                    s.Content[to] = 0;
                     if (s.SearchMode)
                     {
-                        ApplyPickup(s, me, a.To, shown, null);
+                        ApplyPickup(s, me, to, shown, null);
                     }
                     else
                     {
-                        Emit(ev, EventKind.PickupFound, a.To, a.To, s.Cells[a.To].Type, me, shown);
+                        Emit(ev, EventKind.PickupFound, to, to, s.Cells[to].Type, me, shown);
                         // A king that is only legal on this square because the armor here shields it must take it.
-                        bool armorSavesKing = shown == PowerupKind.SpikedArmor && s.Cells[a.To].Type == PieceType.King
-                            && Geometry.IsAttacked(s, a.To, me.Opponent());
+                        bool armorSavesKing = shown == PowerupKind.SpikedArmor && s.Cells[to].Type == PieceType.King
+                            && Geometry.IsAttacked(s, to, me.Opponent());
                         if (s.Perks(me, PowerupKind.Reroll) > 0 && !armorSavesKing)
                         {
-                            s.PendingSquare = a.To;
+                            s.PendingSquare = to;
                             s.PendingKind = shown;
-                            return;
+                            return false;
                         }
-                        ApplyPickup(s, me, a.To, shown, ev);
+                        ApplyPickup(s, me, to, shown, ev);
                     }
                 }
-                else if (KingIncompatible(s.Cells[a.To], shown))
+                else if (KingIncompatible(s.Cells[to], shown))
                 {
                     // A king stepped on Poison or a Transform: it cannot use it, and the square is used up.
-                    s.Mystery[a.To] = false;
-                    s.Content[a.To] = 0;
-                    Emit(ev, EventKind.PickupRejected, a.To, a.To, PieceType.King, me, shown);
+                    s.Mystery[to] = false;
+                    s.Content[to] = 0;
+                    Emit(ev, EventKind.PickupRejected, to, to, PieceType.King, me, shown);
                 }
                 // Otherwise the piece cannot use what the square holds (a capped perk, a duplicate buff, ...):
                 // the square is left untouched, so it is still there when something that can use it arrives.
             }
 
-            Finish(s, ev);
+            return true;
         }
 
         /// <summary>Everything that happens once an action and its pickup are fully resolved: pending aims are checked, then the turn ends.</summary>

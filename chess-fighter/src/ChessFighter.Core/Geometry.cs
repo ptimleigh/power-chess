@@ -194,7 +194,7 @@ namespace ChessFighter.Core
         /// <summary>
         /// Where a checkers-style Leap from <paramref name="from"/> along diagonal <paramref name="dir"/> (4-7) would land, or -1.
         /// The next square must hold a rival piece that can be captured (not a king, not armored) and the square beyond it must be on the
-        /// board, empty, and plain (no boulder, powerup or teleporter), so nothing triggers mid-jump. A pawn never leaps onto the last rank.
+        /// board and empty (no boulder). Landing on a powerup square or teleporter triggers it, like any move, and ends a chain. A pawn never leaps onto the last rank.
         /// Whether the jump leaves your own king in check is decided by the usual legality check, not here.
         /// </summary>
         public static int LeapLanding(GameState s, int from, int dir)
@@ -207,7 +207,7 @@ namespace ChessFighter.Core
             if (!Sq.OnBoard(lf, lr)) return -1;
             int mid = Sq.Make(nf, nr), land = Sq.Make(lf, lr);
             if (s.Boulders[mid] || !IsVulnerable(s.Cells[mid], me.Side)) return -1;
-            if (!s.Cells[land].IsEmpty || s.Boulders[land] || s.Mystery[land] || s.Portal[land]) return -1;
+            if (!s.Cells[land].IsEmpty || s.Boulders[land]) return -1;
             if (me.Type == PieceType.Pawn && (lr == 0 || lr == 7)) return -1;
             return land;
         }

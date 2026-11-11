@@ -158,7 +158,10 @@ public sealed class GameSession
     public bool CanReview => history.Count > 0 && !Busy && !PickupPending;
     public bool CanRewind => HumanTurn && !Reviewing && history.CanRewind(State, Me);
     /// <summary>The side the player controls: White vs the AI, otherwise whoever is to move.</summary>
-    public Side Me => VsAi ? Side.White : State.ToMove;
+    public Side Me => VsAi ? HumanSide : State.ToMove;
+    /// <summary>The side the player controls against the AI (White unless they chose Black or Random). Hot-seat games and puzzles are always White.</summary>
+    public Side HumanSide { get; private set; } = Side.White;
+    public Side RivalSide => HumanSide.Opponent();
 
     public Action? Changed;
     public Action<string>? Sfx;
@@ -258,7 +261,7 @@ public sealed class GameSession
         HintsUsed = 0;
         HintBonus = 0;
         ClearHint();
-        tracker = new MatchTracker(Side.White, opt.Ai);
+        tracker = new MatchTracker(HumanSide, opt.Ai);
         endReported = false;
         rewardable = eligible;
         DebugUsed = false;
@@ -344,8 +347,8 @@ public sealed class GameSession
 
     public bool VsAi => opt.Ai > 0;
     public bool GameOver => Result != GameResult.Ongoing;
-    bool AiToMove => VsAi && !GameOver && State.Decider == Side.Black;
-    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.Decider == Side.White);
+    bool AiToMove => VsAi && !GameOver && State.Decider == RivalSide;
+    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.Decider == HumanSide);
     public bool PickupPending => State.PendingSquare >= 0;
 
     /// <summary>A Stun or Steal square was just landed on and its target must be chosen now.</summary>
@@ -364,8 +367,10 @@ public sealed class GameSession
         if (opt.Pairs >= 0) cfg.InitialPairs = opt.Pairs;
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
-        cfg.RewindAllowed[(int)Side.Black] = !VsAi; // the AI cannot use Rewind, so it never draws it
-        cfg.SwapAllowed[(int)Side.Black] = !VsAi; // nor Swap
+        cfg.RewindAllowed[(int)RivalSide] = !VsAi; // the AI cannot use Rewind, so it never draws it
+        cfg.SwapAllowed[(int)RivalSide] = !VsAi; // nor Swap
+        cfg.RewindAllowed[(int)HumanSide] = true;
+        cfg.SwapAllowed[(int)HumanSide] = true;
         bool tele = opt.Level < 0 || opt.Level >= Progression.TeleporterLevel;
         cfg.PortalChance = opt.Portals && tele ? 0.12 : 0;
         cfg.Squares = opt.Mode;
@@ -516,6 +521,10 @@ public sealed class GameSession
     {
         GameSerial = ++roundCounter;
         RoundIntro = true;
+        // Who the player is: White unless they chose Black (or Random). Puzzles, the guided first game and two-player games are always White.
+        HumanSide = Side.White;
+        if (opt.Ai > 0 && opt.Puzzle == null && !opt.Training)
+            HumanSide = opt.PlayAs == "black" ? Side.Black : opt.PlayAs == "random" ? ((new Random().Next(2) == 0) ? Side.White : Side.Black) : Side.White;
         var cfg = BuildConfig();
 
         if (opt.Puzzle != null) SetupPuzzle();
@@ -614,7 +623,7 @@ public sealed class GameSession
         }
         foreach (var views in viewHistory) AddIds(views);
         AddIds(Pieces);
-        return string.Join("|", GameStateCodec.EncodeGame(State, history), nextId, opt.Ai, Convert.ToBase64String(ids.ToArray()), opt.Mode == SquareMode.Revealed ? "r" : "m");
+        return string.Join("|", GameStateCodec.EncodeGame(State, history), nextId, opt.Ai, Convert.ToBase64String(ids.ToArray()), opt.Mode == SquareMode.Revealed ? "r" : "m", HumanSide == Side.Black ? "b" : "w");
     }
 
     /// <summary>Restore a saved game. Returns false (leaving the current game untouched) if the save is not usable.</summary>
@@ -623,21 +632,24 @@ public sealed class GameSession
         try
         {
             var parts = saved.Split('|');
-            if (parts.Length != 4 && parts.Length != 5) return false;
+            if (parts.Length < 4 || parts.Length > 6) return false;
             int savedNextId = int.Parse(parts[1]);
             int savedAi = int.Parse(parts[2]);
             var idBytes = Convert.FromBase64String(parts[3]);
 
+            var oldSide = HumanSide;
+            HumanSide = parts.Length == 6 && parts[5] == "b" ? Side.Black : Side.White;   // older saves are all White
             int oldAi = opt.Ai;
             var oldMode = opt.Mode;
             opt.Ai = Math.Clamp(savedAi, 0, 6);
-            opt.Mode = parts.Length == 5 && parts[4] == "r" ? SquareMode.Revealed : SquareMode.Mystery; // older saves were all mystery
+            opt.Mode = parts.Length >= 5 && parts[4] == "r" ? SquareMode.Revealed : SquareMode.Mystery; // older saves were all mystery
             GameState state;
             GameHistory hist;
             if (!GameStateCodec.TryDecodeGame(parts[0], BuildConfig(), out state, out hist) || idBytes.Length != (hist.Count + 1) * 128)
             {
                 opt.Ai = oldAi;
                 opt.Mode = oldMode;
+                HumanSide = oldSide;
                 return false;
             }
 
@@ -1573,7 +1585,7 @@ public sealed class GameSession
                 summary.HintsUsed = HintsUsed;
                 GameEnded?.Invoke(summary);
             }
-            Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == Side.Black ? "lose" : "win"));
+            Sfx?.Invoke(Result == GameResult.Draw ? "draw" : (VsAi && Winner() == RivalSide ? "lose" : "win"));
         }
         Busy = false;
         Save();
@@ -1648,7 +1660,7 @@ public sealed class GameSession
     public void Resign()
     {
         if (!CanResign) return;
-        var side = VsAi ? Side.White : State.ToMove;
+        var side = VsAi ? HumanSide : State.ToMove;
         Rules.Resign(State, side);
         ClearSelection();
         Inspect = -1;
@@ -1717,7 +1729,7 @@ public sealed class GameSession
             if (Thinking) return "Opponent is thinking...";
             if (Busy) return "";
             if (Responding)
-                return State.Decider == Side.White && VsAi || !VsAi
+                return State.Decider == HumanSide && VsAi || !VsAi
                     ? $"{Names.CardName(State.RespCard)} was played! {(CanRespondNuhUh ? "Cancel it with Nuh-uh?" : "")}"
                     : "";
             if (ActiveCard != CardKind.None && HumanTurn)
@@ -1829,7 +1841,7 @@ public sealed class GameSession
 
     string Describe(GameHistory.Entry e)
     {
-        string who = VsAi ? (e.Mover == Side.White ? "You" : "Rival") : (e.Mover == Side.White ? "White" : "Black");
+        string who = VsAi ? (e.Mover == HumanSide ? "You" : "Rival") : (e.Mover == Side.White ? "White" : "Black");
         var a = e.Action;
         string text = a.Kind switch
         {
@@ -2114,7 +2126,7 @@ public sealed class GameSession
                         // The toast waits until the dragon has passed, so it never hides the row burning.
                         int burned = 0;
                         for (int j = ei + 1; j < events.Count && events[j].Kind == EventKind.Destroyed; j++) burned++;
-                        string who = VsAi ? (e.Side == Side.White ? "Your" : "Rival's") : (e.Side == Side.White ? "White's" : "Black's");
+                        string who = VsAi ? (e.Side == HumanSide ? "Your" : "Rival's") : (e.Side == Side.White ? "White's" : "Black's");
                         Side dragonSide = e.Side;
                         Later(T(dms + 300), () => AddToast("DRAGON STRIKE!", $"{who} dragon burned {burned} {(burned == 1 ? "piece" : "pieces")}", "fire", "hadouken", dragonSide, false));
                     }
@@ -2326,7 +2338,7 @@ public sealed class GameSession
     {
         LogOnly(side, "Drew " + Names.CardName(card));
         if (Draw != null && Draw.Pick) { AddToast("DREW: " + Names.CardName(card), Names.CardDesc(card), "gold", Names.CardIcon(card), side, false); return; }
-        bool human = !VsAi || side == Side.White;
+        bool human = !VsAi || side == HumanSide;
         int serial = ++drawSerial;
         var show = new DrawShow { Card = card, Side = side, WhoLabel = WhoLabelFor(side), Serial = serial, Pick = human && opt.Drama, Phase = 0 };
         if (!show.Pick) show.Phase = 1;
@@ -2371,7 +2383,7 @@ public sealed class GameSession
     public List<LogEntry> Log { get; } = new();
 
     /// <summary>"YOU" / "RIVAL" against the computer, "WHITE" / "BLACK" between two players.</summary>
-    public string WhoLabelFor(Side side) => VsAi ? (side == Side.White ? "YOU" : "RIVAL") : (side == Side.White ? "WHITE" : "BLACK");
+    public string WhoLabelFor(Side side) => VsAi ? (side == HumanSide ? "YOU" : "RIVAL") : (side == Side.White ? "WHITE" : "BLACK");
 
     void AddToast(string title, string text, string css, string icon, Side? who = null, bool useCurrent = true)
     {

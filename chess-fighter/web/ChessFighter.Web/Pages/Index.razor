@@ -19,28 +19,28 @@
     </header>
 
     <section class="fight-hud" data-testid="fight-hud" aria-label="Health">
-        <div class="fh-side p1 @(S.Turn == Side.White && !S.GameOver ? "turn" : "")">
-            <div class="hp" title="Material left"><i style="width:@Hp(Side.White)%"></i></div>
+        <div class="fh-side p1 @(S.Turn == S.HumanSide && !S.GameOver ? "turn" : "")">
+            <div class="hp" title="Material left"><i style="width:@Hp(S.HumanSide)%"></i></div>
             <div class="fh-name">P1</div>
         </div>
         <div class="fh-center">
             <div class="fh-ko">K.O.</div>
             <div class="fh-move">@S.Moves.ToString("00")</div>
         </div>
-        <div class="fh-side p2 @(S.Turn == Side.Black && !S.GameOver ? "turn" : "")">
-            <div class="hp" title="Material left"><i style="width:@Hp(Side.Black)%"></i></div>
+        <div class="fh-side p2 @(S.Turn == S.RivalSide && !S.GameOver ? "turn" : "")">
+            <div class="hp" title="Material left"><i style="width:@Hp(S.RivalSide)%"></i></div>
             <div class="fh-name">@(S.VsAi ? "CPU" : "P2")</div>
         </div>
     </section>
 
-    <section class="player opp @(S.Turn == Side.Black && !S.GameOver ? "active" : "")">
-        <div class="avatar b"></div>
+    <section class="player opp @(S.Turn == S.RivalSide && !S.GameOver ? "active" : "")">
+        <div class="avatar @(S.RivalSide == Side.White ? "w" : "b")"></div>
         <div class="pinfo">
             <div class="pname"><span class="ptag">@(S.VsAi ? "CPU" : "P2")</span>@(S.VsAi ? "Rival" : "Black")</div>
         </div>
-        <div class="chips">@InvChips(Side.Black)</div>
+        <div class="chips">@InvChips(S.RivalSide)</div>
     </section>
-    @Bag(Side.Black)
+    @Bag(S.RivalSide)
 
     @if (S.Puzzle is PuzzleDef pz)
     {
@@ -69,12 +69,12 @@
     {
         <div class="summon-splash s-@S.SummonSplash.ToString().ToLowerInvariant()" @key="@("summon" + S.SummonSerial)" aria-hidden="true" data-testid="summon-splash">
             <img src="img/summons/@(S.SummonSplash == CardKind.SummonShiva ? "shiva" : S.SummonSplash == CardKind.SummonMars ? "mars" : "caissa").png" alt="" />
-            <div class="ss-name">@Names.CardShort(S.SummonSplash).ToUpperInvariant()!<small>@(S.VsAi ? (S.SummonBy == Side.White ? "YOU SUMMON" : "RIVAL SUMMONS") : (S.SummonBy == Side.White ? "WHITE SUMMONS" : "BLACK SUMMONS"))</small></div>
+            <div class="ss-name">@Names.CardShort(S.SummonSplash).ToUpperInvariant()!<small>@(S.VsAi ? (S.SummonBy == S.HumanSide ? "YOU SUMMON" : "RIVAL SUMMONS") : (S.SummonBy == Side.White ? "WHITE SUMMONS" : "BLACK SUMMONS"))</small></div>
         </div>
     }
 
     <div class="board-frame">
-        <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "") @(S.FinaleOn ? "finale" : "")" data-testid="board">
+        <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "") @(S.FinaleOn ? "finale" : "") @(S.VsAi && S.HumanSide == Side.Black ? "pov-black" : "")" data-testid="board">
             @for (int rank = 7; rank >= 0; rank--)
             {
                 for (int file = 0; file < 8; file++)
@@ -139,12 +139,12 @@
             </div>
     </div>
 
-    <section class="player me @(S.Turn == Side.White && !S.GameOver ? "active" : "")">
-        <div class="avatar w"></div>
+    <section class="player me @(S.Turn == S.HumanSide && !S.GameOver ? "active" : "")">
+        <div class="avatar @(S.HumanSide == Side.White ? "w" : "b")"></div>
         <div class="pinfo">
             <div class="pname"><span class="ptag">P1</span>@(S.VsAi ? "You" : "White")@if (RulesLabel.Length > 0) { <span class="rules-badge" data-testid="rules-badge">@RulesLabel</span> }</div>
         </div>
-        <div class="chips">@InvChips(Side.White)</div>
+        <div class="chips">@InvChips(S.HumanSide)</div>
     </section>
 
     @if (S.Draw is DrawShow dr)
@@ -180,7 +180,7 @@
             </div>
         </div>
     }
-    @Bag(Side.White)
+    @Bag(S.HumanSide)
 
     <section class="actions">
         @if (S.Responding && S.HumanTurn)
@@ -671,6 +671,15 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     <button class="@Seg(selAi == level)" data-ai="@level" @onclick="() => selAi = level">@Ai.LevelName(level)</button>
                 }
             </div>
+            @if (selAi > 0)
+            {
+                <div class="opt-label">Play as</div>
+                <div class="seg three" data-testid="play-as">
+                    <button class="@Seg(selPlayAs == "white")" data-side="white" @onclick='() => selPlayAs = "white"'>White</button>
+                    <button class="@Seg(selPlayAs == "black")" data-side="black" @onclick='() => selPlayAs = "black"'>Black</button>
+                    <button class="@Seg(selPlayAs == "random")" data-side="random" @onclick='() => selPlayAs = "random"'>Random</button>
+                </div>
+            }
             <button class="btn ghost small more-toggle" data-action="more-options" @onclick="() => showMoreOptions = !showMoreOptions">@(showMoreOptions ? "Fewer options" : "More options")</button>
             @if (!showMoreOptions)
             {
@@ -1101,6 +1110,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     }
     SquareMode selMode = SquareMode.Revealed;
     int selAi = 2;
+    string selPlayAs = "white";
     bool selDrama = true;
     const string SettingsKey = "chessfighter.settings.v2";
     const string OldSettingsKey = "chessfighter.settings.v1";
@@ -1128,7 +1138,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     };
 
     /// <summary>The side whose inventory the action bar shows (the human, or whoever is to move in 2-player mode).</summary>
-    Side ActiveSide => S.VsAi ? Side.White : S.Turn;
+    Side ActiveSide => S.VsAi ? S.HumanSide : S.Turn;
 
     const string SaveKey = "chessfighter.save.v1";
     const string TutKey = "chessfighter.tutorials.v1";
@@ -1191,7 +1201,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         // Remembered choices from the New game sheet (mode and opponent).
         bool haveSettings = false;
         var sp = (settingsText ?? "").Split(':');
-        if (sp.Length >= 2 && sp.Length <= 6 && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 6)
+        if (sp.Length >= 2 && sp.Length <= 7 && int.TryParse(sp[1], out var savedAi) && savedAi >= 0 && savedAi <= 6)
         {
             if (sp.Length >= 3) opt.Drama = sp[2] != "0";
             if (sp.Length >= 5)
@@ -1199,7 +1209,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 opt.Preset = sp[3] == Presets.Custom || Presets.Find(sp[3]) != null ? sp[3] : Presets.Classic;
                 if (int.TryParse(sp[4], out var sf)) opt.Freq = (Frequency)Math.Clamp(sf, 0, 3);
             }
-            if (sp.Length == 6 && sp[5].Length > 0) opt.Custom = sp[5];
+            if (sp.Length >= 6 && sp[5].Length > 0) opt.Custom = sp[5];
+            if (sp.Length == 7 && (sp[6] is "white" or "black" or "random")) opt.PlayAs = sp[6];
             opt.Mode = sp[0] == "mystery" ? SquareMode.Mystery : SquareMode.Revealed;
             opt.Ai = savedAi;
             haveSettings = true;
@@ -1340,7 +1351,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     string? clipTitle;   // set for a puzzle replay ("DAILY: ..."); otherwise the title counts the moves
     string BuildClipJson() => ClipBuilder.Build(clipHistory, S.State, clipPlies, clipOngoing ? "" : S.ResultReason, clipOngoing ? GameResult.Ongoing : S.Result, S.VsAi,
-        clipTitle ?? (clipPlies == 1 ? "THE LAST MOVE" : $"THE LAST {clipPlies} MOVES"));
+        clipTitle ?? (clipPlies == 1 ? "THE LAST MOVE" : $"THE LAST {clipPlies} MOVES"), S.HumanSide);
 
     async Task PlayClip()
     {
@@ -1485,7 +1496,16 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         WireSession();
         reward = null;
         xpAnimDone = true;
+        _ = AiOpening(S);
         if (persist && !debugOptions) EnablePersist();
+    }
+
+    /// <summary>When the player is Black the rival opens: wait for the ROUND banner, then let it move.</summary>
+    async Task AiOpening(GameSession sess)
+    {
+        if (sess.HumanSide != Side.Black || !sess.VsAi || sess.Puzzle != null) return;
+        await Task.Delay(1500);
+        if (sess == S && sess.Moves == 0 && !sess.GameOver) await sess.ResumeAi();
     }
 
     void EnablePersist()
@@ -1524,6 +1544,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     {
         selMode = opt.Mode;
         selAi = opt.Ai;
+        selPlayAs = opt.PlayAs;
         selDrama = opt.Drama;
         selPreset = Presets.Available(opt.Preset, EffectiveLevel) ? opt.Preset : Presets.Classic;
         selFreq = Presets.FrequencyAvailable(EffectiveLevel) ? opt.Freq : Frequency.Normal;
@@ -1535,12 +1556,13 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     {
         opt.Mode = selMode;
         opt.Ai = selAi;
+        opt.PlayAs = selPlayAs;
         opt.Drama = selDrama;
         opt.Preset = selPreset;
         opt.Freq = selFreq;
         opt.Custom = selCustom;
         showNew = false;
-        _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi + ":" + (selDrama ? "1" : "0") + ":" + selPreset + ":" + (int)selFreq + ":" + selCustom);
+        _ = SetItemAsync(SettingsKey, (selMode == SquareMode.Revealed ? "revealed" : "mystery") + ":" + selAi + ":" + (selDrama ? "1" : "0") + ":" + selPreset + ":" + (int)selFreq + ":" + selCustom + ":" + selPlayAs);
         _ = StartNewAsync();
     }
 
@@ -1653,11 +1675,11 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         @{ var held = CardKinds.Where(k => S.State.CardCount(side, k) > 0).ToList(); }
         @if (held.Count > 0)
         {
-            <section class="bag @(side == Side.Black ? "opp" : "me")" data-testid="bag-@side.ToString().ToLowerInvariant()">
+            <section class="bag @(S.VsAi ? (side == S.RivalSide ? "opp" : "me") : (side == Side.Black ? "opp" : "me"))" data-testid="bag-@side.ToString().ToLowerInvariant()">
                 @foreach (var k in held)
                 {
                     var kind = k;
-                    bool mine = S.HumanTurn && S.Turn == side && (!S.VsAi || side == Side.White) && !CardInfo.IsReaction(kind);
+                    bool mine = S.HumanTurn && S.Turn == side && (!S.VsAi || side == S.HumanSide) && !CardInfo.IsReaction(kind);
                     <button class="card-item @(CardInfo.IsReaction(kind) ? "react" : "will") @(S.SelectedCard == kind ? "on" : "")" disabled="@(!mine)"
                             data-card="@kind.ToString().ToLowerInvariant()" title="@Names.CardDesc(kind)" @onclick="() => S.SelectCard(kind)">
                         <span class="ci">@Icons.Svg(Names.CardIcon(kind))</span>
@@ -1693,7 +1715,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     string InspectTitle(Piece p)
     {
-        string owner = S.VsAi ? (p.Side == Side.White ? "Your" : "Rival") : (p.Side == Side.White ? "White" : "Black");
+        string owner = S.VsAi ? (p.Side == S.HumanSide ? "Your" : "Rival") : (p.Side == Side.White ? "White" : "Black");
         return owner + " " + p.Type;
     }
 
@@ -1706,11 +1728,11 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         _ => "Nobody could finish it.",
     };
 
-    string ResultClass => S.Result == GameResult.Draw ? "draw" : (S.VsAi && S.Winner() == Side.Black ? "lose" : "win");
+    string ResultClass => S.Result == GameResult.Draw ? "draw" : (S.VsAi && S.Winner() == S.RivalSide ? "lose" : "win");
 
     string ResultTitle => S.Result == GameResult.Draw
         ? "DRAW GAME"
-        : S.VsAi ? (S.Winner() == Side.White ? "YOU WIN" : "YOU LOSE")
+        : S.VsAi ? (S.Winner() == S.HumanSide ? "YOU WIN" : "YOU LOSE")
         : (S.Winner() == Side.White ? "P1 WINS" : "P2 WINS");
 
     static readonly string[] WinQuotes =
@@ -1731,7 +1753,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     string ResultText => S.Result == GameResult.Draw
         ? DrawText
         : S.VsAi
-            ? (S.Winner() == Side.White ? WinQuotes[S.Moves % WinQuotes.Length] : LoseQuotes[S.Moves % LoseQuotes.Length])
+            ? (S.Winner() == S.HumanSide ? WinQuotes[S.Moves % WinQuotes.Length] : LoseQuotes[S.Moves % LoseQuotes.Length])
             : "Checkmate.";
 
     /// <summary>"PERFECT!" when the winner finished with every point of material, like a no-damage round.</summary>

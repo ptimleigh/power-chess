@@ -112,7 +112,7 @@ window.pcclip = (function () {
         const sqC = sq => { const p = sqXY(sq); return { x: p.x + SQ / 2, y: p.y + SQ / 2 }; };
         const later = (ms, fn) => timers.push({ at: clock + ms, fn });
         const addFx = o => { o.t0 = clock; fx.push(o); return o; };
-        const youSide = 'w';
+        const youSide = data.you || 'w';
         const who = m => data.vsAi ? (m === youSide ? 'YOU' : 'RIVAL') : (m === 'w' ? 'WHITE' : 'BLACK');
 
         function loadSnap(s) {
@@ -551,7 +551,7 @@ window.pcclip = (function () {
         function startOutro() {
             phase = 'outro';
             const win = data.result === 'w' || data.result === 'b';
-            const youWon = data.vsAi ? data.result === 'w' : win;
+            const youWon = data.vsAi ? data.result === youSide : win;
             if (data.result === '') S.ding(); else if (data.result === 'd') S.lose(); else if (youWon) S.chord(); else S.lose();
             outroAt = clock;
             zoomTarget = 1; camX = .5; camY = .5;
@@ -1220,7 +1220,7 @@ window.pcclip = (function () {
                     ctx.globalAlpha = a * .86; ctx.fillStyle = '#07041a'; ctx.fillRect(0, 0, W, H);
                     ctx.globalAlpha = a;
                     const win = data.result === 'w' || data.result === 'b';
-                    const youWon = data.vsAi ? data.result === 'w' : win;
+                    const youWon = data.vsAi ? data.result === youSide : win;
                     const ongoing = data.result === '';   // a replay of moves from a game still in progress
                     const head = ongoing ? 'TO BE CONTINUED' : data.result === 'd' ? 'DRAW GAME' : data.vsAi ? (youWon ? 'YOU WIN' : 'YOU LOSE') : (data.result === 'w' ? 'P1 WINS' : 'P2 WINS');
                     const col = ongoing ? '#aab4ff' : data.result === 'd' ? '#c9b3ff' : youWon ? GOLD : RED;

@@ -11,6 +11,8 @@ public sealed class GameOptions
     public ulong Seed = (ulong)DateTime.UtcNow.Ticks;
     /// <summary>0 = hot-seat (no AI), 1 = easy, 2 = normal, 3 = hard.</summary>
     public int Ai = 6; // Normal
+    /// <summary>Which side the player takes against the AI: "white", "black" or "random".</summary>
+    public string PlayAs = "white";
     public string? Fen;
     public List<PowerupKind> Only = new();
     public int Pairs = -1;
@@ -68,6 +70,7 @@ public sealed class GameOptions
             switch (key)
             {
                 case "seed": if (ulong.TryParse(val, out var seed)) o.Seed = seed; break;
+                case "side": if (val is "white" or "black" or "random") o.PlayAs = val; break;
                 case "ai": if (int.TryParse(val, out var ai)) o.Ai = Math.Clamp(ai, 0, 6); break;
                 case "fen": o.Fen = val; break;
                 case "pairs": if (int.TryParse(val, out var pairs)) o.Pairs = pairs; break;

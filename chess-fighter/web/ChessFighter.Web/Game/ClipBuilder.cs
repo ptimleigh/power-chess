@@ -12,7 +12,7 @@ public static class ClipBuilder
 {
     public static int Available(GameHistory history) => ReplayPlan.Available(history);
 
-    public static string Build(GameHistory history, GameState finalState, int plies, string resultReason, GameResult result, bool vsAi, string title)
+    public static string Build(GameHistory history, GameState finalState, int plies, string resultReason, GameResult result, bool vsAi, string title, Side you = Side.White)
     {
         var starts = ReplayPlan.PlyStarts(history);
         plies = ReplayPlan.Clamp(history, plies);
@@ -65,6 +65,7 @@ public static class ClipBuilder
             title,
             plies,
             vsAi,
+            you = you == Side.White ? "w" : "b",
             result = result switch { GameResult.WhiteWins => "w", GameResult.BlackWins => "b", GameResult.Draw => "d", _ => "" },
             reason = resultReason,
             start = Snapshot(start!),

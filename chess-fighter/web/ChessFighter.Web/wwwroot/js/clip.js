@@ -704,15 +704,58 @@ window.pcclip = (function () {
             }
         }
 
+        // Pixel flames shaped like the ones on the board: a curved tongue with a notch, a bright core, a glow at the base and rising embers.
+        const flameCache = {};
+        function flameSprite(cols) {
+            const key = cols.join();
+            if (flameCache[key]) return flameCache[key];
+            const W0 = 16, H0 = 24;
+            const c = document.createElement('canvas'); c.width = W0; c.height = H0;
+            const g = c.getContext('2d');
+            const poly = (pts, x0, y0, w, h) => { g.beginPath(); pts.forEach(([px, py], i) => { const X = x0 + px / 100 * w, Y = y0 + py / 100 * h; i ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.closePath(); g.fill(); };
+            const outer = [[56, 0], [63, 10], [71, 22], [82, 38], [91, 56], [94, 74], [86, 90], [70, 100], [30, 100], [14, 90], [6, 74], [9, 56], [18, 42], [28, 36], [34, 40], [40, 24], [47, 10]];
+            const core = [[52, 0], [66, 24], [86, 52], [90, 78], [74, 100], [26, 100], [10, 78], [14, 52], [34, 26]];
+            g.fillStyle = cols[2]; poly(outer, 0, 0, W0, H0);
+            g.save(); g.globalCompositeOperation = 'source-atop'; g.fillStyle = cols[1]; g.fillRect(0, 0, W0, H0 * .55); g.restore();
+            g.fillStyle = cols[0]; poly(core, W0 * .24, H0 * .42, W0 * .52, H0 * .58);
+            // no soft edges: every pixel is either solid or empty
+            const im = g.getImageData(0, 0, W0, H0), d = im.data;
+            for (let i = 3; i < d.length; i += 4) d[i] = d[i] > 110 ? 255 : 0;
+            g.putImageData(im, 0, 0);
+            return flameCache[key] = c;
+        }
+        function flameAt(cx, base, w, h, cols, lean) {
+            const spr = flameSprite(cols);
+            ctx.save();
+            ctx.imageSmoothingEnabled = false;
+            ctx.translate(Math.round(cx), Math.round(base));
+            if (lean) ctx.transform(1, 0, -lean, 1, 0, 0);
+            ctx.drawImage(spr, Math.round(-w / 2), Math.round(-h), Math.round(w), Math.round(h));
+            ctx.restore();
+        }
         function flames(x, y, cols, n, hMax, w) {
             const xs = n === 4 ? [-.9, -.3, .3, .9] : [-1, -.5, 0, .5, 1];
+            const base = Math.round(y + SQ * .42), fw = SQ * .34;
+            // a soft glow at the base joins the flames into one fire
+            ctx.save();
+            ctx.globalAlpha = .45;
+            const gr = ctx.createRadialGradient(x, base, 2, x, base, SQ * .55);
+            gr.addColorStop(0, cols[1]); gr.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gr; ctx.fillRect(x - SQ * .6, base - SQ * .6, SQ * 1.2, SQ * .7);
+            ctx.restore();
             xs.forEach((fx, i) => {
-                const h = Math.round(hMax * (.65 + .35 * Math.sin(real / 110 + i * 1.9)) * (1 - Math.abs(fx) * .25));
-                const px = Math.round(x + fx * SQ * .4 - w / 2), base = Math.round(y + SQ * .4);
-                ctx.fillStyle = cols[2]; ctx.fillRect(px, base - h * .42, w, h * .42);
-                ctx.fillStyle = cols[1]; ctx.fillRect(px + w * .1, base - h * .76, w * .8, h * .34);
-                ctx.fillStyle = cols[0]; ctx.fillRect(px + w * .25, base - h, w * .5, h * .24);
+                const ph = Math.sin(real / 110 + i * 1.9);
+                const h = Math.round(hMax * (.7 + .3 * ph) * (1 - Math.abs(fx) * .28));
+                flameAt(x + fx * SQ * .36, base, fw, h, cols, .12 * Math.sin(real / 150 + i));
             });
+            // embers drifting up
+            ctx.fillStyle = cols[0];
+            for (let i = 0; i < 4; i++) {
+                const t = ((real / 900) + i * .25) % 1;
+                ctx.globalAlpha = 1 - t;
+                ctx.fillRect(Math.round(x + Math.sin(i * 2.4) * SQ * .38), Math.round(base - SQ * .3 - t * hMax * .9), 5, 5);
+            }
+            ctx.globalAlpha = 1;
         }
 
         function drawAura(p, x, y) {
@@ -750,6 +793,7 @@ window.pcclip = (function () {
                 const th = sp.height > sp.width * 1.3 ? size * 1.08 : size;
                 drawSprite(sp, x, y + bob - (th - size) / 2, th);
             }
+            if (p.burn > 0) flames(x, y, ['#fff7d0', '#ffb62a', '#ff4a14'], 5, SQ * (.55 + .6 * p.burn), 14); // a burning piece (fireball, dragon) goes up in flames
             ctx.restore();
 
             // markers on top: tiers, bomb fuse, orbiting hooks, armor ring, stun
@@ -879,20 +923,24 @@ window.pcclip = (function () {
                     break;
                 }
                 case 'fireball': {
-                    const x = f.from.x + (f.to.x - f.from.x) * k, y = f.from.y + (f.to.y - f.from.y) * k;
-                    const cols = f.gold ? FLAME.gold : ['#fff', '#ffd24a', '#ff5a1c'];
-                    for (let i = 8; i >= 1; i--) {
-                        const kk = Math.max(0, k - i * .025);
-                        const tx = f.from.x + (f.to.x - f.from.x) * kk, ty = f.from.y + (f.to.y - f.from.y) * kk;
-                        const s = Math.round((52 - i * 4) / 4) * 4;
-                        ctx.globalAlpha = .75 - i * .07; ctx.fillStyle = cols[2];
-                        ctx.fillRect(Math.round(tx / 4) * 4 - s / 2, Math.round(ty / 4) * 4 - s / 2, s, s);
+                    const dx = f.to.x - f.from.x, dy = f.to.y - f.from.y, len = Math.hypot(dx, dy) || 1;
+                    const x = f.from.x + dx * k, y = f.from.y + dy * k;
+                    const cols = f.gold ? FLAME.gold : ['#fff7d0', '#ffb62a', '#ff4a14'];
+                    // flame tongues streaming back from the head, then a round pixel head with a bright core
+                    const ang = Math.atan2(-dx / len, dy / len);
+                    for (let i = 0; i < 3; i++) {
+                        const back = 26 + i * 30 + Math.sin(real / 90 + i * 2) * 6, side = (i - 1) * 18;
+                        const bx = x - dx / len * back - dy / len * side, by = y - dy / len * back + dx / len * side;
+                        ctx.save(); ctx.translate(bx, by); ctx.rotate(ang);
+                        ctx.imageSmoothingEnabled = false;
+                        const spr = flameSprite(cols), w = 56 - i * 8, h = 110 - i * 22;
+                        ctx.globalAlpha = 1 - i * .18;
+                        ctx.drawImage(spr, Math.round(-w / 2), Math.round(-h * .1), w, h);
+                        ctx.restore();
                     }
                     ctx.globalAlpha = 1;
-                    ctx.fillStyle = '#000'; ctx.fillRect(x - 32, y - 32, 64, 64);
-                    ctx.fillStyle = cols[2]; ctx.fillRect(x - 28, y - 28, 56, 56);
-                    ctx.fillStyle = cols[1]; ctx.fillRect(x - 20, y - 20, 40, 40);
-                    ctx.fillStyle = cols[0]; ctx.fillRect(x - 10, y - 10, 20, 20);
+                    const disc = (r, col) => { ctx.fillStyle = col; for (let yy = -r; yy <= r; yy += 4) { const hw = Math.sqrt(r * r - yy * yy); ctx.fillRect(Math.round(x - hw), Math.round(y + yy), Math.round(hw * 2), 4); } };
+                    disc(34, '#000'); disc(30, cols[2]); disc(22, cols[1]); disc(12, cols[0]);
                     break;
                 }
                 case 'dragon': {

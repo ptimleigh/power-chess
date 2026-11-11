@@ -457,7 +457,7 @@ window.pcclip = (function () {
                     const mk = beat.after.p.find(a => a[1] === 6 && a[2] !== moverSide);
                     if (mk) later(Math.max(0, T - 120), () => punch(mk[0], 1.1, .4, 1000));
                 }
-                later(T + 160, () => { S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
+                later(T + 160, () => { S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; if (koReady()) { addFx({ kind: 'ko', dur: 1800 }); later(380, () => { S.hit(true); doShake(26); doFlash('255,240,200', .45); }); } else callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
                 return endAt + 1350;
             }
             if (beat.check && !beat.mate) later(Math.max(0, T - 100), () => { callout('CHECK!', W / 2, BY - 4, RED, true); S.ding(); vignette = Math.max(vignette, .5); });
@@ -597,10 +597,38 @@ window.pcclip = (function () {
             jobs.push(new Promise(res => { li.onload = li.onerror = res; }));
             li.src = 'img/logo.png';
             logoImg = li;
+            for (const L of ['k', 'o']) {
+                const im = new Image();
+                jobs.push(new Promise(res => { im.onload = im.onerror = res; }));
+                im.src = 'img/ko_' + L + '.png';
+                koImg[L] = im;
+            }
             return Promise.all(jobs);
         }
         // The real Chess Fighter logo (soft edges, so smoothing stays on), centred on (cx, cy), `w` wide.
         let logoImg = null;
+        const koImg = {};
+        const koReady = () => ['k', 'o'].every(l => koImg[l] && koImg[l].complete && koImg[l].naturalWidth);
+        // The big graffiti K and O: each slams in with a shake of its own, then they jitter while the screen shakes.
+        function drawKO(ms, cx, cy, scale, still) {
+            const parts = [['k', -.5, 0], ['o', .5, 380]];
+            for (const [l, side, delay] of parts) {
+                const im = koImg[l], w = im.naturalWidth * scale, h = im.naturalHeight * scale;
+                const t = ms - delay;
+                if (!still && t < 0) continue;
+                const slam = still || t > 160 ? 1 : 2.6 - (t / 160) * 1.6;           // drops in big, then settles
+                const amp = still ? 0 : Math.max(0, 1 - t / 900) * 22 + 3;               // hard shake right after the hit, a small jitter after
+                const step = Math.floor(real / 40);
+                const jx = still ? 0 : Math.sin(step * 12.9898 + side) * amp, jy = still ? 0 : Math.cos(step * 78.233 + side) * amp;
+                const gap = w * .04;
+                const x = cx + side * (w + gap) - w / 2 + jx, y = cy - h / 2 + jy;
+                ctx.save(); ctx.imageSmoothingEnabled = false;
+                ctx.translate(x + w / 2, y + h / 2); ctx.scale(slam, slam);
+                if (!still) ctx.rotate(Math.sin(step * 3.1 + side) * .03 * (amp / 10));
+                ctx.drawImage(im, -w / 2, -h / 2, w, h);
+                ctx.restore();
+            }
+        }
         function logoPic(cx, cy, w) {
             if (!logoImg || !logoImg.complete || !logoImg.naturalWidth) return false;
             const h = w * logoImg.naturalHeight / logoImg.naturalWidth;
@@ -1038,6 +1066,11 @@ window.pcclip = (function () {
                     ptext('CARD PLAYED', W / 2, y + 100, 12, '#aab4ff');
                     break;
                 }
+                case 'ko': {
+                    ctx.globalAlpha = k > .85 ? 1 - (k - .85) / .15 : 1;
+                    drawKO(clock - f.t0, W / 2, BY + BOARD / 2 - 10, .5, false);
+                    break;
+                }
                 case 'combo': {
                     const pop = k < .12 ? 1.7 - (k / .12) * .7 : 1;
                     ctx.globalAlpha = k > .78 ? 1 - (k - .78) / .22 : 1;
@@ -1088,7 +1121,7 @@ window.pcclip = (function () {
                     const pop = k < .2 ? .6 + k / .2 * .4 : 1;
                     const ko = /checkmate|missile|both/i.test(data.reason || '') && data.result !== 'd';
                     ctx.save(); ctx.translate(W / 2, 410); ctx.scale(pop, pop);
-                    if (ko) logo('K.O.', 0, -130, 90);
+                    if (ko) { if (koReady()) drawKO(0, 0, -150, .3, true); else logo('K.O.', 0, -130, 90); }
                     logo(head, 0, 0, head.length > 8 ? 56 : 72);
                     ctx.restore();
                     if (data.reason) ptext(data.reason.toUpperCase(), W / 2, 560, 18, '#e8e0ff');

@@ -102,6 +102,7 @@ window.pcclip = (function () {
         let timers = [];            // {at, fn} in game time
         let hud = { moveNo: 0, label: '', mover: '', banner: '', bannerAt: -1e9, hpShow: [100, 100], hpTarget: [100, 100] };
         let phase = 'intro';
+        let quietRun = 0, comboHits = 0, comboMover = null;
         let finished = false, stopped = false, resolveDone = null;
         let startSnap = data.start;
         const total = data.beats.length;
@@ -161,6 +162,8 @@ window.pcclip = (function () {
         function doFlash(color, a) { flash = a || 1; flashColor = color || '255,255,255'; }
         function freeze(ms) { freezeLeft = Math.max(freezeLeft, ms); }
         function slowmo(sc, rampMs) { scale = sc; scaleTarget = 1; scaleRamp = rampMs; }
+        // Camera punch-in on a big moment: zoom toward the square and drop into slow motion, then ease back (the beat resets the zoom when it ends).
+        function punch(sq, z, sc, ms) { const c = sqC(sq); zoomTarget = Math.max(zoomTarget, z); camX = c.x / W; camY = c.y / H; slowmo(sc, ms); }
 
         // ---- sounds
         const S = {
@@ -187,6 +190,22 @@ window.pcclip = (function () {
             hud.bannerAt = clock;
             const BIG = ['Captured', 'Destroyed', 'Converted', 'FireballFired', 'Detonated', 'MissileStruck', 'DragonFire', 'ShivaStrike', 'Leaped', 'ZapFired', 'BoardFlipped'];
             const dramatic = evs.some(e => BIG.indexOf(e.k) >= 0);
+            // Quiet beats (plain moves, nothing at stake) play fast, and faster the longer the quiet stretch, so the big moments stand out.
+            const quiet = !dramatic && !beat.check && !beat.mate && !isLast && index > 0 && evs.every(e => e.k === 'Moved' || e.k === 'Castled');
+            quietRun = quiet ? quietRun + 1 : 0;
+            scaleTarget = quiet ? (quietRun >= 3 ? 2.6 : 1.8) : 1; scaleRamp = 120;
+            if (!quiet && scale > 1) scale = 1;
+            // Hits (captures and destroyed rival pieces) pop a combo counter from the second one on. The count carries over while the same side keeps
+            // moving (a Leap chain or a Combo move is several beats in a row) and resets when the other side plays.
+            const moverSide = beat.mover === 'w' ? 0 : 1;
+            const isHit = e => e.k === 'Captured' || (e.k === 'Destroyed' && e.s !== moverSide);
+            if (comboMover !== beat.mover) comboHits = 0;
+            comboMover = beat.mover;
+            const nb = data.beats[index + 1];
+            const comboGoesOn = !!nb && nb.mover === beat.mover && nb.ev.some(isHit);
+            let punched = false;
+            const hit = ms => later(ms, () => { comboHits++; if (comboHits >= 2) { addFx({ kind: 'combo', n: comboHits, last: comboHits >= 3 && !comboGoesOn, dur: 1100 }); snd.tone(420 + comboHits * 110, .14, 'square', .1); } });
+            const bigPunch = (sq, z, sc, ms) => { punched = true; punch(sq, z, sc, ms); };
             const cardName = e => ((data.cards && data.cards[e.c]) || '').toUpperCase();
             const mid = { x: W / 2, y: BY + BOARD / 2 };
 
@@ -248,7 +267,9 @@ window.pcclip = (function () {
                             addFx({ kind: 'slash', x: c.x, y: c.y, dur: 380, flip: e.t % 2 === 0 });
                             S.slash();
                             if (finalStrike) doFlash('255,255,255', .9);
+                            else if (heavy) bigPunch(e.t, 1.16, .45, 800);
                         });
+                        hit(t + 40);
                         later(t + 40, () => {
                             if (victim) kill(victim, 'fade');
                             burst(c.x, c.y, e.s === 0 ? '#ffd23f' : '#ff6a55', heavy ? 34 : 22, heavy ? 520 : 380);
@@ -278,7 +299,8 @@ window.pcclip = (function () {
                         later(t, () => { addFx({ kind: 'fireball', from: sqC(e.f), to: sqC(target), dur, gold }); S.fire(); callout(gold ? 'FIREBALL II!' : 'FIREBALL!', sqC(e.f).x, sqC(e.f).y - 70, gold ? GOLD : '#ff9a3c', true); });
                         for (const v of victims) {
                             const delay = dur * dist(e.f, v) / far;
-                            later(t + delay, () => { const p = at(v); if (p) kill(p, 'fire'); const c = sqC(v); burst(c.x, c.y, '#ff7a1c', 26, 420); doShake(12); S.hit(false); });
+                            later(t + delay, () => { const p = at(v); if (p) kill(p, 'fire'); const c = sqC(v); burst(c.x, c.y, '#ff7a1c', 26, 420); doShake(12); S.hit(false); if (v === target) bigPunch(v, 1.14, .5, 800); });
+                            if (evs.some(x => isHit(x) && x.f === v)) hit(t + delay);
                         }
                         handled.push(...victims);
                         T += dur + 650;
@@ -288,12 +310,13 @@ window.pcclip = (function () {
                         if (handled.indexOf(e.f) >= 0) break;
                         const t = T; const c = sqC(e.f);
                         later(t, () => { const p = at(e.f); if (p) kill(p, burnAll ? 'fire' : 'fade'); burst(c.x, c.y, burnAll ? '#ff7a1c' : '#ffd23f', 26, 440); doShake(10); S.hit(false); });
+                        if (isHit(e)) hit(t);
                         break;
                     }
                     case 'Detonated': {
                         const big = (names[e.u] || '').toLowerCase().indexOf('big') >= 0;
                         const c = sqC(e.f);
-                        later(T, () => { addFx({ kind: 'ring', x: c.x, y: c.y, dur: 700, color: '#ff8c3a', max: SQ * (big ? 3.1 : 1.9) }); doFlash('255,160,60', .8); doShake(big ? 30 : 20); S.bomb(); callout(big ? 'BOMB II!' : 'BOOM!', c.x, c.y - 90, '#ff9a3c', true); freeze(120); });
+                        later(T, () => { bigPunch(e.f, big ? 1.12 : 1.1, .55, 900); addFx({ kind: 'ring', x: c.x, y: c.y, dur: 700, color: '#ff8c3a', max: SQ * (big ? 3.1 : 1.9) }); doFlash('255,160,60', .8); doShake(big ? 30 : 20); S.bomb(); callout(big ? 'BOMB II!' : 'BOOM!', c.x, c.y - 90, '#ff9a3c', true); freeze(120); });
                         T += 320;
                         break;
                     }
@@ -317,7 +340,8 @@ window.pcclip = (function () {
                     }
                     case 'Leaped': {
                         const a = sqC(e.f), b = sqC(e.t);
-                        later(T, () => { const p = at(e.f); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); });
+                        const chainLast = evs.slice(i + 1).every(x => x.k !== 'Leaped'), chainLen = evs.filter(x => x.k === 'Leaped').length;
+                        later(T, () => { const p = at(e.f); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); if (chainLast && (chainLen >= 2 || comboHits >= 1)) bigPunch(e.t, 1.14, .5, 700); });
                         T += 450;
                         break;
                     }
@@ -424,6 +448,7 @@ window.pcclip = (function () {
             }
 
             // end of beat: reconcile with the engine's position
+            if (!(isLast && beat.mate)) later(T + 30, () => { if (punched) { zoomTarget = 1; camX = .5; camY = .5; } });
             later(T + 40, () => reconcile(beat));
             const endAt = T + 40 + (dramatic ? 520 : 340);
             if (isLast && beat.mate) {
@@ -972,6 +997,16 @@ window.pcclip = (function () {
                     ptext(f.text, 0, 0, 30, f.color);
                     ctx.restore();
                     ptext('CARD PLAYED', W / 2, y + 100, 12, '#aab4ff');
+                    break;
+                }
+                case 'combo': {
+                    const pop = k < .12 ? 1.7 - (k / .12) * .7 : 1;
+                    ctx.globalAlpha = k > .78 ? 1 - (k - .78) / .22 : 1;
+                    const col = f.n >= 4 ? RED : GOLD;
+                    ctx.translate(BX + 96, BY + BOARD * .3); ctx.rotate(-.12); ctx.scale(pop, pop);
+                    ptext(String(f.n), 0, 0, 88, col);
+                    ptext('HITS', 0, 66, 22, '#fff');
+                    if (f.last) ptext('COMBO!', 0, 104, 24, '#ffe23a');
                     break;
                 }
                 case 'text': {

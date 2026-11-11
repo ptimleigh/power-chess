@@ -157,7 +157,7 @@ window.pcclip = (function () {
             }
             addFx({ kind: 'burst', x, y, dur: 700, color, parts });
         }
-        function callout(text, x, y, color, big) { addFx({ kind: 'text', x, y, dur: big ? 1500 : 950, text, color: color || '#ffd24a', big: !!big }); }
+        function callout(text, x, y, color, big, dur) { addFx({ kind: 'text', x, y, dur: dur || (big ? 1500 : 950), text, color: color || '#ffd24a', big: !!big }); }
         function doShake(n) { shake = Math.max(shake, n); }
         function doFlash(color, a) { flash = a || 1; flashColor = color || '255,255,255'; }
         function freeze(ms) { freezeLeft = Math.max(freezeLeft, ms); }
@@ -224,7 +224,7 @@ window.pcclip = (function () {
                         later(t, () => {
                             S.move();
                             if (striking) addFx({ kind: 'streak', from: sqC(e.f), to: sqC(e.t), dur: 320 });
-                            if (finalStrike) { slowmo(.4, 900); zoomTarget = 1.2; const c = sqC(e.t); camX = c.x / W; camY = c.y / H; }
+                            if (finalStrike) { slowmo(.4, 900); zoomTarget = 1.12; const c = sqC(e.t); camX = c.x / W; camY = c.y / H; }
                             slide(p, e.t, striking ? (finalStrike ? 520 : 240) : 430, striking ? easeIn : easeInOut, striking ? 0 : 14);
                         });
                         T += striking ? (finalStrike ? 520 : 240) : 430;
@@ -267,7 +267,7 @@ window.pcclip = (function () {
                             addFx({ kind: 'slash', x: c.x, y: c.y, dur: 380, flip: e.t % 2 === 0 });
                             S.slash();
                             if (finalStrike) doFlash('255,255,255', .9);
-                            else if (heavy) bigPunch(e.t, 1.16, .45, 800);
+                            else if (heavy) bigPunch(e.t, 1.09, .45, 800);
                         });
                         countHit(t + 40);
                         later(t + 40, () => {
@@ -275,7 +275,7 @@ window.pcclip = (function () {
                             burst(c.x, c.y, e.s === 0 ? '#ffd23f' : '#ff6a55', heavy ? 34 : 22, heavy ? 520 : 380);
                             doShake(heavy ? 22 : 12);
                             S.hit(heavy);
-                            if (word && !finalStrike) callout(word, c.x, c.y - 70, heavy ? RED : GOLD, heavy);
+                            if (word && !finalStrike) callout(word, c.x, c.y - 70, heavy ? RED : GOLD, heavy, 650);
                         });
                         T += 200 + hit * .5;
                         break;
@@ -299,7 +299,7 @@ window.pcclip = (function () {
                         later(t, () => { addFx({ kind: 'fireball', from: sqC(e.f), to: sqC(target), dur, gold }); S.fire(); callout(gold ? 'FIREBALL II!' : 'FIREBALL!', sqC(e.f).x, sqC(e.f).y - 70, gold ? GOLD : '#ff9a3c', true); });
                         for (const v of victims) {
                             const delay = dur * dist(e.f, v) / far;
-                            later(t + delay, () => { const p = at(v); if (p) kill(p, 'fire'); const c = sqC(v); burst(c.x, c.y, '#ff7a1c', 26, 420); doShake(12); S.hit(false); if (v === target) bigPunch(v, 1.14, .5, 800); });
+                            later(t + delay, () => { const p = at(v); if (p) kill(p, 'fire'); const c = sqC(v); burst(c.x, c.y, '#ff7a1c', 26, 420); doShake(12); S.hit(false); if (v === target) bigPunch(v, 1.08, .5, 800); });
                             if (evs.some(x => isHit(x) && x.f === v)) countHit(t + delay);
                         }
                         handled.push(...victims);
@@ -316,7 +316,7 @@ window.pcclip = (function () {
                     case 'Detonated': {
                         const big = (names[e.u] || '').toLowerCase().indexOf('big') >= 0;
                         const c = sqC(e.f);
-                        later(T, () => { bigPunch(e.f, big ? 1.12 : 1.1, .55, 900); addFx({ kind: 'ring', x: c.x, y: c.y, dur: 700, color: '#ff8c3a', max: SQ * (big ? 3.1 : 1.9) }); doFlash('255,160,60', .8); doShake(big ? 30 : 20); S.bomb(); callout(big ? 'BOMB II!' : 'BOOM!', c.x, c.y - 90, '#ff9a3c', true); freeze(120); });
+                        later(T, () => { bigPunch(e.f, big ? 1.08 : 1.07, .55, 900); addFx({ kind: 'ring', x: c.x, y: c.y, dur: 700, color: '#ff8c3a', max: SQ * (big ? 3.1 : 1.9) }); doFlash('255,160,60', .8); doShake(big ? 30 : 20); S.bomb(); callout(big ? 'BOMB II!' : 'BOOM!', c.x, c.y - 90, '#ff9a3c', true); freeze(120); });
                         T += 320;
                         break;
                     }
@@ -341,7 +341,7 @@ window.pcclip = (function () {
                     case 'Leaped': {
                         const a = sqC(e.f), b = sqC(e.t);
                         const chainLast = evs.slice(i + 1).every(x => x.k !== 'Leaped'), chainLen = evs.filter(x => x.k === 'Leaped').length;
-                        later(T, () => { const p = at(e.f); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); if (chainLast && (chainLen >= 2 || comboHits >= 1)) bigPunch(e.t, 1.14, .5, 700); });
+                        later(T, () => { const p = at(e.f); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); if (chainLast && (chainLen >= 2 || comboHits >= 1)) bigPunch(e.t, 1.09, .5, 700); });
                         T += 450;
                         break;
                     }
@@ -352,7 +352,7 @@ window.pcclip = (function () {
                     }
                     case 'Promoted': {
                         const c = sqC(e.t);
-                        later(T, () => { addFx({ kind: 'ring', x: c.x, y: c.y, dur: 700, color: GOLD, max: SQ * 1.8 }); callout('PROMOTED!', c.x, c.y - 70, GOLD, true); S.ding(); });
+                        later(T, () => { addFx({ kind: 'ring', x: c.x, y: c.y, dur: 700, color: GOLD, max: SQ * 1.8 }); if (!(isLast && beat.mate)) callout('PROMOTED!', c.x, c.y - 70, GOLD, true); S.ding(); });
                         T += 450;
                         break;
                     }
@@ -452,6 +452,11 @@ window.pcclip = (function () {
             later(T + 40, () => reconcile(beat));
             const endAt = T + 40 + (dramatic ? 520 : 340);
             if (isLast && beat.mate) {
+                if (zoomTarget === 1) {
+                    // a mate with no capture (a quiet move, a promotion, a Leap): still zoom in on the king and slow down
+                    const mk = beat.after.p.find(a => a[1] === 6 && a[2] !== moverSide);
+                    if (mk) later(Math.max(0, T - 120), () => punch(mk[0], 1.1, .4, 1000));
+                }
                 later(T + 160, () => { S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
                 return endAt + 1350;
             }
@@ -1089,7 +1094,7 @@ window.pcclip = (function () {
                     if (data.reason) ptext(data.reason.toUpperCase(), W / 2, 560, 18, '#e8e0ff');
                     ctx.save(); ctx.translate(W / 2, 800); if (!logoPic(0, 0, 420)) { logo('CHESS', 0, -36, 52); logo('FIGHTER', 0, 28, 52); } ctx.restore();
                     ptext('16-BIT CHESS WITH POWERUPS', W / 2, 900, 14, CYAN);
-                    ptext(endCardLink(), W / 2, 1000, 13, '#c9b3ff');
+                    ptext(endCardLink(), W / 2, 1000, 16, '#e8e0ff');
                     break;
                 }
             }
@@ -1127,7 +1132,7 @@ window.pcclip = (function () {
                 ctx.fillStyle = '#000'; ctx.fillRect(x - 2, 190, pipW + 4, 14);
                 ctx.fillStyle = i < hud.moveNo ? CYAN : '#3a3470'; ctx.fillRect(x, 192, pipW, 10);
             }
-            ptext(footerText(), W / 2, 1200, 12, 'rgba(201,179,255,.95)');
+            ptext(footerText(), W / 2, 1200, 13, '#e8e0ff');
             if (phase === 'beats' && hud.moveNo > 0) {
                 const age = Math.min(1, (clock - hud.bannerAt) / 260);
                 ctx.globalAlpha = age;

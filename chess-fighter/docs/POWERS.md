@@ -33,7 +33,7 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 |---|---|---|
 | **Combo +2** | The piece that lands moves 2 more times in a row: 3 moves in all. Giving check ends the combo. Landing on another Combo adds its moves. | **Built** (same piece only) |
 | **Combo +4** | Same with 4 more moves: 5 in all. | **Built** |
-| **Stun** | Immediately shoot a stun beam (lightning bolt) in any direction. The piece cannot move for 2 turns (was 1; `Rules.StunBoltTurns`). A king stunned with no other way out of check is mate. | **Built** |
+| **Stun** | Immediately shoot a stun beam (lightning bolt) in any direction. The piece cannot move for 2 turns (was 1; `Rules.StunBoltTurns`). A king cannot be stunned. | **Built** |
 | **Steal** | Steal any rival piece in the 3x3 around the power-up square. Not kings. | **Built** |
 | **Draw Card** | Draw a card, to use instantly or at will depending on the card. | **Built** |
 | **Armor** | Use immediately. The piece cannot be captured for 3 turns, even if it never moves. Not spiked. | Built (as Spiked Armor, renamed in the UI) |
@@ -74,7 +74,7 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World 
   The chain follows bombs of either colour caught in the blast. The status line spells out a bomb check.
 - **Stun and Steal are aimed right after landing** (the lander picks the target, and nothing else can be done until then). With no
   legal target the power fizzles and the square is used up. A choice that would leave your own king in check is not offered.
-  Stun hits the first enemy on any of 8 lines for 2 turns (`Rules.StunBoltTurns`) (a king can be hit; armored pieces are immune). Steal takes a non-king,
+  Stun hits the first enemy on any of 8 lines for 2 turns (`Rules.StunBoltTurns`) (a king and armored pieces are immune). Steal takes a non-king,
   non-armored rival in the 3x3 around the lander; the stolen piece stays put and loses its buffs.
 - **Cards:** an immediate card (boulder, promotion) is aimed right after it is drawn; if it has no legal use it goes into the bag instead.
   Bag cards are played from the bag on your turn and cost it. A card that could never be used is never drawn (Smash needs a boulder on the
@@ -150,7 +150,7 @@ Code: `FighterUnlocks` in `Unlocks.cs`.
 
 Original: First Win, Checkmate, Flawless, Pyro (burn 3 pieces with fireballs in one game), Demolition, Collector (5 power squares of any kind),
 Thief, Warp Drive, Phantom, Hard Won, Regular, Daily Dose, On a Roll, Week Warrior, Devoted, Grandmaster Slayer.
-Added: Nuh-uh!, Card Shark (5 cards in a game), Caïssa's Favor (bring back a queen), Upside Down, Take Two, Hook Line, Deep Freeze (stun a king),
+Added: Nuh-uh!, Card Shark (5 cards in a game), Caïssa's Favor (bring back a queen), Upside Down, Take Two, Hook Line, Deep Freeze (stun a queen),
 Combo Breaker (5 moves in a row), Level II (upgrade a power), Dragon's Breath (3+ pieces with one Dragon Strike), Smite (3 pieces with Summon Shiva),
 Incoming! (win with a missile), Veteran (level 10), Master of Squares (level 20).
 Each new trophy is worth 25 XP, but one game pays at most 50 XP in trophies.

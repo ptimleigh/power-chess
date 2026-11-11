@@ -71,7 +71,7 @@ namespace ChessFighter.Core.Tests
         public void Power_trophies_hook_freeze_upgrade_and_combo()
         {
             Assert.IsTrue(Earns("Hook, Line", Play(E(EventKind.HarpoonFired, Side.White))));
-            Assert.IsTrue(Earns("Deep Freeze", Play(E(EventKind.StunStruck, Side.White, PieceType.King, PowerupKind.StunBolt))));
+            Assert.IsTrue(Earns("Deep Freeze", Play(E(EventKind.StunStruck, Side.White, PieceType.Queen, PowerupKind.StunBolt))));
             Assert.IsFalse(Earns("Deep Freeze", Play(E(EventKind.StunStruck, Side.White, PieceType.Rook, PowerupKind.StunBolt))));
             Assert.IsTrue(Earns("Level II", Play(E(EventKind.PowerUpgraded, Side.White))));
             var combo = Enumerable.Range(0, 5).Select(_ => E(EventKind.Moved, Side.White)).ToList();

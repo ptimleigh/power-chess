@@ -347,17 +347,13 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void A_stun_bolt_can_hit_a_king_and_a_stunned_king_with_no_way_out_is_mate()
+        public void A_king_cannot_be_stunned()
         {
-            // Rook a1 lands on a8 (a Stun square) giving check along the eighth rank, then stuns the king on h8 so it cannot escape to g7.
+            // Rook a1 lands on a8 (a Stun square) giving check; the king on h8 is in line but is not a legal target, so the square fizzles.
             var s = T.Fen("7k/7p/8/8/8/8/8/R3K3 w - - 0 1");
             T.Square(s, "a8", PowerupKind.StunBolt);
             T.Do(s, "a1a8");
-            Assert.IsTrue(MoveGen.LegalActions(s).Any(a => a.Kind == ActionKind.StunBeam && a.To == Sq.Parse("h8")), "the king is a legal target");
-            T.Do(s, "StunBeam a8->h8");
-            string reason;
-            Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(s, out reason));
-            Assert.AreEqual("Checkmate", reason);
+            Assert.IsFalse(MoveGen.LegalActions(s).Any(a => a.Kind == ActionKind.StunBeam), "no bolt can be aimed at a king");
         }
 
         [Test]

@@ -116,7 +116,7 @@ namespace ChessFighter.Core
                         if (e.Side == me) s.HarpoonHooks++;
                         break;
                     case EventKind.StunStruck:
-                        if (e.Side == me && e.Powerup == PowerupKind.StunBolt && e.Piece == PieceType.King) s.FrozeKing = true;
+                        if (e.Side == me && e.Powerup == PowerupKind.StunBolt && e.Piece == PieceType.Queen) s.FrozeKing = true;
                         break;
                     case EventKind.PowerUpgraded:
                         if (e.Side == me) s.Upgrades++;
@@ -219,7 +219,7 @@ namespace ChessFighter.Core
             new Trophy(19, "Upside Down", "Win after playing World Turned Upside Down.", (m, p) => m.Won && m.UsedWorld),
             new Trophy(20, "Take Two", "Win after playing Take Back.", (m, p) => m.Won && m.UsedTakeBack),
             new Trophy(21, "Hook, Line", "Hook a rival with a Harpoon.", (m, p) => m.HarpoonHooks > 0),
-            new Trophy(22, "Deep Freeze", "Freeze a king with a Stun Bolt.", (m, p) => m.FrozeKing),
+            new Trophy(22, "Deep Freeze", "Freeze a queen with a Stun Bolt.", (m, p) => m.FrozeKing),
             new Trophy(23, "Combo Breaker", "Make 5 moves in a row with a +4 combo.", (m, p) => m.BestRun >= 5),
             new Trophy(24, "Level II", "Upgrade a power to its second tier.", (m, p) => m.Upgrades > 0),
             new Trophy(25, "Dragon's Breath", "Burn 3 or more rival pieces with one Dragon Strike.", (m, p) => m.BestDragonBurn >= 3),

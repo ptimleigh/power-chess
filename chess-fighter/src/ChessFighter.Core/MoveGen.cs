@@ -112,7 +112,7 @@ namespace ChessFighter.Core
                     int t = Geometry.FirstPieceInLine(s, from, dir);
                     if (t < 0) continue;
                     var p = s.Cells[t];
-                    if (p.Side == me || p.Has(Buff.Armor) || p.IsStunned) continue;
+                    if (p.Side == me || p.Has(Buff.Armor) || p.IsStunned || p.Type == PieceType.King) continue; // a king cannot be stunned
                     pseudo.Add(new GameAction(ActionKind.StunBeam, from, t, dir));
                 }
             }

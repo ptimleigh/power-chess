@@ -204,6 +204,8 @@ namespace ChessFighter.Core
             if (idx < 0) return -1;
             var p = s.Cells[idx];
             if (p.Side == shooter.Side || p.Has(Buff.Armor)) return -1;
+            // a king cannot be stunned, so a king the hook cannot pull any closer (already adjacent, or powerup squares in the way) is not a target
+            if (p.Type == PieceType.King && HarpoonLanding(s, from, idx, dir) == idx) return -1;
             return idx;
         }
 

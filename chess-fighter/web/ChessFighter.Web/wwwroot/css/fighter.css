@@ -777,7 +777,6 @@ html, body {
 /* ---------- playing Black: the board is turned half way round so your pieces are at the bottom; pieces and text stay upright ---------- */
 .board.pov-black { rotate: 180deg; }
 .board.pov-black .sq, .board.pov-black .piece, .board.pov-black .fx-callout { rotate: 180deg; }
-.board.pov-black .fx-dragonrow .dr-img { rotate: 180deg; }
 .board.pov-black .fx-sword { transform: translate(-50%, 0); rotate: 180deg; animation-name: swordfall-r; }
 @keyframes swordfall-r { 0% { top: 130%; opacity: 1; } 50% { top: var(--ty); opacity: 1; } 80% { top: var(--ty); opacity: 1; } 100% { top: var(--ty); opacity: 0; } }
 .seg.three { display: grid; grid-template-columns: repeat(3, 1fr); }

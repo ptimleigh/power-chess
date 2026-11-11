@@ -85,7 +85,7 @@ public static partial class Sprites
     }
 
     /// <summary>Use the full-colour piece art (ivory against black) instead of the shared-palette 32x32 sprites, which stay as a fallback.</summary>
-    public static bool HasArt => true;
+    public static bool HasArt => false; // the original sprites are in use; the sheet-based art stays in the project, switched off
 
     static readonly Dictionary<(PieceType, Side), ArtSprite> art = BuildArt();
     static readonly Dictionary<(PieceType, Side), string> artMarkup = new();

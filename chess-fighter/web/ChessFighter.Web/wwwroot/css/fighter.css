@@ -476,8 +476,8 @@ html, body {
 /* ---------- Harpoon: a small bishop orbits the piece (four at tier II) ---------- */
 .orbit { position: absolute; inset: 6%; z-index: 2; pointer-events: none; animation: orbitspin 3.2s steps(16) infinite linear; }
 .orbit.tier2 { animation-duration: 2.4s; }
-.orb { position: absolute; left: 50%; top: 50%; width: 28%; height: 28%; margin: -14%; transform: rotate(var(--a)) translateY(-150%); filter: drop-shadow(1px 1px 0 #000); }
-.orb svg { width: 100%; height: 100%; display: block; }
+.orb { position: absolute; left: 50%; top: 50%; width: 36%; height: 36%; margin: -18%; transform: rotate(var(--a)) translateY(-150%); filter: drop-shadow(1px 1px 0 #000); }
+.orb .piece-svg { width: 100%; height: 100%; display: block; }
 @keyframes orbitspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .orbit { animation: none; } }
 .fx-beam.rope { height: 6px; margin-top: -3px; background: repeating-linear-gradient(90deg, #d9a35a 0 6px, #6b3d12 6px 12px); box-shadow: 0 0 0 2px #000; }
@@ -489,7 +489,10 @@ html, body {
 .piece.poisoned .piece-body { filter: drop-shadow(0 3px 0 #000a) drop-shadow(2px 0 0 #b05cff) drop-shadow(-2px 0 0 #b05cff); }
 
 /* ---------- Bomb: a sparking fuse above the piece (longer and brighter at tier II) ---------- */
-.wick { position: absolute; left: 50%; top: -14%; width: 8%; height: 24%; transform: translateX(-50%); z-index: 3; pointer-events: none; background: repeating-linear-gradient(180deg, #d9a35a 0 3px, #6b3d12 3px 6px); box-shadow: 0 0 0 1px #000; filter: drop-shadow(0 0 3px #ff9f1c); }
+.piece { --head: 20%; }   /* where the top of the piece's head sits in its square (the art differs per type) */
+.piece.t-king { --head: 4%; } .piece.t-queen { --head: 9%; } .piece.t-bishop { --head: 14%; }
+.piece.t-knight { --head: 17%; } .piece.t-rook { --head: 24%; } .piece.t-pawn { --head: 32%; }
+.wick { position: absolute; left: 50%; top: max(2%, calc(var(--head) - 20%)); width: 8%; height: 24%; transform: translateX(-50%); z-index: 3; pointer-events: none; background: repeating-linear-gradient(180deg, #d9a35a 0 3px, #6b3d12 3px 6px); box-shadow: 0 0 0 1px #000; filter: drop-shadow(0 0 3px #ff9f1c); }
 /* the fuse spark: a spiky four-point star with a yellow centre and a white-hot core, twinkling, with sparks flying off it */
 .wick i {
     position: absolute; left: 50%; top: -42%; width: 380%; aspect-ratio: 1; transform: translateX(-50%);
@@ -503,7 +506,7 @@ html, body {
     box-shadow: 260% -190% 0 #ffb400, -240% -110% 0 #ff7a1f, 120% -330% 0 #fff2a0;
     animation: wickfly .7s steps(5) infinite;
 }
-.wick.big { height: 34%; top: -22%; width: 10%; }
+.wick.big { height: 34%; top: max(2%, calc(var(--head) - 30%)); width: 10%; }
 .wick.big i { width: 440%; top: -46%; }
 @keyframes wickspark {
     0% { transform: translateX(-50%) rotate(0deg) scale(1); }

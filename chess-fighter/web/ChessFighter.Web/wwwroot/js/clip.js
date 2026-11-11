@@ -561,7 +561,21 @@ window.pcclip = (function () {
                     iconImgs[k + tag] = img;
                 }
             }
+            const li = new Image();
+            jobs.push(new Promise(res => { li.onload = li.onerror = res; }));
+            li.src = 'img/logo.png';
+            logoImg = li;
             return Promise.all(jobs);
+        }
+        // The real Chess Fighter logo (soft edges, so smoothing stays on), centred on (cx, cy), `w` wide.
+        let logoImg = null;
+        function logoPic(cx, cy, w) {
+            if (!logoImg || !logoImg.complete || !logoImg.naturalWidth) return false;
+            const h = w * logoImg.naturalHeight / logoImg.naturalWidth;
+            ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(logoImg, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
+            ctx.restore();
+            return true;
         }
         function drawIcon(kind, cx, cy, size) {
             const f = iconImgs[kind + 'f'], k = iconImgs[kind + 'k'];
@@ -754,7 +768,10 @@ window.pcclip = (function () {
             for (const t of tags) { badge(t[0], tx, Math.round(p.y + SQ * .26), t[1], t[2]); tx += t[0].length * 10 + 14; }
             if (p.buffs & 24) {
                 const big = (p.buffs & 16) !== 0;
-                const wy = y - Math.round(SQ * (big ? .72 : .62));
+                const art = data.art && data.art[p.side === 0 ? 'w' : 'b'] && data.art[p.side === 0 ? 'w' : 'b'][p.type];
+                let headY = y - Math.round(SQ * .62) + 18;   // fallback for the old sprites
+                if (art) { const top = art.rows.findIndex(r => /[^.]/.test(r)); headY = y - Math.round(SQ * .58 * (size / SQ)) + Math.round(SQ * 1.08 * top / art.rows.length); }
+                const wy = headY + 4 - (big ? 24 : 18);
                 ctx.fillStyle = '#000'; ctx.fillRect(x - 5, wy - 2, 10, big ? 28 : 22);
                 ctx.fillStyle = '#d9a35a'; ctx.fillRect(x - 3, wy, 6, big ? 24 : 18);
                 const sp = big ? 20 : 14, on = Math.floor(real / 180) % 2 === 0;
@@ -766,7 +783,7 @@ window.pcclip = (function () {
                 for (let i = 0; i < n; i++) {
                     const a = real / 700 + i * Math.PI / 2;
                     const hx = x + Math.cos(a) * SQ * .5, hy = y + Math.sin(a) * SQ * .5;
-                    drawSprite(sprite(3, p.side, null), hx, hy, 24);
+                    drawSprite(sprite(3, p.side, null), hx, hy, 46);
                 }
             }
             if (p.buffs & 4) {
@@ -927,7 +944,7 @@ window.pcclip = (function () {
                     const slam = k < .2 ? 2.4 - (k / .2) * 1.4 : 1;
                     if (k < .55) {
                         ctx.save(); ctx.translate(W / 2, H / 2 - 120); ctx.scale(slam, slam);
-                        logo('CHESS', 0, -50, 70); logo('FIGHTER', 0, 40, 70);
+                        if (!logoPic(0, -10, 600)) { logo('CHESS', 0, -50, 70); logo('FIGHTER', 0, 40, 70); }
                         ctx.restore();
                         ptext((data.title || 'REPLAY').toUpperCase(), W / 2, H / 2 + 40, 22, '#aab4ff');
                     } else {
@@ -953,7 +970,7 @@ window.pcclip = (function () {
                     logo(head, 0, 0, head.length > 8 ? 56 : 72);
                     ctx.restore();
                     if (data.reason) ptext(data.reason.toUpperCase(), W / 2, 560, 18, '#e8e0ff');
-                    ctx.save(); ctx.translate(W / 2, 800); logo('CHESS', 0, -36, 52); logo('FIGHTER', 0, 28, 52); ctx.restore();
+                    ctx.save(); ctx.translate(W / 2, 800); if (!logoPic(0, 0, 420)) { logo('CHESS', 0, -36, 52); logo('FIGHTER', 0, 28, 52); } ctx.restore();
                     ptext('16-BIT CHESS WITH POWERUPS', W / 2, 900, 14, CYAN);
                     ptext(endCardLink(), W / 2, 1000, 13, '#c9b3ff');
                     break;
@@ -975,7 +992,7 @@ window.pcclip = (function () {
 
         function drawHud() {
             ctx.save();
-            logo('CHESS FIGHTER', W / 2, 42, 28);
+            if (!logoPic(W / 2, 40, 190)) logo('CHESS FIGHTER', W / 2, 42, 28);
             // fight bars: P1 on the left, the rival on the right, K.O. between them
             bar(48, 92, 250, 30, hud.hpShow[0], false);
             bar(422, 92, 250, 30, hud.hpShow[1], true);

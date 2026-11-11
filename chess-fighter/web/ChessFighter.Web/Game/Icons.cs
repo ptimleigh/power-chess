@@ -18,6 +18,7 @@ public static class Icons
             "hadouken" => "<g transform=\"rotate(-90 12 12)\"><path d=\"M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z\"/></g>",
             "checker" => "<ellipse cx=\"12\" cy=\"16.5\" rx=\"9.5\" ry=\"4.2\"/><ellipse cx=\"12\" cy=\"12.5\" rx=\"9.5\" ry=\"4.2\" opacity=\".8\"/><ellipse cx=\"12\" cy=\"8.5\" rx=\"9.5\" ry=\"4.2\"/><ellipse cx=\"12\" cy=\"8.5\" rx=\"5\" ry=\"2\" fill=\"none\" stroke=\"#000\" stroke-width=\"1.2\" opacity=\".5\"/>",
             "flag" => "<path d=\"M6 3v18\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M7 4h11l-3 4 3 4H7z\"/>",
+            "menu" => "<path d=\"M4 6h16v2.6H4zM4 10.7h16v2.6H4zM4 15.4h16V18H4z\"/>",
             "hook" => "<path d=\"M12 2v12\" stroke=\"currentColor\" stroke-width=\"2.4\" fill=\"none\"/><path d=\"M5 13a7 7 0 0 0 14 0\" stroke=\"currentColor\" stroke-width=\"2.8\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M2 14l3-4 3 4zM16 14l3-4 3 4z\"/><circle cx=\"12\" cy=\"3.2\" r=\"2\"/>",
             "bolt" => "<path d=\"M13 2L4 14h6l-1 8 9-12h-6z\"/>",
             "card" => "<rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M12 7l1.8 3.6 4 .6-2.9 2.8.7 4L12 16l-3.6 2 .7-4-2.9-2.8 4-.6z\" fill=\"#10061f\"/>",

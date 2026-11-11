@@ -313,6 +313,14 @@ public sealed class GameSession
         Changed?.Invoke();
     }
 
+    /// <summary>The Options sheet: switch the power tutorials off or back on.</summary>
+    public void SetTutorialsOff(bool off)
+    {
+        Tut.Off = off;
+        TutorialsChanged?.Invoke(Tut.Serialize());
+        Changed?.Invoke();
+    }
+
     public void ResetTutorials()
     {
         Tut.Reset();
@@ -693,6 +701,7 @@ public sealed class GameSession
             ClearSelection();
             Inspect = -1;
             Refresh();
+            Moves = history.Count;   // the move counter and the menu's Continue button need it
             AddToast("Game restored", "Picked up where you left off", "gold", "history");
             RoundIntro = false;
             Changed?.Invoke();

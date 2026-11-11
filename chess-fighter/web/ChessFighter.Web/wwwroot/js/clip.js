@@ -712,10 +712,10 @@ window.pcclip = (function () {
             }
             for (const sq of deco.b) {
                 const p = sqXY(sq);
-                ctx.fillStyle = '#000'; ctx.fillRect(p.x + 8, p.y + 10, SQ - 16, SQ - 16);
-                ctx.fillStyle = '#6b6580'; ctx.fillRect(p.x + 12, p.y + 14, SQ - 24, SQ - 24);
-                ctx.fillStyle = '#9a93b5'; ctx.fillRect(p.x + 12, p.y + 14, SQ - 24, 10);
-                ctx.fillStyle = '#4a4560'; ctx.fillRect(p.x + 12, p.y + SQ - 22, SQ - 24, 8);
+                ctx.save(); ctx.imageSmoothingEnabled = false;
+                const rs = SQ * .86;
+                ctx.drawImage(rockSprite(), Math.round(p.x + (SQ - rs) / 2), Math.round(p.y + (SQ - rs) / 2 + 2), Math.round(rs), Math.round(rs));
+                ctx.restore();
             }
             // a missile in flight: the quadrant it will hit, with the countdown
             if (deco.ml > 0 && deco.ma >= 0) {
@@ -797,6 +797,29 @@ window.pcclip = (function () {
             ctx.strokeStyle = edge; ctx.lineWidth = 3;
             for (let i = 0; i < tier; i++) { ctx.beginPath(); ctx.arc(x, cy, (r - 5) * (.78 - i * .24), 0, 7); ctx.stroke(); }
             ctx.restore();
+        }
+
+        // A boulder: the same lumpy rock the board shows, in pixel art (outline, a lit top-left, a dark underside, cracks).
+        let rockImg = null;
+        function rockSprite() {
+            if (rockImg) return rockImg;
+            const N = 24, c = document.createElement('canvas'); c.width = N; c.height = N;
+            const g = c.getContext('2d');
+            const pts = [[2, 17], [3.5, 8.5], [9, 3.5], [16.5, 5], [21.5, 11.5], [20.5, 18.5], [14, 21.5], [6, 21]];
+            const path = () => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
+            g.fillStyle = '#000'; path(); g.fill(); g.lineWidth = 2.4; g.strokeStyle = '#000'; g.stroke();
+            g.save(); g.translate(N / 2, N / 2); g.scale(.86, .86); g.translate(-N / 2, -N / 2 + .6);
+            g.fillStyle = '#6b6580'; path(); g.fill();
+            g.clip(); path();
+            g.fillStyle = '#9a93b5'; g.fillRect(0, 0, N, 10);
+            g.fillStyle = '#c4bdd9'; g.fillRect(3, 4, 9, 4);
+            g.fillStyle = '#4a4560'; g.fillRect(0, 16, N, 8);
+            g.strokeStyle = '#2d2a3c'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(11, 8); g.lineTo(13, 13); g.lineTo(10, 17); g.moveTo(13, 13); g.lineTo(17, 14); g.stroke();
+            g.restore();
+            const im = g.getImageData(0, 0, N, N), d = im.data;
+            for (let i = 3; i < d.length; i += 4) d[i] = d[i] > 120 ? 255 : 0;
+            g.putImageData(im, 0, 0);
+            return rockImg = c;
         }
 
         function drawAura(p, x, y) {

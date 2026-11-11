@@ -667,7 +667,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 <p class="fine">Solve it for @Daily.XpForStreak(Daily.ActiveStreak(profile, today) + 1) XP (more with a longer streak).</p>
                 <button class="btn primary" data-action="daily-play" @onclick="StartPuzzle">Play</button>
             }
-            <button class="btn ghost" @onclick="() => showDaily = false">Close</button>
+            <button class="btn ghost" data-action="daily-close" @onclick="() => showDaily = false">Close</button>
         </div>
     </div>
 }

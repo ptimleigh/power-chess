@@ -473,17 +473,22 @@ html, body {
 .badge.fb.tier1 { background: #2d6bff; color: #fff; }
 .badge.fb.tier2 { background: var(--gold); color: #3a1b00; }
 
-/* ---------- Leap: a stack of checkers under the piece (red for P1, black for P2), one more disc per tier ---------- */
-.checkers { position: absolute; left: 3%; right: 3%; bottom: 3%; height: 48%; z-index: 0; pointer-events: none; }
-.checkers i {
-    position: absolute; left: 0; right: 0; bottom: calc(var(--n) * 14%); height: 40%;
-    border-radius: 50%; border: 2px solid #000;
-    background: radial-gradient(ellipse at 50% 40%, var(--ck-hi) 0 38%, var(--ck) 40% 100%);
-    box-shadow: 0 3px 0 var(--ck-edge), 0 4px 0 #000, 0 0 0 1px var(--ck-glow);
+/* ---------- Leap: a checker lying flat on the square (red for P1, black for P2); one more groove ring per tier, gold rim at III ---------- */
+.checker {
+    position: absolute; inset: 7%; z-index: 0; pointer-events: none; border-radius: 50%;
+    background:
+        radial-gradient(circle at 50% 50%, transparent 0 var(--r1), var(--ck-edge) var(--r1) calc(var(--r1) + 4%), transparent calc(var(--r1) + 4%) 100%),
+        radial-gradient(circle at 50% 50%, transparent 0 var(--r2), var(--ck-edge) var(--r2) calc(var(--r2) + 4%), transparent calc(var(--r2) + 4%) 100%),
+        radial-gradient(circle at 50% 50%, transparent 0 var(--r3), var(--ck-edge) var(--r3) calc(var(--r3) + 4%), transparent calc(var(--r3) + 4%) 100%),
+        radial-gradient(circle at 38% 32%, var(--ck-hi) 0, var(--ck) 55%, var(--ck-lo) 100%);
+    border: 3px solid var(--ck-rim);
+    box-shadow: 0 0 0 2px #000, 0 3px 0 2px #000, inset 0 0 0 2px #0006;
+    --r1: 62%; --r2: 200%; --r3: 200%;   /* ring radii; an out-of-range radius draws nothing */
 }
-.checkers.red { --ck: #d6283a; --ck-hi: #ff6a55; --ck-edge: #7a0a1c; --ck-glow: #ffb0a0; }
-.checkers.black { --ck: #2b2b36; --ck-hi: #6a6a82; --ck-edge: #0c0c12; --ck-glow: #b8b8d0; }
-.checkers i::after { content: ""; position: absolute; inset: 22% 18%; border-radius: 50%; border: 2px solid var(--ck-edge); opacity: .7; }
+.checker.tier2 { --r2: 46%; }
+.checker.tier3 { --r2: 46%; --r3: 30%; --ck-rim: #ffd23f !important; }
+.checker.red { --ck: #d6283a; --ck-hi: #ff7a63; --ck-lo: #8f0f25; --ck-edge: #6a0a1a; --ck-rim: #ff9a8a; }
+.checker.black { --ck: #2f2f3a; --ck-hi: #6a6a82; --ck-lo: #15151c; --ck-edge: #08080c; --ck-rim: #c9c9dc; }
 .tier-pip { display: none; }
 .fx-beam.rope { height: 6px; margin-top: -3px; background: repeating-linear-gradient(90deg, #d9a35a 0 6px, #6b3d12 6px 12px); box-shadow: 0 0 0 2px #000; }
 

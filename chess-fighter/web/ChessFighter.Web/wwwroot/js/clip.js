@@ -544,7 +544,7 @@ window.pcclip = (function () {
             phase = 'outro';
             const win = data.result === 'w' || data.result === 'b';
             const youWon = data.vsAi ? data.result === 'w' : win;
-            if (data.result === 'd') S.lose(); else if (youWon) S.chord(); else S.lose();
+            if (data.result === '') S.ding(); else if (data.result === 'd') S.lose(); else if (youWon) S.chord(); else S.lose();
             outroAt = clock;
             zoomTarget = 1; camX = .5; camY = .5;
             addFx({ kind: 'outro', dur: 2600 });
@@ -1165,15 +1165,16 @@ window.pcclip = (function () {
                     ctx.globalAlpha = a;
                     const win = data.result === 'w' || data.result === 'b';
                     const youWon = data.vsAi ? data.result === 'w' : win;
-                    const head = data.result === 'd' ? 'DRAW GAME' : data.vsAi ? (youWon ? 'YOU WIN' : 'YOU LOSE') : (data.result === 'w' ? 'P1 WINS' : 'P2 WINS');
-                    const col = data.result === 'd' ? '#c9b3ff' : youWon ? GOLD : RED;
+                    const ongoing = data.result === '';   // a replay of moves from a game still in progress
+                    const head = ongoing ? 'TO BE CONTINUED' : data.result === 'd' ? 'DRAW GAME' : data.vsAi ? (youWon ? 'YOU WIN' : 'YOU LOSE') : (data.result === 'w' ? 'P1 WINS' : 'P2 WINS');
+                    const col = ongoing ? '#aab4ff' : data.result === 'd' ? '#c9b3ff' : youWon ? GOLD : RED;
                     const pop = k < .2 ? .6 + k / .2 * .4 : 1;
-                    const ko = /checkmate|missile|both/i.test(data.reason || '') && data.result !== 'd';
+                    const ko = !ongoing && /checkmate|missile|both/i.test(data.reason || '') && data.result !== 'd';
                     ctx.save(); ctx.translate(W / 2, 410); ctx.scale(pop, pop);
                     if (ko) { if (koReady()) drawKO(0, 0, -150, .3, true); else logo('K.O.', 0, -130, 90); }
-                    logo(head, 0, 0, head.length > 8 ? 56 : 72);
+                    logo(head, 0, 0, ongoing ? 40 : head.length > 8 ? 56 : 72);
                     ctx.restore();
-                    if (data.reason) ptext(data.reason.toUpperCase(), W / 2, 560, 18, '#e8e0ff');
+                    if (data.reason && !ongoing) ptext(data.reason.toUpperCase(), W / 2, 560, 18, '#e8e0ff');
                     ctx.save(); ctx.translate(W / 2, 800); if (!logoPic(0, 0, 420)) { logo('CHESS', 0, -36, 52); logo('FIGHTER', 0, 28, 52); } ctx.restore();
                     ptext('16-BIT CHESS WITH POWERUPS', W / 2, 900, 14, CYAN);
                     ptext(endCardLink(), W / 2, 1000, 16, '#e8e0ff');

@@ -745,7 +745,8 @@ html, body {
 .resign-btn { color: #ff9a8a; }
 
 /* ---------- the finishing blow: dim the room, king falls over, big K.O. ---------- */
-.board .sq, .board .piece { transition: filter .35s; }
+.board .sq { transition: filter .35s; }
+.board .piece { transition: left .22s steps(7), top .22s steps(7), filter .35s; }   /* keep the slide (this used to be overridden) and add the dim */
 .board.finale .sq:not(.fin-lit), .board.finale .piece:not(.fin-lit) { filter: brightness(.32) saturate(.7); }
 .board.finale .piece.fin-lit { z-index: 5; }
 .piece.ko-fall .piece-body { transform-origin: 50% 60%; animation: kofall-l .85s cubic-bezier(.3, .1, .6, 1) forwards !important; }

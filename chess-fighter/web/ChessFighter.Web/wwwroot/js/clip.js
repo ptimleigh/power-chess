@@ -783,7 +783,24 @@ window.pcclip = (function () {
             ctx.globalAlpha = 1;
         }
 
+        // A Leap shows as a checker lying flat under the piece: red for P1, black for P2, a groove ring per tier and a gold rim at III.
+        function drawChecker(p, x, y) {
+            const tier = Math.max(1, Math.min(3, p.tier || 1)), r = SQ * .44, red = p.side === 0;
+            const face = red ? '#d6283a' : '#2f2f3a', hi = red ? '#ff7a63' : '#6a6a82', edge = red ? '#6a0a1a' : '#08080c';
+            const rim = tier >= 3 ? GOLD : (red ? '#ff9a8a' : '#c9c9dc');
+            const cy = y + SQ * .04;
+            ctx.save();
+            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x, cy + 3, r + 3, 0, 7); ctx.fill();
+            ctx.fillStyle = rim; ctx.beginPath(); ctx.arc(x, cy, r, 0, 7); ctx.fill();
+            ctx.fillStyle = face; ctx.beginPath(); ctx.arc(x, cy, r - 5, 0, 7); ctx.fill();
+            ctx.fillStyle = hi; ctx.globalAlpha = .55; ctx.beginPath(); ctx.arc(x - r * .22, cy - r * .22, r * .5, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+            ctx.strokeStyle = edge; ctx.lineWidth = 3;
+            for (let i = 0; i < tier; i++) { ctx.beginPath(); ctx.arc(x, cy, (r - 5) * (.78 - i * .24), 0, 7); ctx.stroke(); }
+            ctx.restore();
+        }
+
         function drawAura(p, x, y) {
+            if (p.buffs & 256) drawChecker(p, x, y);
             if (p.buffs & 32) {
                 const gold = (p.tier || 1) >= 2;
                 flames(x, y, gold ? FLAME.gold : FLAME.blue, gold ? 5 : 4, gold ? SQ * 1.15 : SQ * .85, gold ? 16 : 14);
@@ -827,7 +844,7 @@ window.pcclip = (function () {
             ctx.globalAlpha = Math.max(0, Math.min(1, p.a));
             const tags = [];
             if (p.buffs & 32) tags.push([(p.tier || 1) >= 2 ? 'II' : 'I', (p.tier || 1) >= 2 ? GOLD : '#2d6bff', (p.tier || 1) >= 2 ? '#3a1b00' : '#fff']);
-            if (p.buffs & 256) tags.push([(p.tier || 1) >= 2 ? 'II' : 'I', GOLD, '#3a1b00']);
+            if (p.buffs & 256) tags.push([(p.tier || 1) >= 3 ? 'III' : (p.tier || 1) >= 2 ? 'II' : 'I', GOLD, '#3a1b00']);
             if (p.buffs & 8) tags.push(['I', RED, '#fff']);
             if (p.buffs & 16) tags.push(['II', RED, '#fff']);
             if (p.buffs & 2) tags.push(['PZ', '#b05cff', '#fff']);
@@ -846,14 +863,6 @@ window.pcclip = (function () {
                 const sp = big ? 20 : 14, on = Math.floor(real / 180) % 2 === 0;
                 ctx.fillStyle = '#000'; ctx.fillRect(x - sp / 2 - 3, wy - sp - 3, sp + 6, sp + 6);
                 ctx.fillStyle = on ? '#ffe23a' : '#fff'; ctx.fillRect(x - sp / 2, wy - sp, sp, sp);
-            }
-            if (p.buffs & 256) {
-                const n = (p.tier || 1) >= 2 ? 4 : 1;
-                for (let i = 0; i < n; i++) {
-                    const a = real / 700 + i * Math.PI / 2;
-                    const hx = x + Math.cos(a) * SQ * .5, hy = y + Math.sin(a) * SQ * .5;
-                    drawSprite(sprite(3, p.side, null), hx, hy, 46);
-                }
             }
             if (p.buffs & 4) {
                 for (let i = 0; i < 12; i++) {

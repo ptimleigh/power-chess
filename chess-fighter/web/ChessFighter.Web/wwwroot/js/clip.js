@@ -402,6 +402,14 @@ window.pcclip = (function () {
                     }
                     case 'CardPlayed': {
                         const nm = cardName(e);
+                        const who = /CAISSA/.test(nm) ? 'caissa' : /MARS/.test(nm) ? 'mars' : /SHIVA/.test(nm) ? 'shiva' : '';
+                        if (who && imgOk(who)) {
+                            // a summon: the figure slides in over the board, like in the game
+                            const by = data.vsAi ? (e.s === 0 ? 'YOU SUMMON' : 'RIVAL SUMMONS') : (e.s === 0 ? 'WHITE SUMMONS' : 'BLACK SUMMONS');
+                            later(T, () => { addFx({ kind: 'summon', who, name: who.toUpperCase() + '!', by, dur: 1800 }); S.chord(); });
+                            T += 1700;
+                            break;
+                        }
                         later(T, () => { addFx({ kind: 'banner', text: nm, dur: 900, color: GOLD }); S.ding(); });
                         T += 520;
                         break;
@@ -432,7 +440,7 @@ window.pcclip = (function () {
                     case 'DragonFire': {
                         burnAll = true;
                         const row = e.f >> 3;
-                        later(T, () => { addFx({ kind: 'dragon', y: sqC(e.f).y, dur: 900 }); callout('DRAGON STRIKE!', mid.x, sqC(e.f).y - 60, '#ff9a3c', true); doShake(20); S.fire(); });
+                        later(T, () => { addFx({ kind: 'dragon', y: sqC(e.f).y, dur: 1100, side: e.s }); callout('DRAGON STRIKE!', mid.x, sqC(e.f).y - 60, '#ff9a3c', true); doShake(20); S.fire(); });
                         T += 520;
                         break;
                     }
@@ -617,6 +625,12 @@ window.pcclip = (function () {
             jobs.push(new Promise(res => { li.onload = li.onerror = res; }));
             li.src = 'img/logo.png';
             logoImg = li;
+            for (const n of ['caissa', 'mars', 'shiva', 'dragon-white', 'dragon-black', 'sword']) {
+                const im = new Image();
+                jobs.push(new Promise(res => { im.onload = im.onerror = res; }));
+                im.src = 'img/summons/' + n + '.png';
+                sumImg[n] = im;
+            }
             for (const L of ['k', 'o']) {
                 const im = new Image();
                 jobs.push(new Promise(res => { im.onload = im.onerror = res; }));
@@ -628,6 +642,8 @@ window.pcclip = (function () {
         // The real Chess Fighter logo (soft edges, so smoothing stays on), centred on (cx, cy), `w` wide.
         let logoImg = null;
         const koImg = {};
+        const sumImg = {};
+        const imgOk = n => sumImg[n] && sumImg[n].complete && sumImg[n].naturalWidth;
         const koReady = () => ['k', 'o'].every(l => koImg[l] && koImg[l].complete && koImg[l].naturalWidth);
         // The big graffiti K and O: each slams in with a shake of its own, then they jitter while the screen shakes.
         function drawKO(ms, cx, cy, scale, still) {
@@ -1073,20 +1089,60 @@ window.pcclip = (function () {
                     disc(34, '#000'); disc(30, cols[2]); disc(22, cols[1]); disc(12, cols[0]);
                     break;
                 }
+                case 'summon': {
+                    const a = k < .15 ? k / .15 : k > .8 ? 1 - (k - .8) / .2 : 1;
+                    ctx.globalAlpha = a * .85; ctx.fillStyle = '#0a0420'; ctx.fillRect(0, 0, W, H);
+                    const g = ctx.createRadialGradient(W / 2, H * .55, 10, W / 2, H * .55, H * .55);
+                    g.addColorStop(0, 'rgba(255,255,255,.22)'); g.addColorStop(1, 'rgba(10,4,32,0)');
+                    ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+                    const im = sumImg[f.who];
+                    const ih = H * .5, iw = ih * im.naturalWidth / im.naturalHeight;
+                    const slide = k < .2 ? -(1 - k / .2) * W * .6 : k > .8 ? (k - .8) / .2 * W * .1 : 0;
+                    ctx.save(); ctx.imageSmoothingEnabled = false;
+                    ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 24;
+                    ctx.drawImage(im, W / 2 - iw / 2 + slide, H * .5 - ih / 2, iw, ih);
+                    ctx.restore();
+                    const col = f.who === 'mars' ? '#ff5a4a' : f.who === 'shiva' ? '#6fb7ff' : GOLD;
+                    const pop = k < .15 ? 2.4 - (k / .15) * 1.4 : 1;
+                    ctx.save(); ctx.translate(W / 2, H * .8); ctx.scale(pop, pop);
+                    ptext(f.name, 0, 0, 56, col);
+                    ctx.restore();
+                    ptext(f.by, W / 2, H * .8 + 60, 18, '#fff');
+                    break;
+                }
                 case 'dragon': {
-                    const grow = Math.min(1, k * 3);
-                    ctx.globalAlpha = k < .7 ? 1 : 1 - (k - .7) / .3;
-                    const x1 = BX + BOARD * grow;
-                    stripeLine({ x: BX, y: f.y }, { x: x1, y: f.y }, SQ * .95, ['#fffbd0', '#ffe23a', '#ffa400', '#ff3b2f'], 22, Math.floor(real / 60));
+                    // the summoned dragon sweeps the row (white flies left to right, black right to left), breathing fire behind it
+                    const dir = f.side === 0 ? 1 : -1;
+                    const grow = Math.min(1, k / .8);
+                    ctx.globalAlpha = k < .8 ? 1 : 1 - (k - .8) / .2;
+                    const x0 = dir > 0 ? BX - SQ * 1.5 : BX + BOARD + SQ * 1.5, x1 = dir > 0 ? BX + BOARD + SQ * 2.2 : BX - SQ * 2.2;
+                    const x = x0 + (x1 - x0) * grow;
+                    stripeLine({ x: x0, y: f.y }, { x: x - dir * SQ * .6, y: f.y }, SQ * .95, ['#fffbd0', '#ffe23a', '#ffa400', '#ff3b2f'], 22, Math.floor(real / 60));
+                    const nm = 'dragon-' + (f.side === 0 ? 'white' : 'black');
+                    if (imgOk(nm)) {
+                        const im = sumImg[nm], w = SQ * 3.4, h = w * im.naturalHeight / im.naturalWidth;
+                        ctx.save(); ctx.imageSmoothingEnabled = false;
+                        ctx.translate(x, f.y); if (dir < 0) ctx.scale(-1, 1); ctx.rotate(-Math.PI / 2);
+                        ctx.shadowColor = '#ff7a1f'; ctx.shadowBlur = 18;
+                        ctx.drawImage(im, -w / 2, -h / 2, w, h);
+                        ctx.restore();
+                    }
                     break;
                 }
                 case 'drop': {
                     const ky = k < .8 ? k / .8 : 1;
                     const y = f.y - 420 * (1 - ky * ky);
                     ctx.globalAlpha = k < .85 ? 1 : 1 - (k - .85) / .15;
-                    ctx.fillStyle = '#000'; ctx.fillRect(f.x - 12, y - 68, 24, 100); ctx.fillRect(f.x - 26, y + 24, 52, 14);
-                    ctx.fillStyle = '#dfe9ff'; ctx.fillRect(f.x - 8, y - 64, 16, 90);
-                    ctx.fillStyle = GOLD; ctx.fillRect(f.x - 22, y + 26, 44, 10);
+                    if (imgOk('sword')) {
+                        const im = sumImg.sword, h = 230, w = h * im.naturalWidth / im.naturalHeight;
+                        ctx.save(); ctx.imageSmoothingEnabled = false; ctx.shadowColor = '#bfe3ff'; ctx.shadowBlur = 16;
+                        ctx.drawImage(im, f.x - w / 2, y + 30 - h, w, h);
+                        ctx.restore();
+                    } else {
+                        ctx.fillStyle = '#000'; ctx.fillRect(f.x - 12, y - 68, 24, 100); ctx.fillRect(f.x - 26, y + 24, 52, 14);
+                        ctx.fillStyle = '#dfe9ff'; ctx.fillRect(f.x - 8, y - 64, 16, 90);
+                        ctx.fillStyle = GOLD; ctx.fillRect(f.x - 22, y + 26, 44, 10);
+                    }
                     break;
                 }
                 case 'banner': {
@@ -1247,11 +1303,11 @@ window.pcclip = (function () {
                 ctx.fill('evenodd');
                 for (const p of spot) if (!p.dying) drawPiece(p);
             }
-            for (const f of fx) if (f.kind !== 'title' && f.kind !== 'outro' && f.kind !== 'text' && f.kind !== 'banner') drawFx(f);
+            for (const f of fx) if (f.kind !== 'title' && f.kind !== 'outro' && f.kind !== 'summon' && f.kind !== 'text' && f.kind !== 'banner') drawFx(f);
             for (const f of fx) if (f.kind === 'banner' || f.kind === 'text') drawFx(f);
             ctx.restore();
             // screen-space layers
-            const live = fx.filter(f => f.kind === 'title' || f.kind === 'outro');
+            const live = fx.filter(f => f.kind === 'title' || f.kind === 'outro' || f.kind === 'summon');
             drawHud();
             if (dim > .01) { ctx.fillStyle = `rgba(4,2,16,${dim * .7})`; ctx.fillRect(0, 0, W, BY - 6); }
             if (vignette > 0) {

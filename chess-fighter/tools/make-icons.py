@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
-"""Builds the Chess Fighter app icons from the knight sprite: sunset stage, gold bevel frame, the white knight.
+"""Builds the Chess Fighter app icons from the knight art (wwwroot/img/pieces/white_knight.png): sunset stage, gold bevel frame, the white knight.
 Usage: python3 -I tools/make-icons.py      (writes web/ChessFighter.Web/wwwroot/icons/*.png)"""
 import os, re
 from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "web", "ChessFighter.Web", "wwwroot", "icons")
-DATA = os.path.join(HERE, "..", "web", "ChessFighter.Web", "Game", "Sprites.Data.cs")
 
 PAL = {'k': '#0a1230', '1': '#2a3a8a', '2': '#4f6bc8', '3': '#86a3ee', '4': '#c4d6ff', '5': '#f4f8ff', 'e': '#2d6bff',
        'a': '#6b4400', 'b': '#b87a10', 'c': '#ffd23f', 'd': '#fff2a0', 'h': '#ffffff'}
-
-def knight_rows():
-    s = open(DATA).read()
-    block = re.search(r"Knight =\s*\{(.*?)\};", s, re.S).group(1)
-    return re.findall(r'"([^"]{32})"', block)
 
 def lerp(a, b, t): return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
 def hexrgb(h): return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
@@ -54,15 +48,12 @@ def frame(img):
     d.rectangle([f * 3, f * 3, size - 1 - f * 3, size - 1 - f * 3], outline=(0, 0, 0), width=max(2, f // 2))
     return img
 
+KNIGHT = os.path.join(HERE, "..", "web", "ChessFighter.Web", "wwwroot", "img", "pieces", "white_knight.png")
+
 def sprite(px):
-    rows = knight_rows()
-    img = Image.new("RGBA", (32 * px, 32 * px), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    for y, row in enumerate(rows):
-        for x, ch in enumerate(row):
-            if ch in PAL:
-                d.rectangle([x * px, y * px, (x + 1) * px - 1, (y + 1) * px - 1], fill=hexrgb(PAL[ch]) + (255,))
-    return img
+    img = Image.open(KNIGHT).convert("RGBA")
+    img = img.crop(img.getchannel("A").getbbox())
+    return img.resize((img.width * px, img.height * px), Image.NEAREST)
 
 def make(size, maskable):
     img = stage(size)
@@ -70,7 +61,8 @@ def make(size, maskable):
         img = frame(img)
     # the maskable icon keeps its art inside the central 66% so any launcher mask leaves it whole
     target = size * (0.5 if maskable else 0.56)
-    px = max(1, int(target // 32))
+    kh = Image.open(KNIGHT).convert('RGBA').getchannel('A').getbbox()
+    px = max(1, int(target // (kh[3] - kh[1])))
     k = sprite(px)
     # a hard black drop shadow, like the game's pieces
     sh = Image.new("RGBA", k.size, (0, 0, 0, 0))

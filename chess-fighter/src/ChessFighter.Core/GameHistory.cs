@@ -30,6 +30,18 @@ namespace ChessFighter.Core
             entries.Add(new Entry { Before = before.Clone(), Action = action, Mover = before.ToMove });
         }
 
+        /// <summary>
+        /// A copy holding the entries before <paramref name="count"/> (the game as it was after that many actions), keeping only the last
+        /// <paramref name="tail"/> of them. Used to replay a stretch of a game that is still going.
+        /// </summary>
+        public GameHistory Prefix(int count, int tail)
+        {
+            var copy = new GameHistory();
+            count = Math.Max(0, Math.Min(count, entries.Count));
+            for (int i = Math.Max(0, count - tail); i < count; i++) copy.entries.Add(entries[i]);
+            return copy;
+        }
+
         public void TruncateTo(int count)
         {
             if (count < entries.Count) entries.RemoveRange(count, entries.Count - count);

@@ -533,7 +533,7 @@ window.pcclip = (function () {
         }
         function nextBeat() {
             beatIndex++;
-            if (beatIndex >= total) { startOutro(); return; }
+            if (beatIndex >= total) { if (data.result === '') later(1400, startOutro); else startOutro(); return; }   // a clip of an unfinished game holds the last position a moment before "to be continued"
             const isLast = beatIndex === total - 1;
             let endAt = 900;
             try { endAt = applyBeat(data.beats[beatIndex], beatIndex, isLast); }

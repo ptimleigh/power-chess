@@ -237,7 +237,7 @@
                     <span>@S.ReviewLabel</span>
                 </div>
                 <div class="review-btns">
-                    <button class="btn yellow small" data-action="open-clip" @onclick="OpenClip">Watch Replay!</button>
+                    <button class="btn yellow small" data-action="open-clip" disabled="@(S.ReviewPosition <= 0)" @onclick="OpenClip">Watch Replay!</button>
                 </div>
                 @HistoryNav
             </div>
@@ -1307,9 +1307,15 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     int clipPlies, clipAvail;
     string clipMsg = "";
 
+    // A replay opened from history mode covers the moves up to where you are looking, and ends with "to be continued" if the game goes on.
+    GameHistory clipHistory = null!;
+    bool clipOngoing;
+
     async Task OpenClip()
     {
-        clipAvail = ClipBuilder.Available(S.History);
+        clipOngoing = S.Reviewing && S.ReviewPosition < S.HistoryCount;
+        clipHistory = clipOngoing ? S.History.Prefix(S.ReviewPosition, 60) : S.History;
+        clipAvail = ClipBuilder.Available(clipHistory);
         if (clipAvail == 0) return;
         clipPlies = Math.Min(6, clipAvail);
         clipMsg = "";
@@ -1320,7 +1326,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         await PlayClip();
     }
 
-    string BuildClipJson() => ClipBuilder.Build(S.History, S.State, clipPlies, S.ResultReason, S.Result, S.VsAi,
+    string BuildClipJson() => ClipBuilder.Build(clipHistory, S.State, clipPlies, clipOngoing ? "" : S.ResultReason, clipOngoing ? GameResult.Ongoing : S.Result, S.VsAi,
         clipPlies == 1 ? "THE LAST MOVE" : $"THE LAST {clipPlies} MOVES");
 
     async Task PlayClip()

@@ -1,81 +1,62 @@
 #!/usr/bin/env python3
-"""Builds the full-colour piece sprites from art/pieces-sheet.png (rook, knight, bishop, king, queen, bishop, knight, rook for Black on
-top and White below). The sheet has no pawns, so a pawn is made from each bishop: the finial and the diagonal slash are painted out of the
-head, and the rest is scaled down. Every piece is cut out, shrunk with one common scale to about 46 px tall, limited to 28 colours and
-written to web/ChessFighter.Web/Game/Sprites.Art.cs.
+"""Builds the piece sprites from art/pieces-sheet-2.png (ivory pieces on top, black below: king, queen, bishop, knight, rook, pawn).
+Every piece is cut out, recoloured (White steel blue, Black crimson: each pixel's brightness is mapped onto a colour ramp, so the shading
+and outlines survive), shrunk with one common scale so the king is about 46 px tall, limited to 28 colours and written to
+web/ChessFighter.Web/Game/Sprites.Art.cs. (tools/make-pieces-sheet1.py built the earlier, first sheet.)
 Usage: python3 -I tools/make-pieces.py"""
-import colorsys, os
+import os
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SHEET = os.path.join(HERE, "..", "art", "pieces-sheet.png")
+SHEET = os.path.join(HERE, "..", "art", "pieces-sheet-2.png")
 OUT = os.path.join(HERE, "..", "web", "ChessFighter.Web", "Game", "Sprites.Art.cs")
-CW, CH, KING_PX = 24, 50, 46
+CW, CH, KING_PX = 32, 50, 46
 CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGH"
-COLS = [(39, 125), (129, 216), (220, 305), (310, 397), (402, 488)]
-NAMES = ["rook", "knight", "bishop", "king", "queen"]
+NAMES = ["king", "queen", "bishop", "knight", "rook", "pawn"]
+SEGS = [(46, 155), (162, 275), (282, 389), (397, 513), (517, 630), (638, 739)]
+ROWS = {"white": (0, 218), "black": (218, 448)}
+RAMPS = {
+    "white": ["#0a1230", "#2a3a8a", "#4f6bc8", "#86a3ee", "#c4d6ff", "#f4f8ff"],   # steel blue, like the game's P1 colours
+    "black": ["#1a0308", "#5a0a1c", "#9c1530", "#d6283a", "#ff6a55", "#ffb8a0"],   # crimson, like the rival's
+}
 
 im = Image.open(SHEET).convert("RGBA")
 a = np.array(im)
-is_bg = lambda m: (m[..., 3] < 20) | ((m[..., 0] > 245) & (m[..., 1] > 245) & (m[..., 2] > 245))
-fg = ~is_bg(a)
+is_bg = (a[..., 3] < 20) | ((a[..., 0] > 243) & (a[..., 1] > 243) & (a[..., 2] > 243))
+
+def hexrgb(h): return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], float)
+
+def luminance(arr): return (0.299 * arr[..., 0] + 0.587 * arr[..., 1] + 0.114 * arr[..., 2]) / 255
 
 pieces = {}
-for ci, (s, e) in enumerate(COLS):
-    sub = fg[:, s:e + 1]
-    cnt = sub.sum(axis=1)
-    split = 240 + int(np.argmin(cnt[240:270]))   # the gap between the black row and the white row
-    rows = np.where(sub.any(axis=1))[0]
-    for side, (y0, y1) in (("black", (rows[0], split - 1)), ("white", (split, rows[-1]))):
-        m = np.array(im.crop((s, y0, e + 1, y1 + 1)))
-        m[is_bg(m)] = (0, 0, 0, 0)
+for side, (y0, y1) in ROWS.items():
+    for name, (s, e) in zip(NAMES, SEGS):
+        m = a[y0:y1, s:e + 1].copy()
+        m[is_bg[y0:y1, s:e + 1]] = (0, 0, 0, 0)
         ys = np.where(m[..., 3] > 0)[0]
-        pieces[(side, NAMES[ci])] = Image.fromarray(m).crop((0, ys.min(), m.shape[1], ys.max() + 1))
+        pieces[(side, name)] = Image.fromarray(m).crop((0, ys.min(), m.shape[1], ys.max() + 1))
 
-def make_pawn(img, side):
+def recolor(img, side):
     arr = np.array(img).astype(float)
-    H, W = arr.shape[:2]
-    alpha = arr[..., 3] > 0
-    widths = alpha.sum(axis=1)
-    top = next(y for y in range(H) if widths[y] > W * 0.45)     # below the finial
-    head_end = int(top + 0.36 * H)
-    mask = np.zeros((H, W), bool)
-    for y in range(top, head_end):
-        for x in range(W):
-            if not alpha[y, x]: continue
-            h, sat, v = colorsys.rgb_to_hsv(*(arr[y, x, :3] / 255))
-            if side == "white" and sat > 0.18 and 0.38 < h < 0.65: mask[y, x] = True
-            if side == "black" and ((sat > 0.40 and (h < 0.06 or h > 0.92)) or (v < 0.35 and sat > 0.25)): mask[y, x] = True
-    grown = mask.copy()
-    for dy in (-1, 0, 1):
-        for dx in (-1, 0, 1): grown |= np.roll(np.roll(mask, dy, 0), dx, 1)
-    grown &= alpha
-    grown[head_end:] = False
-    orig, out = grown.copy(), arr.copy()
-    for _ in range(40):                                          # paint the slash out from the edges inwards
-        ys, xs = np.where(grown)
-        if len(ys) == 0: break
-        nxt = grown.copy()
-        for y, x in zip(ys, xs):
-            vals = [out[yy, xx, :3] for dy in range(-2, 3) for dx in range(-2, 3)
-                    for yy, xx in [(y + dy, x + dx)] if 0 <= yy < H and 0 <= xx < W and alpha[yy, xx] and not grown[yy, xx]]
-            if len(vals) >= 3: out[y, x, :3] = np.mean(vals, axis=0); nxt[y, x] = False
-        grown = nxt
-    base = Image.fromarray(out.astype("uint8"))
-    blur = np.array(base.filter(ImageFilter.GaussianBlur(1.5))); res = np.array(base)
-    res[orig, :3] = blur[orig, :3]; res[..., 3] = np.array(img)[..., 3]
-    p = Image.fromarray(res).crop((0, top, W, H))
-    return p.resize((round(p.width * 0.86), round(p.height * 0.86)), Image.BOX)
+    king = np.array(pieces[(side, "king")]).astype(float)
+    L_king = luminance(king)[king[..., 3] > 0]
+    lo, hi = np.percentile(L_king, 2), np.percentile(L_king, 98)
+    ramp = np.array([hexrgb(c) for c in RAMPS[side]])
+    t = np.clip((luminance(arr) - lo) / (hi - lo), 0, 1) * (len(ramp) - 1)
+    i0 = np.floor(t).astype(int).clip(0, len(ramp) - 2)
+    f = (t - i0)[..., None]
+    out = arr.copy()
+    out[..., :3] = ramp[i0] * (1 - f) + ramp[i0 + 1] * f
+    return Image.fromarray(out.astype("uint8"))
 
-for side in ("black", "white"):
-    pieces[(side, "pawn")] = make_pawn(pieces[(side, "bishop")], side)
-
-scale = KING_PX / max(pieces[("black", "king")].height, pieces[("white", "king")].height)
-cs = ["// <auto-generated> by chess-fighter/tools/make-pieces.py from art/pieces-sheet.png. Re-run the script instead of editing. </auto-generated>",
+scale = KING_PX / pieces[("white", "king")].height
+cs = ["// <auto-generated> by chess-fighter/tools/make-pieces.py from art/pieces-sheet-2.png. Re-run the script instead of editing. </auto-generated>",
       "namespace ChessFighter.Web.Game;", "", "public static partial class Sprites", "{",
-      f"    public const int ArtW = {CW}, ArtH = {CH};", "", "    static void LoadArt(System.Collections.Generic.Dictionary<(ChessFighter.Core.PieceType, ChessFighter.Core.Side), ArtSprite> d)", "    {"]
+      f"    public const int ArtW = {CW}, ArtH = {CH};", "",
+      "    static void LoadArt(System.Collections.Generic.Dictionary<(ChessFighter.Core.PieceType, ChessFighter.Core.Side), ArtSprite> d)", "    {"]
 for (side, name), img in sorted(pieces.items()):
+    img = recolor(img, side)
     w, h = max(1, round(img.width * scale)), max(1, round(img.height * scale))
     small = img.resize((w, h), Image.BOX)
     alpha = np.array(small.getchannel("A")) >= 110
@@ -91,9 +72,7 @@ for (side, name), img in sorted(pieces.items()):
         for x in range(w):
             if alpha[y, x]: canvas[oy + y][ox + x] = char_of[int(idx[y, x])]
     legend = ";".join(f"{char_of[u]}=#{pal[u*3]:02x}{pal[u*3+1]:02x}{pal[u*3+2]:02x}" for u in used)
-    pt = name.capitalize()
-    sd = side.capitalize()
-    cs.append(f"        d[(ChessFighter.Core.PieceType.{pt}, ChessFighter.Core.Side.{sd})] = new ArtSprite(new[]")
+    cs.append(f"        d[(ChessFighter.Core.PieceType.{name.capitalize()}, ChessFighter.Core.Side.{side.capitalize()})] = new ArtSprite(new[]")
     cs.append("        {")
     for row in canvas: cs.append('            "' + "".join(row) + '",')
     cs.append(f'        }}, "{legend}");')

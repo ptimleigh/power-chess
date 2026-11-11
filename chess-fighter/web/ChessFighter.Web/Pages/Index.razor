@@ -524,7 +524,17 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     <div class="modal" data-testid="gameover">
         <div class="card pop result @ResultClass">
             <div class="kicker">@(Perfect ? "PERFECT!" : S.Status)</div>
-            <h1>@ResultTitle</h1>
+            @if (reward is MatchReward lvr && lvr.NewLevel > lvr.OldLevel && xpAnimDone)
+            {
+                @* a level-up is the headline; the result steps back to a smaller line above it *@
+                <div class="res-small">@ResultTitle</div>
+                <h1 class="lvl-big" data-testid="levelup" @key="@("lv" + lvr.NewLevel)">LEVEL UP!</h1>
+                <div class="lvl-sub">You reached level @lvr.NewLevel</div>
+            }
+            else
+            {
+                <h1>@ResultTitle</h1>
+            }
             <p>@ResultText</p>
             @if (reward is MatchReward rw)
             {
@@ -543,8 +553,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                     }
                     else if (rw.NewLevel > rw.OldLevel)
                     {
-                        <div class="levelup" data-testid="levelup">LEVEL UP! You reached level @rw.NewLevel</div>
-                        <div class="lv-line">@(profile.Level < Progression.MaxLevel ? $"{Progression.XpForLevel(profile.Level + 1) - profile.Xp} XP to level {profile.Level + 1}" : "Max level")</div>
+                                                <div class="lv-line">@(profile.Level < Progression.MaxLevel ? $"{Progression.XpForLevel(profile.Level + 1) - profile.Xp} XP to level {profile.Level + 1}" : "Max level")</div>
                         @if ((rw.NewPowerups.Count > 0 || rw.NewTeleporters) && newUnlocks.Count == 0)
                         {
                             <div class="unlocks">Unlocked: @string.Join(", ", rw.NewPowerups.Select(Names.Name).Concat(rw.NewTeleporters ? new[] { "Teleporters" } : Array.Empty<string>()))</div>

@@ -51,7 +51,7 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | Place a boulder | Put a boulder on the board. Blocks moves. Destroyed only by bombs or Smash boulder. | immediately |
 | Smash boulder | Remove 1 boulder. Draw weight is the same as Place a boulder, but zero while the board has no boulder, so nobody hoards dead cards. | at will |
 | Missile Strike | Pick a quadrant. Each player has 5 turns (10 moves in all) to evacuate the highlighted zone, counting down. If the king cannot get out, the missile shows incoming and freezes before the strike to show the checkmate animation. | at will |
-| Summon Mars | Tells the player the best possible move for 3 turns. | at will |
+| Summon Mars | Tells the player the best possible move for 3 turns, starting now. Does not cost the turn. | at will |
 | Summon Caïssa | Bring back 1 captured piece and place it anywhere on the board. | at will |
 | Summon Shiva | Strikes 3 random rival pieces with falling weapons, capturing them (never kings). | at will |
 | Dragon Strike | A dragon wipes out 1 row with dragonfire. Rows 3 to 6 only, and not a row occupied by a king. | at will |
@@ -85,7 +85,7 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World 
 - **Take back** returns the board to the start of your previous turn (so your move and the rival's reply are both undone, and pieces lost in
   that round come back). Your bag, the rival's bag and the random sequence are **not** undone. It needs at least three turns of history.
   It does **not** cost the turn: after rewinding, the player who played it moves again. (If the rival cancels it with Nuh-uh, the turn is spent as usual.)
-- **Summon Mars** shows the best move automatically at the start of your next 3 turns (free, no XP penalty). It does not stack.
+- **Summon Mars** shows the best move automatically this turn and your next 2 (free, no XP penalty). Playing it does **not** cost your turn (the other summons do). It does not stack.
 - **Dragon Strike** burns every piece on rows 3 to 6 that has no king on it, both colors, except armored pieces. Boulders and powerup squares stay.
 - **Summon Shiva** strikes up to 3 random rival pieces (never kings, never armored), skipping any whose removal would leave your own king in check.
 - **Hit restart** sends each piece to the square it started the game on (a promoted pawn returns to the pawn's square; a stolen piece keeps its

@@ -29,7 +29,7 @@ namespace ChessFighter.Core
         NuhUh,
         /// <summary>Undo one round of moves (the board goes back to the start of your previous turn).</summary>
         TakeBack,
-        /// <summary>Mars shows you the best move at the start of your next 3 turns.</summary>
+        /// <summary>Mars shows you the best move this turn and your next 2. Playing it does not cost your turn.</summary>
         SummonMars,
         /// <summary>A dragon burns every piece on one row (rows 3 to 6, not a row holding a king).</summary>
         DragonStrike,
@@ -379,7 +379,8 @@ namespace ChessFighter.Core
                 }
 
                 case CardKind.SummonMars:
-                    s.Mars[(int)me] = 4; // the turn this card costs uses one; three turns of hints follow
+                    s.Mars[(int)me] = 3; // hints for this turn and the next two; playing Mars does not cost the turn
+                    s.KeepTurn = true;
                     Rules.Emit(ev, EventKind.BuffGained, 0, 0, PieceType.None, me, PowerupKind.None);
                     break;
 

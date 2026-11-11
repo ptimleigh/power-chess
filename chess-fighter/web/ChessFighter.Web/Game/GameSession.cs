@@ -1015,7 +1015,7 @@ public sealed class GameSession
     string CardPrompt(CardStep step)
     {
         string name = Names.CardName(ActiveCard);
-        if (step == CardStep.Confirm) return $"Play {name}? It costs your turn.";
+        if (step == CardStep.Confirm) return ActiveCard == CardKind.SummonMars ? $"Play {name}? It doesn't cost your turn." : $"Play {name}? It costs your turn.";
         if (step == CardStep.Extra) return ActiveCard == CardKind.SummonCaissa ? "Caïssa: which piece comes back?" : $"{name}: choose what it becomes";
         bool second = cardFrom >= 0;
         switch (ActiveCard)

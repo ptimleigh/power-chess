@@ -183,7 +183,7 @@ public static class Names
         CardKind.SummonCaissa => "Bring one of your captured pieces back, on any free square. At will.",
         CardKind.NuhUh => "Cancel the card your rival just played. Used as a reaction, never on your own turn.",
         CardKind.TakeBack => "Undo a round of moves: the board returns to the start of your previous turn. At will.",
-        CardKind.SummonMars => "Mars shows you the best move at the start of your next 3 turns. At will.",
+        CardKind.SummonMars => "Mars shows you the best move this turn and your next 2. Playing it doesn't cost your turn. At will.",
         CardKind.DragonStrike => "A dragon burns every piece on one row (rows 3 to 6, not a row holding a king). At will.",
         CardKind.SummonShiva => "Shiva strikes up to 3 random rival pieces with falling weapons. Never kings. At will.",
         CardKind.HitRestart => "Every piece goes back to its starting square and keeps its powers. Captured pieces stay captured. Used straight away.",

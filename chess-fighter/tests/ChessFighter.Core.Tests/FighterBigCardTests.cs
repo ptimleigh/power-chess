@@ -65,15 +65,17 @@ namespace ChessFighter.Core.Tests
             var s = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
             s.AddCard(Side.White, CardKind.SummonMars, 1);
             PlayCard(s, CardKind.SummonMars);
-            Assert.AreEqual(3, s.Mars[(int)Side.White], "the card's own turn used one");
-            T.Do(s, "h8h7");
+            Assert.AreEqual(Side.White, s.ToMove, "Mars does not cost the turn: the player still moves");
+            Assert.AreEqual(3, s.Mars[(int)Side.White]);
             T.Do(s, "a1a2");
             Assert.AreEqual(2, s.Mars[(int)Side.White]);
-            T.Do(s, "h7h8");
-            T.Do(s, "a2a3");
             T.Do(s, "h8h7");
+            T.Do(s, "a2a3");
+            T.Do(s, "h7h8");
             T.Do(s, "a3a4");
-            Assert.AreEqual(0, s.Mars[(int)Side.White], "three turns of hints, then it is spent");
+            T.Do(s, "h8h7");
+            T.Do(s, "a4a5");
+            Assert.AreEqual(0, s.Mars[(int)Side.White], "this turn and the next two, then it is spent");
 
             var again = T.Fen("7k/8/8/8/8/8/8/R3K3 w - - 0 1");
             again.AddCard(Side.White, CardKind.SummonMars, 1);

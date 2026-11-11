@@ -452,13 +452,21 @@ window.pcclip = (function () {
             later(T + 40, () => reconcile(beat));
             const endAt = T + 40 + (dramatic ? 520 : 340);
             if (isLast && beat.mate) {
-                if (zoomTarget === 1) {
-                    // a mate with no capture (a quiet move, a promotion, a Leap): still zoom in on the king and slow down
-                    const mk = beat.after.p.find(a => a[1] === 6 && a[2] !== moverSide);
-                    if (mk) later(Math.max(0, T - 120), () => punch(mk[0], 1.1, .4, 1000));
-                }
-                later(T + 160, () => { S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; if (koReady()) { addFx({ kind: 'ko', dur: 1800 }); later(380, () => { S.hit(true); doShake(26); doFlash('255,240,200', .45); }); } else callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
-                return endAt + 1350;
+                const kingA = beat.after.p.find(a => a[1] === 6 && a[2] !== moverSide);
+                const lastMove = evs.slice().reverse().find(e => e.k === 'Moved' || e.k === 'Leaped');
+                const atkSq = lastMove ? lastMove.t : (kingA ? kingA[0] : 0);
+                // 1. slow down and zoom in on the king as the last piece lands (a capture mate already did)
+                if (zoomTarget === 1 && kingA) later(Math.max(0, T - 120), () => punch(kingA[0], 1.1, .4, 1000));
+                // 2. impact: freeze, starburst, flash
+                later(T, () => {
+                    freeze(300); doFlash('255,255,255', .7); doShake(24); S.hit(true);
+                    if (kingA) { const kc = sqC(kingA[0]); addFx({ kind: 'impact', x: kc.x, y: kc.y, dur: 520 }); }
+                });
+                // 3. the king pops up and falls over on its square
+                if (kingA) later(T + 70, () => knockOver(kingA[0], atkSq));
+                // 4. it lands, and the big K.O. slams in
+                later(T + 1130, () => { S.boom(); doFlash('255,60,90', .75); doShake(30); vignette = 1; if (koReady()) { addFx({ kind: 'ko', dur: 1800 }); later(380, () => { S.hit(true); doShake(26); doFlash('255,240,200', .45); }); } else callout('K.O.!', W / 2, BY + BOARD / 2, RED, true); });
+                return endAt + 1350 + 1000;
             }
             if (beat.check && !beat.mate) later(Math.max(0, T - 100), () => { callout('CHECK!', W / 2, BY - 4, RED, true); S.ding(); vignette = Math.max(vignette, .5); });
             return endAt;
@@ -857,6 +865,21 @@ window.pcclip = (function () {
             return rockImg = c;
         }
 
+        // Street Fighter II style knock-out: the mated king is hit, pops up off its square, falls over and lands on its side, in place.
+        function knockOver(kingSq, atkSq) {
+            const k = at(kingSq); if (!k) return;
+            const kc = sqC(kingSq), ac = sqC(atkSq);
+            const dx = kc.x - ac.x, dir = dx !== 0 ? Math.sign(dx) : (kc.x < W / 2 ? 1 : -1);   // falls away from the attacker
+            const amp = Math.min(SQ * 1.15, Math.max(SQ * .45, kc.y - BY + SQ * .1));   // a king on the top rank pops up less, so it stays on the board
+            tween(950, t => { k.air = Math.sin(t * Math.PI) * amp; k.ox = dir * SQ * .3 * Math.sin(t * Math.PI); k.rot = dir * (Math.PI / 2) * (t * t * (3 - 2 * t)); }, x => x);
+            later(960, () => {
+                k.air = 0; k.ox = 0; k.rot = dir * Math.PI / 2;
+                S.hit(false); doShake(16);
+                burst(kc.x, kc.y + SQ * .3, '#e8e0ff', 16, 300);
+                tween(260, t => { k.air = Math.sin(t * Math.PI) * SQ * .16; });
+            });
+        }
+
         function drawAura(p, x, y) {
             if (p.buffs & 256) drawChecker(p, x, y);
             if (p.buffs & 32) {
@@ -891,7 +914,10 @@ window.pcclip = (function () {
                 // tall art pieces stand a little taller than their square, feet on the same line
                 const sp = sprite(p.type, p.side, tint);
                 const th = sp.height > sp.width * 1.3 ? size * 1.08 : size;
-                drawSprite(sp, x, y + bob - (th - size) / 2, th);
+                // a knocked-out king pops up, spins and ends lying on its side (air = height off the square, ox = sideways drift, rot = fall angle)
+                const sx = x + (p.ox || 0), sy = y + bob - (p.air || 0) - (th - size) / 2;
+                if (p.rot) { ctx.translate(sx, sy); ctx.rotate(p.rot); ctx.translate(-sx, -sy); }
+                drawSprite(sp, sx, sy, th);
             }
             if (p.burn > 0) flames(x, y, ['#fff7d0', '#ffb62a', '#ff4a14'], 5, SQ * (.55 + .6 * p.burn), 14); // a burning piece (fireball, dragon) goes up in flames
             ctx.restore();
@@ -1064,6 +1090,17 @@ window.pcclip = (function () {
                     ptext(f.text, 0, 0, 30, f.color);
                     ctx.restore();
                     ptext('CARD PLAYED', W / 2, y + 100, 12, '#aab4ff');
+                    break;
+                }
+                case 'impact': {
+                    // a comic-book starburst where the blow lands
+                    const grow = Math.min(1, k * 4), fade = k > .5 ? 1 - (k - .5) / .5 : 1;
+                    ctx.globalAlpha = fade; ctx.translate(f.x, f.y);
+                    for (let i = 0; i < 12; i++) {
+                        const a = i * Math.PI / 6 + .2, r1 = SQ * .25 * grow, r2 = SQ * (i % 2 ? .75 : 1.15) * grow;
+                        ctx.fillStyle = i % 2 ? '#ffe23a' : '#fff';
+                        ctx.beginPath(); ctx.moveTo(Math.cos(a - .12) * r1, Math.sin(a - .12) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.lineTo(Math.cos(a + .12) * r1, Math.sin(a + .12) * r1); ctx.closePath(); ctx.fill();
+                    }
                     break;
                 }
                 case 'ko': {

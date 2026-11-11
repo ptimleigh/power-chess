@@ -248,6 +248,7 @@ public sealed class GameSession
         }
         HintText = prefix + Hints.Describe(State, act);
         HintThinking = false;
+        AutoSelectForced(); // showing a hint clears the selection; mid-combo the forced piece is the only one that can be picked, so pick it again
         Sfx?.Invoke("pickup");
         Changed?.Invoke();
     }
@@ -1427,7 +1428,7 @@ public sealed class GameSession
         }
         else
         {
-            if (State.ForcedMover < 0) SelectPiece(sq);
+            if (State.ForcedMover < 0 || sq == State.ForcedMover) SelectPiece(sq);
             if (IsPowered(sq) && !wasInspected) Inspect = sq;
             // An empty powerup square: tap it to read what it is (and what it holds, when revealed).
             if ((State.Mystery[sq] || State.Portal[sq]) && State.Cells[sq].IsEmpty && !wasSquareInspected && Selected < 0) InspectSquare = sq;

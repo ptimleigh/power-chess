@@ -204,7 +204,7 @@ window.pcclip = (function () {
             const nb = data.beats[index + 1];
             const comboGoesOn = !!nb && nb.mover === beat.mover && nb.ev.some(isHit);
             let punched = false;
-            const hit = ms => later(ms, () => { comboHits++; if (comboHits >= 2) { addFx({ kind: 'combo', n: comboHits, last: comboHits >= 3 && !comboGoesOn, dur: 1100 }); snd.tone(420 + comboHits * 110, .14, 'square', .1); } });
+            const countHit = ms => later(ms, () => { comboHits++; if (comboHits >= 2) { addFx({ kind: 'combo', n: comboHits, last: comboHits >= 3 && !comboGoesOn, dur: 1100 }); snd.tone(420 + comboHits * 110, .14, 'square', .1); } });
             const bigPunch = (sq, z, sc, ms) => { punched = true; punch(sq, z, sc, ms); };
             const cardName = e => ((data.cards && data.cards[e.c]) || '').toUpperCase();
             const mid = { x: W / 2, y: BY + BOARD / 2 };
@@ -269,7 +269,7 @@ window.pcclip = (function () {
                             if (finalStrike) doFlash('255,255,255', .9);
                             else if (heavy) bigPunch(e.t, 1.16, .45, 800);
                         });
-                        hit(t + 40);
+                        countHit(t + 40);
                         later(t + 40, () => {
                             if (victim) kill(victim, 'fade');
                             burst(c.x, c.y, e.s === 0 ? '#ffd23f' : '#ff6a55', heavy ? 34 : 22, heavy ? 520 : 380);
@@ -300,7 +300,7 @@ window.pcclip = (function () {
                         for (const v of victims) {
                             const delay = dur * dist(e.f, v) / far;
                             later(t + delay, () => { const p = at(v); if (p) kill(p, 'fire'); const c = sqC(v); burst(c.x, c.y, '#ff7a1c', 26, 420); doShake(12); S.hit(false); if (v === target) bigPunch(v, 1.14, .5, 800); });
-                            if (evs.some(x => isHit(x) && x.f === v)) hit(t + delay);
+                            if (evs.some(x => isHit(x) && x.f === v)) countHit(t + delay);
                         }
                         handled.push(...victims);
                         T += dur + 650;
@@ -310,7 +310,7 @@ window.pcclip = (function () {
                         if (handled.indexOf(e.f) >= 0) break;
                         const t = T; const c = sqC(e.f);
                         later(t, () => { const p = at(e.f); if (p) kill(p, burnAll ? 'fire' : 'fade'); burst(c.x, c.y, burnAll ? '#ff7a1c' : '#ffd23f', 26, 440); doShake(10); S.hit(false); });
-                        if (isHit(e)) hit(t);
+                        if (isHit(e)) countHit(t);
                         break;
                     }
                     case 'Detonated': {
@@ -510,7 +510,9 @@ window.pcclip = (function () {
             beatIndex++;
             if (beatIndex >= total) { startOutro(); return; }
             const isLast = beatIndex === total - 1;
-            const endAt = applyBeat(data.beats[beatIndex], beatIndex, isLast);
+            let endAt = 900;
+            try { endAt = applyBeat(data.beats[beatIndex], beatIndex, isLast); }
+            catch (err) { console.error(err); try { reconcile(data.beats[beatIndex]); } catch (e2) { /* keep going */ } }
             later(endAt, nextBeat);
         }
         function startOutro() {
@@ -1202,7 +1204,7 @@ window.pcclip = (function () {
                 const diff = hud.hpTarget[i] - hud.hpShow[i];
                 hud.hpShow[i] += Math.sign(diff) * Math.min(Math.abs(diff), dt * .05);
             }
-            render();
+            try { render(); } catch (err) { console.error(err); }
             raf = requestAnimationFrame(frame);
         }
 

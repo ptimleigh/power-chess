@@ -814,7 +814,7 @@ html, body {
 
 /* ---------- more room: unlock cards, and the piece / square details as a docked sheet ---------- */
 .us-card { gap: 10px; padding: 6px 8px 12px; }
-.us-card .demo-caption { margin-top: 8px; margin-bottom: 6px; min-height: 0; line-height: 1.4; }
+.us-card .demo-caption, .sp-visual .demo-caption { margin-top: 8px; margin-bottom: 6px; line-height: 1.4; min-height: 5.7em; display: grid; align-content: start; justify-items: center; }   /* room for the longest caption (4 lines), so the card never jumps when the demo changes its text */
 .us-card .us-name { margin-top: 6px; line-height: 1.5; }
 .us-card .us-text { line-height: 1.5; font-size: 12.5px; }
 

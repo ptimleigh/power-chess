@@ -393,8 +393,9 @@
     @if (S.Inspect >= 0 && !S.Reviewing && S.Tutorial == null && !S.State.Cells[S.Inspect].IsEmpty)
     {
         var ip = S.State.Cells[S.Inspect];
+        string rivalWord = ip.Side == Side.White ? "red" : "blue";   // White is drawn blue, Black red
         string? miniHint = S.HumanTurn && ip.Side == S.HumanSide && inspectMore != S.Inspect
-            ? (S.HoldsFireball ? "Tap Fireball, then a red piece" : S.HoldsLeap ? "Tap Leap, then a red piece" : S.HasDetonate ? "Tap Detonate to blow it up" : null)
+            ? (S.HoldsFireball ? $"Tap Fireball, then a {rivalWord} piece" : S.HoldsLeap ? $"Tap Leap, then a {rivalWord} piece" : S.HasDetonate ? "Tap Detonate to blow it up" : null)
             : null;
         @if (miniHint != null)
         {

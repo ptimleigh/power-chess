@@ -1,7 +1,7 @@
 # Chess Fighter: store release guide
 
 ## What is built
-- `app/` is the Android shell (Capacitor): app id `app.chessfighter.game`, name "Chess Fighter", portrait only, minSdk 24, targetSdk 34.
+- `app/` is the Android shell (Capacitor): app id `app.chessfighter.game`, name "Chess Fighter", portrait only, minSdk 24, targetSdk 36 (Android 16, Google Play's requirement from 31 Aug 2026).
 - `app/scripts/build-android.sh` publishes the web app, injects the ad bridge and the back-button handler, patches the version and icons,
   and builds. Without secrets it makes a **debug APK with Google test ads**. With `RELEASE=1` and a keystore it also makes a signed
   release APK and the Play Store bundle (`.aab`).

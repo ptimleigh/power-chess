@@ -74,13 +74,49 @@ open(mf, 'w').write(s)
 vg = os.path.join(root, 'variables.gradle')
 v = open(vg).read()
 v = re.sub(r'minSdkVersion = \d+', 'minSdkVersion = 24', v)
-v = re.sub(r'targetSdkVersion = \d+', 'targetSdkVersion = 34', v)
+v = re.sub(r'targetSdkVersion = \d+', 'targetSdkVersion = 36', v)
+v = re.sub(r'compileSdkVersion = \d+', 'compileSdkVersion = 36', v)
 open(vg, 'w').write(v)
 bg = os.path.join(root, 'app/build.gradle')
 b = open(bg).read()
 b = re.sub(r'versionCode \d+', 'versionCode ' + vcode, b)
 b = re.sub(r'versionName "[^"]*"', 'versionName "' + vname + '"', b)
 open(bg, 'w').write(b)
+
+# Android 16 (API 36) needs a newer Android Gradle Plugin and Gradle than the Capacitor 6 template ships.
+tg = os.path.join(root, 'build.gradle')
+t = open(tg).read()
+t = re.sub(r"com\.android\.tools\.build:gradle:[\d.]+", "com.android.tools.build:gradle:8.9.1", t)
+open(tg, 'w').write(t)
+wp = os.path.join(root, 'gradle/wrapper/gradle-wrapper.properties')
+w = open(wp).read()
+w = re.sub(r"gradle-[\d.]+-all\.zip", "gradle-8.11.1-all.zip", w)
+open(wp, 'w').write(w)
+
+# Targeting API 35+ makes the window edge-to-edge: without this the top bar would sit under the status bar.
+act = os.path.join(root, 'app/src/main/java/app/chessfighter/game/MainActivity.java')
+open(act, 'w').write('''package app.chessfighter.game;
+
+import android.os.Bundle;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import com.getcapacitor.BridgeActivity;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().getDecorView().setBackgroundColor(0xFF07061A);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom));
+            return WindowInsetsCompat.CONSUMED;
+        });
+    }
+}
+''')
 PY
 
 ICON_DIR="$FIGHTER/web/ChessFighter.Web/wwwroot/icons"

@@ -43,7 +43,7 @@ jobs:
       - name: Android SDK (preinstalled on the runner)
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" || true
 
       - name: Stamp the build label
         run: sed -i "s|Label = \"dev\"|Label = \"${GITHUB_SHA::7} $(date -u +%Y-%m-%d)\"|" chess-fighter/web/ChessFighter.Web/Game/BuildInfo.cs

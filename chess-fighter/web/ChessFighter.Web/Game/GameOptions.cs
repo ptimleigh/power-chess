@@ -13,6 +13,8 @@ public sealed class GameOptions
     public int Ai = 6; // Normal
     /// <summary>Which side the player takes against the AI: "white", "black" or "random".</summary>
     public string PlayAs = "white";
+    /// <summary>Hidden: the AI plays both sides (<c>watch=1</c>, or the debug panel).</summary>
+    public bool Watch;
     public string? Fen;
     public List<PowerupKind> Only = new();
     public int Pairs = -1;
@@ -72,6 +74,7 @@ public sealed class GameOptions
                 case "seed": if (ulong.TryParse(val, out var seed)) o.Seed = seed; break;
                 case "side": if (val is "white" or "black" or "random") o.PlayAs = val; break;
                 case "ai": if (int.TryParse(val, out var ai)) o.Ai = Math.Clamp(ai, 0, 6); break;
+                case "watch": o.Watch = val is "1" or "true"; break;
                 case "fen": o.Fen = val; break;
                 case "pairs": if (int.TryParse(val, out var pairs)) o.Pairs = pairs; break;
                 case "spawn": if (int.TryParse(val, out var spawn)) o.Spawn = spawn; break;

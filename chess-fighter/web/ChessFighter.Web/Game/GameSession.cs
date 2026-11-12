@@ -155,7 +155,7 @@ public sealed class GameSession
     public List<PieceView> ViewPieces => Reviewing && reviewIndex < history.Count ? viewHistory[reviewIndex] : Pieces;
     public int ViewLastFrom => Reviewing ? LastOf(reviewIndex).from : LastFrom;
     public int ViewLastTo => Reviewing ? LastOf(reviewIndex).to : LastTo;
-    public bool CanReview => history.Count > 0 && !Busy && !PickupPending;
+    public bool CanReview => history.Count > 0 && (Spectate || !Busy) && !PickupPending;
     public bool CanRewind => HumanTurn && !Reviewing && history.CanRewind(State, Me);
     /// <summary>The side the player controls: White vs the AI, otherwise whoever is to move.</summary>
     public Side Me => VsAi ? HumanSide : State.ToMove;
@@ -184,7 +184,7 @@ public sealed class GameSession
     /// <summary>Called once when the game ends, with what happened, so the page can award XP.</summary>
     public Action<MatchSummary>? GameEnded;
     /// <summary>Whether finishing this game should pay XP: not a scenario, training board or debug-assisted game.</summary>
-    public bool Rewardable => rewardable && !DebugUsed && Puzzle == null;
+    public bool Rewardable => rewardable && !DebugUsed && Puzzle == null && !Spectate;
 
     // ---------- hints ----------
 
@@ -271,7 +271,7 @@ public sealed class GameSession
     {
         opt = options;
         Tut = tutorials ?? new TutorialState();
-        ai = Ai.ForLevel(opt.Ai);
+        ai = Ai.ForLevel(opt.Ai > 0 ? opt.Ai : 2);
         NewGame();
         if (opt.Scramble > 0) DebugScramble(opt.Scramble);
     }
@@ -289,7 +289,7 @@ public sealed class GameSession
 
     void MaybeTutorial(PowerupKind kind)
     {
-        if (!opt.Tutorials || !Tut.ShouldShow(kind)) return;
+        if (!opt.Tutorials || Spectate || !Tut.ShouldShow(kind)) return;
         Tutorial = Tutorials.Normalize(kind);
         DontShowAgain = false;
     }
@@ -353,10 +353,12 @@ public sealed class GameSession
         UseRewind();
     }
 
-    public bool VsAi => opt.Ai > 0;
+    /// <summary>Hidden watch mode: the engine plays both sides and nothing in the UI says so.</summary>
+    public bool Spectate => opt.Watch;
+    public bool VsAi => opt.Ai > 0 && !opt.Watch;
     public bool GameOver => Result != GameResult.Ongoing;
-    bool AiToMove => VsAi && !GameOver && State.Decider == RivalSide;
-    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && (!VsAi || State.Decider == HumanSide);
+    bool AiToMove => !GameOver && (Spectate || VsAi && State.Decider == RivalSide);
+    public bool HumanTurn => !GameOver && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None && !Spectate && (!VsAi || State.Decider == HumanSide);
     public bool PickupPending => State.PendingSquare >= 0;
 
     /// <summary>A Stun or Steal square was just landed on and its target must be chosen now.</summary>
@@ -375,10 +377,10 @@ public sealed class GameSession
         if (opt.Pairs >= 0) cfg.InitialPairs = opt.Pairs;
         if (opt.Spawn >= 0) cfg.SpawnInterval = opt.Spawn;
         if (opt.Only.Count > 0) cfg.Pool = opt.Only.Select(k => new WeightedKind(k, 1)).ToList();
-        cfg.RewindAllowed[(int)RivalSide] = !VsAi; // the AI cannot use Rewind, so it never draws it
-        cfg.SwapAllowed[(int)RivalSide] = !VsAi; // nor Swap
-        cfg.RewindAllowed[(int)HumanSide] = true;
-        cfg.SwapAllowed[(int)HumanSide] = true;
+        cfg.RewindAllowed[(int)RivalSide] = !VsAi && !Spectate; // the AI cannot use Rewind, so it never draws it
+        cfg.SwapAllowed[(int)RivalSide] = !VsAi && !Spectate; // nor Swap
+        cfg.RewindAllowed[(int)HumanSide] = !Spectate;
+        cfg.SwapAllowed[(int)HumanSide] = !Spectate;
         bool tele = opt.Level < 0 || opt.Level >= Progression.TeleporterLevel;
         cfg.PortalChance = opt.Portals && tele ? 0.12 : 0;
         cfg.Squares = opt.Mode;
@@ -688,7 +690,7 @@ public sealed class GameSession
             State = state;
             ResetTracker(true);
             nextId = Math.Max(savedNextId, 1);
-            ai = Ai.ForLevel(opt.Ai);
+            ai = Ai.ForLevel(opt.Ai > 0 ? opt.Ai : 2);
             Effects.Clear();
             Toasts.Clear();
             toastQueue.Clear();
@@ -1509,6 +1511,7 @@ public sealed class GameSession
             await Task.Delay(T(450)); // let the UI paint before the (synchronous) search
             var sw = System.Diagnostics.Stopwatch.StartNew();
             GameAction act = ai.Choose(State);
+            while (Spectate && Reviewing && !GameOver) await Task.Delay(250);   // paused while the viewer scrolls back through the game
             Console.WriteLine($"[ai] {Ai.LevelName(opt.Ai)} chose {act} in {sw.ElapsedMilliseconds} ms");
             Thinking = false;
             await Play(act);
@@ -1663,7 +1666,7 @@ public sealed class GameSession
     // ---------- resign ----------
 
     /// <summary>Resigning is offered in a normal game (not a puzzle) while it is still running.</summary>
-    public bool CanResign => !GameOver && Puzzle == null && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None;
+    public bool CanResign => !Spectate && !GameOver && Puzzle == null && !Busy && !Reviewing && PuzzleOutcome == PuzzleResult.None;
 
     /// <summary>Give up the game: it ends as a loss for you (or for whoever is on move in a two-player game).</summary>
     public void Resign()
@@ -2347,7 +2350,7 @@ public sealed class GameSession
     {
         LogOnly(side, "Drew " + Names.CardName(card));
         if (Draw != null && Draw.Pick) { AddToast("DREW: " + Names.CardName(card), Names.CardDesc(card), "gold", Names.CardIcon(card), side, false); return; }
-        bool human = !VsAi || side == HumanSide;
+        bool human = !Spectate && (!VsAi || side == HumanSide);
         int serial = ++drawSerial;
         var show = new DrawShow { Card = card, Side = side, WhoLabel = WhoLabelFor(side), Serial = serial, Pick = human && opt.Drama, Phase = 0 };
         if (!show.Pick) show.Phase = 1;

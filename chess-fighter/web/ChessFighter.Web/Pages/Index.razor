@@ -335,6 +335,9 @@
         <section class="debug" data-testid="debug">
             <div class="debug-head"><b>DEBUG</b><small>@(S.DebugHint == "" ? "Pick a tool, then tap the board" : S.DebugHint)</small>
                 <button class="x" aria-label="Close debug" @onclick="CloseDebug">x</button></div>
+            <div class="debug-row"><span>Watch</span>
+                <button class="dbtn @(opt.Watch ? "on" : "")" data-dwatch="toggle" @onclick="ToggleWatch">@(opt.Watch ? "Back to playing" : "AI vs AI")</button>
+            </div>
             <div class="debug-row"><span>Cards to @(S.DebugCardsToRival ? "rival" : "you")</span>
                 <button class="dbtn @(S.DebugCardsToRival ? "on" : "")" data-dcards="side" @onclick="S.DebugToggleCardSide">@(S.DebugCardsToRival ? "Rival" : "You")</button>
                 @foreach (var k in CardKinds)
@@ -1238,6 +1241,15 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         if (logoTaps >= 5) { logoTaps = 0; showDebug = !showDebug; if (!showDebug) S.DebugDisarm(); }
     }
 
+    /// <summary>Start (or stop) a game where the AI plays both sides. Nothing on the board says so.</summary>
+    void ToggleWatch()
+    {
+        opt.Watch = !opt.Watch;
+        if (opt.Watch) { if (opt.Ai <= 0) opt.Ai = 6; StartNew(persist: false); }
+        else StartNew();
+        showDebug = false;
+    }
+
     void CloseDebug()
     {
         showDebug = false;
@@ -1288,7 +1300,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         urlSeed = uri.Query.Contains("seed=", StringComparison.OrdinalIgnoreCase);
         // Any explicit scenario option (seed, fen, perks, ...) means "start exactly this": no resuming, no saving.
         showDebug = uri.Query.Contains("debug=1", StringComparison.OrdinalIgnoreCase);
-        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "cards=", "pending=", "scramble=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=", "preset=", "freq=", "custom=" }
+        debugOptions = new[] { "seed=", "fen=", "pairs=", "spawn=", "rerolls=", "only=", "perks=", "buffs=", "cards=", "pending=", "scramble=", "mystery=", "demo=", "training=", "mode=", "hidden=", "reveal=", "portal=", "portals=", "drama=", "level=", "preset=", "freq=", "custom=", "watch=" }
             .Any(k => uri.Query.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         // A session must exist for the first render. It does not save yet, so it cannot overwrite the stored game
@@ -1701,7 +1713,8 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     {
         if (S != null) { S.Changed = null; S.Sfx = null; S.Persist = null; }
         if (!urlSeed) opt.Seed = (ulong)DateTime.UtcNow.Ticks;
-        if (!debugOptions) opt.Level = profile.Level;
+        if (opt.Watch) opt.Level = -1;   // watching: everything is in the pool
+        else if (!debugOptions) opt.Level = profile.Level;
         pendingResume = false;
         S = new GameSession(opt, tut);
         WireSession();
@@ -1714,6 +1727,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     /// <summary>When the player is Black the rival opens: wait for the ROUND banner, then let it move.</summary>
     async Task AiOpening(GameSession sess)
     {
+        if (sess.Spectate) { await Task.Delay(1500); if (sess == S && sess.Moves == 0 && !sess.GameOver) await sess.ResumeAi(); return; }
         if (sess.HumanSide != Side.Black || !sess.VsAi || sess.Puzzle != null) return;
         await Task.Delay(1500);
         if (sess == S && sess.Moves == 0 && !sess.GameOver) await sess.ResumeAi();

@@ -870,3 +870,9 @@ a.btn { color: inherit; text-decoration: none; display: inline-block; }
 .unlock-line .ul-label { font-family: var(--px); font-size: 9px; color: var(--gold); margin-right: 2px; }
 .unlock-line .ul-chip { font-family: var(--px); font-size: 9px; padding: 5px 8px; border: 2px solid #000; background: #ffd23f22; color: #fff; }
 .unlock-line .link-btn { margin-left: auto; }
+
+/* phones held sideways: height is the tight side, so size the board from it and keep the top bar readable */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root { --b: min(calc(100svh - 90px), 420px); }
+  .topbar { width: max(calc(var(--b) + 12px), 360px); }
+}

@@ -121,16 +121,24 @@ namespace ChessFighter.Core
             return n;
         }
 
+        /// <summary>A card you are already holding is a third as likely to come up again, so the same card rarely lands twice in a row.</summary>
+        static int DrawWeight(GameState s, Side drawer, CardKind k, double f)
+        {
+            int w = LateRamp.Weigh(Weight(s, drawer, k), LateRamp.RareCard(k), f);
+            if (w > 0 && s.CardCount(drawer, k) > 0) w = System.Math.Max(1, w / 3);
+            return w;
+        }
+
         public static CardKind Draw(GameState s, Side drawer)
         {
             double f = LateRamp.Factor(s, drawer);
             int total = 0;
-            for (int k = First; k <= Last; k++) total += LateRamp.Weigh(Weight(s, drawer, (CardKind)k), LateRamp.RareCard((CardKind)k), f);
+            for (int k = First; k <= Last; k++) total += DrawWeight(s, drawer, (CardKind)k, f);
             if (total <= 0) return CardKind.None;
             int roll = s.Rng.Range(total);
             for (int k = First; k <= Last; k++)
             {
-                roll -= LateRamp.Weigh(Weight(s, drawer, (CardKind)k), LateRamp.RareCard((CardKind)k), f);
+                roll -= DrawWeight(s, drawer, (CardKind)k, f);
                 if (roll < 0) return (CardKind)k;
             }
             return CardKind.None;

@@ -87,6 +87,7 @@ for (int c = Cards.First; c <= Cards.Last; c++)
     P($"| {k} | {per:0.00} | {(ahead > 0 ? Pct(won, ahead) : "-")} | {ahead} |");
 }
 P();
+P($"- Turns where a Leap was legal: {all.Average(g => g.LeapOffered):0.00} per game, taken {all.Average(g => g.LeapTaken):0.00}; Fireball legal {all.Average(g => g.FireOffered):0.00}, taken {all.Average(g => g.FireTaken):0.00}");
 P("## How often powers are actually used (per game)");
 P($"- Fireball shots {all.Average(g => g.FireShots):0.00}, Leap shots {all.Average(g => g.LeapShots):0.00}, Stun bolts {all.Average(g => g.Zaps):0.00}, Bomb detonations {all.Average(g => g.Detonations):0.00}, Steals {all.Average(g => g.Grabs):0.00}");
 P();
@@ -111,7 +112,12 @@ static Game PlayOne(ulong seed, int aiLevel, int aiLevelB, int unlock, int maxPl
     int guard = 0;
     while (Rules.GetResult(s) == GameResult.Ongoing && s.Ply < maxPly && guard++ < maxPly * 12)
     {
+        var legal = MoveGen.LegalActions(s);
+        bool leapOffered = legal.Any(x => x.Kind == ActionKind.Leap);
+        bool fireOffered = legal.Any(x => x.Kind == ActionKind.Fireball);
         var act = ais[(int)s.Decider].Choose(s);
+        if (leapOffered) { g.LeapOffered++; if (act.Kind == ActionKind.Leap) g.LeapTaken++; }
+        if (fireOffered) { g.FireOffered++; if (act.Kind == ActionKind.Fireball) g.FireTaken++; }
         ev.Clear();
         Rules.Apply(s, act, ev);
         foreach (var e in ev)
@@ -160,6 +166,7 @@ static Game PlayOne(ulong seed, int aiLevel, int aiLevelB, int unlock, int maxPl
 sealed class Game
 {
     public GameResult Result;
+    public int LeapOffered, LeapTaken, FireOffered, FireTaken;
     public string Reason = "";
     public int Plies;
     public Dictionary<PowerupKind, int> PickedW = new(), PickedB = new();

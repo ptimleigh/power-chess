@@ -393,6 +393,19 @@
     @if (S.Inspect >= 0 && !S.Reviewing && S.Tutorial == null && !S.State.Cells[S.Inspect].IsEmpty)
     {
         var ip = S.State.Cells[S.Inspect];
+        string? miniHint = S.HumanTurn && ip.Side == S.HumanSide && inspectMore != S.Inspect
+            ? (S.HoldsFireball ? "Tap Fireball, then a red piece" : S.HoldsLeap ? "Tap Leap, then a red piece" : S.HasDetonate ? "Tap Detonate to blow it up" : null)
+            : null;
+        @if (miniHint != null)
+        {
+            <div class="inspect mini" data-testid="inspect-mini">
+                <b>@miniHint</b>
+                <button class="demo-btn" data-action="inspect-more" @onclick="() => inspectMore = S.Inspect">More</button>
+                <button class="x" aria-label="Close" @onclick="S.CloseInspect">x</button>
+            </div>
+        }
+        else
+        {
         <div class="inspect" data-testid="inspect">
             <div class="inspect-head">
                 <b>@InspectTitle(ip)</b>
@@ -427,6 +440,7 @@
                 </div>
             }
         </div>
+        }
     }
 </div>
 
@@ -1533,6 +1547,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     // ---------- replay clip ----------
 
     bool showResign;
+    int inspectMore = -1;   // the square whose full info card the player asked for
 
     /// <summary>Back and forward arrows around the History button. Going back enters history mode, where the button reads "Back to game"; forward is dimmed while the game is up to date.</summary>
     RenderFragment HistoryNav => @<div class="hist-nav">

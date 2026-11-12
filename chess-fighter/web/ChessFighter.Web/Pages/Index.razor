@@ -274,7 +274,7 @@
         @if (S.HoldsLeap)
         {
             <button class="perk fire-btn" data-action="leap" disabled="@(!S.HasLeap)" @onclick="S.StartLeap">
-                <span class="pi">@Icons.Svg("checker")</span><span class="pl">Leap@(S.HasLeap ? "" : " (no target)")</span>
+                <span class="pi">@Icons.Svg("checker")</span><span class="pl">Checkers@(S.HasLeap ? "" : " (no target)")</span>
             </button>
         }
         @if (S.EffectPending && S.State.EffectKind == PowerupKind.Leap && S.HumanTurn)
@@ -395,7 +395,7 @@
         var ip = S.State.Cells[S.Inspect];
         string rivalWord = ip.Side == Side.White ? "red" : "blue";   // White is drawn blue, Black red
         string? miniHint = S.HumanTurn && ip.Side == S.HumanSide && inspectMore != S.Inspect
-            ? (S.HoldsFireball ? $"Tap Fireball, then a {rivalWord} piece" : S.HoldsLeap ? $"Tap Leap, then a {rivalWord} piece" : S.HasDetonate ? "Tap Detonate to blow it up" : null)
+            ? (S.HoldsFireball ? $"Tap Fireball, then a {rivalWord} piece" : S.HoldsLeap ? $"Tap Checkers, then a {rivalWord} piece" : S.HasDetonate ? "Tap Detonate to blow it up" : null)
             : null;
         @if (miniHint != null)
         {
@@ -421,10 +421,10 @@
                     <span>
                         <b>@Names.TierName(kind, ip.Tier)</b>
                         @(flag == Buff.Armor
-                            ? $"Immune to capture and effects for {ip.ArmorTurns} more opponent {(ip.ArmorTurns == 1 ? "turn" : "turns")}."
+                            ? $"Can't be captured for {ip.ArmorTurns} more opponent {(ip.ArmorTurns == 1 ? "turn" : "turns")}."
                             : flag == Buff.Ghost
-                            ? $"Slides through pieces and boulders for {ip.GhostTurns} more of its owner's {(ip.GhostTurns == 1 ? "turn" : "turns")}."
-                            : Names.Desc(kind, ip.Tier))
+                            ? $"Passes through pieces for {ip.GhostTurns} more {(ip.GhostTurns == 1 ? "move" : "moves")}."
+                            : Names.Short(kind, ip.Tier))
                     </span>
                     <button class="demo-btn" data-demo="@kind.ToString().ToLowerInvariant()" @onclick="() => S.ShowTutorial(kind)">Demo</button>
                 </div>
@@ -435,7 +435,7 @@
                     <span class="gi perk">@Icons.Svg("star")</span>
                     <span>
                         <b>Frozen</b>
-                        @($"Can't move for {ip.StunTurns} more of its owner's {(ip.StunTurns == 1 ? "turn" : "turns")}, and can't give check.")
+                        @($"Can't move for {ip.StunTurns} more {(ip.StunTurns == 1 ? "turn" : "turns")}.")
                     </span>
                     <button class="demo-btn" data-demo="stun" @onclick="() => S.ShowTutorial(PowerupKind.Stun)">Demo</button>
                 </div>
@@ -1000,11 +1000,12 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 {
                     <li class="" data-guide="@k.ToString().ToLowerInvariant()">
                         <span class="gi @(PowerupInfo.IsPerk(k) ? "perk" : "buff")">@Icons.Svg(Names.Icon(k))</span>
-                        <span><b>@Names.Name(k)</b> @Names.Desc(k)</span>
+                        <span><b>@Names.Name(k)</b> @Names.Short(k)</span>
+                        @if (Tutorials.Has(k)) { <button class="demo-btn" data-demo="@k.ToString().ToLowerInvariant()" @onclick="() => { showHelp = false; showMenu = false; S.ShowTutorial(k); }">Demo</button> }
                     </li>
                 }
             </ul>
-            <p class="fine">Kings can use most powers, but not Poison or Bombs. Using a banked power (Fireball, Leap, Bomb) or playing a card costs your turn (Summon Mars and Take Back do not).</p>
+            <p class="fine">Kings can use most powers, but not Poison or Bombs. Using a banked power (Fireball, Checkers, Bomb) or playing a card costs your turn (Summon Mars and Take Back do not).</p>
             <div class="row help-row">
                 <button class="btn" data-action="training" @onclick="StartTraining">Learn the basics</button>
                 <button class="btn" data-action="reset-tutorials" @onclick="ResetTutorials">Reset tutorials</button>
@@ -1235,7 +1236,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     static readonly (string Label, PowerupKind Kind, int Times)[] DebugBuffs =
     {
         ("Fireball I", PowerupKind.Fireball, 1), ("Fireball II", PowerupKind.Fireball, 2),
-        ("Leap I", PowerupKind.Leap, 1), ("Leap II", PowerupKind.Leap, 2), ("Leap III", PowerupKind.Leap, 3),
+        ("Checkers I", PowerupKind.Leap, 1), ("Checkers II", PowerupKind.Leap, 2), ("Checkers III", PowerupKind.Leap, 3),
         ("Bomb I", PowerupKind.SmallBomb, 1), ("Bomb II", PowerupKind.SmallBomb, 2),
         ("Poison", PowerupKind.Poison, 1), ("Ghost", PowerupKind.Ghost, 1), ("Armor", PowerupKind.SpikedArmor, 1),
     };
@@ -1472,7 +1473,7 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     static string TutorialText(PowerupKind k) => PowerupInfo.IsTransform(k)
         ? "The piece that opens one changes into another piece on the spot. Never a king."
         : k == PowerupKind.Leap
-        ? "Leap I jumps a rival on the next diagonal square, like a checker, and captures it. Land on another Leap square for II (two jumps in a row) and again for III (jump as long as you can). Uses your turn, one use."
+        ? "Checkers I jumps a rival on the next diagonal square, like a checker, and captures it. Land on another Checkers square for II (two jumps in a row) and again for III (jump as long as you can). Uses your turn, one use."
         : Names.Desc(k);
 
     // ---------- tester sharing ----------

@@ -23,7 +23,7 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 |---|---|---|---|---|
 | **Fireball** | Fires along ranks and files like a rook at the first piece in line (enemy only). One use. | Also fires diagonally, like a queen. | Counts as a rook (I) or queen (II) for check and mate. A king can hold one. | **Built** |
 | **Poison** | If the piece is captured, the capturer is also lost. Lasts 5 of the owner's moves. | None. | A king cannot capture a poisoned piece. | **Built** |
-| **Leap** | A checkers jump: the piece jumps diagonally over an adjacent rival into the empty square directly behind it and captures it. Indicator: a checker lying flat on the square (red for P1, black for P2) with one groove ring per tier and a gold rim at III. | Tier II chains a second jump in the same turn; tier III keeps jumping as long as a jump is available. After each jump you may stop. | Kings can hold and use it, but never be jumped. Armored pieces and kings cannot be jumped; the landing square must be empty (no boulder); landing on a powerup square or teleporter triggers it and ends the chain; a pawn never leaps onto the last rank. | **Built** |
+| **Checkers** | A checkers jump: the piece jumps diagonally over an adjacent rival into the empty square directly behind it and captures it. Indicator: a checker lying flat on the square (red for P1, black for P2) with one groove ring per tier and a gold rim at III. | Tier II chains a second jump in the same turn; tier III keeps jumping as long as a jump is available. After each jump you may stop. | Kings can hold and use it, but never be jumped. Armored pieces and kings cannot be jumped; the landing square must be empty (no boulder); landing on a powerup square or teleporter triggers it and ends the chain; a pawn never leaps onto the last rank. | **Built** |
 | **Bomb** | Detonate: destroys all pieces in the 3x3 around the piece, itself included. Chain-detonates other bomb pieces in the blast. | 5x5. | A king in the blast zone counts as in check (chains too; spell it out to the player). A king landing on a Bomb square gets nothing and the square is used up. A detonation that would destroy your own king is illegal. | **Built** |
 | **Ghost** | 3 moves as a ghost. The counter does not go down if the piece does not move. | None. | A ghost can threaten check and mate. | **Built** |
 
@@ -64,9 +64,9 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Death, Hit restart, World 
 ## Assumptions made while building (change any of these)
 
 - **Poison lasts the pickup turn plus 5 more owner turns**, so the opponent gets 5 replies while it is active.
-- **Leap is one use**, like Fireball, and uses the turn (the whole chain is one turn). Each jump must leave your own king safe.
-- **A leap pulls a rival as far toward the shooter as it can, but never lands it on a powerup square or teleporter** (nothing is triggered); it stops short of one. If it cannot move at all it is stunned where it stands. A hook that would leave your own king in check is not offered, and the interface outlines such a rival and says why when tapped.
-- **Leap is not a check threat** (only Fireball, Ghost and Bomb are).
+- **Checkers is one use**, like Fireball, and uses the turn (the whole chain is one turn). Each jump must leave your own king safe.
+- **A jump pulls a rival as far toward the shooter as it can, but never lands it on a powerup square or teleporter** (nothing is triggered); it stops short of one. If it cannot move at all it is stunned where it stands. A hook that would leave your own king in check is not offered, and the interface outlines such a rival and says why when tapped.
+- **Checkers is not a check threat** (only Fireball, Ghost and Bomb are).
 - **Armored pieces cannot be hooked.** A king can.
 - **Bomb:** the bomber is destroyed by its own blast, except an armored bomber, which survives with the bomb spent. A blast never removes
   a king or an armored piece, and clears boulders. A detonation needs at least one other target, and a stunned bomber cannot detonate or
@@ -128,13 +128,13 @@ deck through Draw Card squares, so they appear once Draw Card (level 7) and thei
 | 5 | Stun Bolt |
 | 6 | Combo +2 |
 | 7 | Draw Card squares, cards: Boulder, Smash Boulder, Promotion |
-| 8 | Leap I |
+| 8 | Checkers I |
 | 9 | Fireball II |
 | 10 | Square frequency, Calm and Chaos modes |
 | 11 | Steal |
 | 12 | Cards: Nuh-uh, Take Back, Horse Sacrifice, Role Reversal |
-| 13 | Bomb II, Leap II |
-| 16 | Leap III |
+| 13 | Bomb II, Checkers II |
+| 16 | Checkers III |
 | 14 | Ghost Town mode |
 | 15 | Combo +4 |
 | 16 | Cards: Summon Mars, Summon Caïssa, No More Powers |
@@ -158,7 +158,7 @@ Each new trophy is worth 25 XP, but one game pays at most 50 XP in trophies.
 
 ## Late-game ramp
 
-Rare powers (Combo +4, Steal, Leap) and the big cards (Missile Strike, Dragon Strike, Summon Death, World Turned Upside Down, Hit Restart) get likelier as a
+Rare powers (Combo +4, Steal, Checkers) and the big cards (Missile Strike, Dragon Strike, Summon Death, World Turned Upside Down, Hit Restart) get likelier as a
 game runs: 1x until ply 30 (move 15), rising to 2x at ply 100 (move 50). A card draw by the side behind in material gets up to +0.5 more, with 2x as the
 ceiling. Common powers are unchanged. Code: `LateRamp.cs`; the simulator can compare settings (`BalanceSim ... ramp start full`).
 

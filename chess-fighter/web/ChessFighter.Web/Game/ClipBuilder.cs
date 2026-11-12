@@ -81,7 +81,7 @@ public static class ClipBuilder
         {
             ActionKind.Move => $"{e.Before.Cells[a.From].Type} {Sq.Name(a.From)} to {Sq.Name(a.To)}",
             ActionKind.Fireball => "Fireball",
-            ActionKind.Leap => "Leap",
+            ActionKind.Leap => "Checkers",
             ActionKind.LeapStop => "Stopped",
             ActionKind.Stun => "Stun",
             ActionKind.Steal => "Steal",
@@ -105,7 +105,7 @@ public static class ClipBuilder
     {
         PowerupKind.None => "?",
         PowerupKind.Fireball => "FIRE",
-        PowerupKind.Leap => "LEAP",
+        PowerupKind.Leap => "CHECKERS",
         PowerupKind.SmallBomb or PowerupKind.BigBomb => "BOMB",
         PowerupKind.Poison => "POIS",
         PowerupKind.Ghost => "GHOST",

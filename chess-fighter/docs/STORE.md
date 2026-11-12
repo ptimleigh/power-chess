@@ -47,7 +47,7 @@ is required. "Ad choices" in the help sheet reopens it. The browser build has no
 
 **Long description:**
 Chess, but every game is a fight. Powerup squares appear on the board in matching pairs. Land on one to load a Fireball, hook a rival
-with a Leap, arm a Bomb, turn a piece into a Ghost, take over an enemy piece, or chain a Combo of extra moves. Draw Card squares add
+with Checkers, arm a Bomb, turn a piece into a Ghost, take over an enemy piece, or chain a Combo of extra moves. Draw Card squares add
 cards to your bag that anyone can see: cancel your rival's card with Nuh-uh, rewind a turn, call a Dragon Strike down a row, summon Mars,
 Caïssa or Death, or launch a Missile at a corner of the board.
 

@@ -1762,7 +1762,7 @@ public sealed class GameSession
                     _ => "",
                 };
             if (Mode == InputMode.FireAim) return "Fireball: tap an enemy to choose the direction";
-            if (Mode == InputMode.LeapAim) return "Leap: tap the square to land on (the marked rival is captured)";
+            if (Mode == InputMode.LeapAim) return "Checkers: tap the square to land on (the marked rival is captured)";
             if (Mode == InputMode.BombPreview)
                 return $"Bomb: destroys {BombOwnLosses} of your pieces (the bomber too) and {BombEnemyLosses} of theirs"
                     + (BombChain > 0 ? $", and sets off {BombChain} more {(BombChain == 1 ? "bomb" : "bombs")}" : "") + ". Confirm or cancel.";
@@ -1860,7 +1860,7 @@ public sealed class GameSession
             ActionKind.Move => $"{e.Before.Cells[a.From].Type} {Sq.Name(a.From)} to {Sq.Name(a.To)}"
                 + (!e.Before.Cells[a.To].IsEmpty ? " (capture)" : ""),
             ActionKind.Fireball => $"Fireball from {Sq.Name(a.From)}",
-            ActionKind.Leap => $"Leap {Sq.Name(a.From)} to {Sq.Name(a.To)}",
+            ActionKind.Leap => $"Checkers {Sq.Name(a.From)} to {Sq.Name(a.To)}",
             ActionKind.LeapStop => "Stopped jumping",
             ActionKind.Stun => $"Stun on {Sq.Name(a.To)}",
             ActionKind.Steal => $"Steal on {Sq.Name(a.To)}",
@@ -2068,7 +2068,7 @@ public sealed class GameSession
                     break;
                 case EventKind.Leaped:
                     AddFx("ring", e.To, radius: 1, css: "gold");
-                    AddToast("LEAP!", "", "gold", "checker");
+                    AddToast("JUMP!", "", "gold", "checker");
                     Sfx?.Invoke("steal");
                     break;
                 case EventKind.CardDrawn:

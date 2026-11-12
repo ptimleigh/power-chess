@@ -27,7 +27,7 @@ public static class Names
         PowerupKind.Swap => "Swap",
         PowerupKind.Combo2 => "Combo +2",
         PowerupKind.Combo4 => "Combo +4",
-        PowerupKind.Leap => "Leap",
+        PowerupKind.Leap => "Checkers",
         PowerupKind.StunBolt => "Stun",
         PowerupKind.StealGrab => "Steal",
         PowerupKind.DrawCard => "Draw Card",
@@ -38,7 +38,7 @@ public static class Names
     public static string TierName(PowerupKind k, int tier) => k switch
     {
         PowerupKind.Fireball => tier >= 2 ? "Fireball II" : "Fireball I",
-        PowerupKind.Leap => tier >= 3 ? "Leap III" : tier >= 2 ? "Leap II" : "Leap I",
+        PowerupKind.Leap => tier >= 3 ? "Checkers III" : tier >= 2 ? "Checkers II" : "Checkers I",
         PowerupKind.SmallBomb => "Bomb I",
         PowerupKind.BigBomb => "Bomb II",
         _ => Name(k),
@@ -47,18 +47,39 @@ public static class Names
     /// <summary>Description for a power at a given tier.</summary>
     public static string Desc(PowerupKind k, int tier) => k == PowerupKind.Leap
         ? (tier >= 3
-            ? "Leap III: jump diagonally over an adjacent rival and capture it, like checkers, and keep jumping for as long as there is another rival to jump. Uses your turn, one use."
+            ? "Checkers III: jump diagonally over an adjacent rival and capture it, like checkers, and keep jumping for as long as there is another rival to jump. Uses your turn, one use."
             : tier >= 2
-            ? "Leap II: jump diagonally over an adjacent rival and capture it, like checkers, then jump a second rival in the same turn if one is lined up. Uses your turn, one use."
-            : "Leap I: jump diagonally over an adjacent rival into the empty square behind it and capture it, like checkers. Land on another Leap square to upgrade. Uses your turn, one use.")
+            ? "Checkers II: jump diagonally over an adjacent rival and capture it, like checkers, then jump a second rival in the same turn if one is lined up. Uses your turn, one use."
+            : "Checkers I: jump diagonally over an adjacent rival into the empty square behind it and capture it, like checkers. Land on another Checkers square to upgrade. Uses your turn, one use.")
         : k == PowerupKind.Fireball
         ? (tier >= 2
             ? "Fireball II: fire along ranks, files and diagonals (like a queen). Destroys the first enemy in line instead of moving. Counts as a threat for check. Lost if the piece is destroyed."
             : "Fireball I: fire along ranks and files (like a rook). Destroys the first enemy in line instead of moving. Counts as a threat for check. Land on another Fireball square to upgrade to II.")
         : Desc(k);
 
+    /// <summary>The bare minimum: one short line per power. The full text and a demo sit behind the Demo link.</summary>
+    public static string Short(PowerupKind k, int tier = 1) => k switch
+    {
+        PowerupKind.Fireball => tier >= 2 ? "Fires along ranks, files and diagonals, destroying the first enemy in line." : "Fires along a rank or file, destroying the first enemy in line.",
+        PowerupKind.Leap => tier >= 3 ? "Jump rivals diagonally, like checkers, for as long as you can." : tier >= 2 ? "Jump up to two rivals diagonally, like checkers." : "Jump a rival diagonally, like checkers.",
+        PowerupKind.SmallBomb => "Detonate to destroy everything in the 3x3 around it.",
+        PowerupKind.BigBomb => "Detonate to destroy everything in the 5x5 around it.",
+        PowerupKind.Poison => "If it is captured, the capturer dies too.",
+        PowerupKind.Ghost => "Passes through pieces for its next 3 moves.",
+        PowerupKind.DoubleMove => "Must move twice in a row.",
+        PowerupKind.TripleMove => "Must move three times in a row.",
+        PowerupKind.Combo2 => "Instant: this piece moves 2 more times.",
+        PowerupKind.Combo4 => "Instant: this piece moves 4 more times.",
+        PowerupKind.StunBolt => "Instant: freezes the first enemy in a line.",
+        PowerupKind.StealGrab => "Instant: take over a rival next to it.",
+        PowerupKind.DrawCard => "Instant: draw a card.",
+        PowerupKind.SpikedArmor => "Can't be captured for 3 turns.",
+        _ => Desc(k),
+    };
+
     public static string Desc(PowerupKind k) => k switch
     {
+        PowerupKind.Leap => "Jump diagonally over an adjacent rival into the empty square behind it and capture it, like checkers. Land on another Checkers square for II (two jumps in a row) and again for III (jump as long as you can). Uses your turn, one use.",
         PowerupKind.DoubleMove => "This piece must move twice next time it moves. Giving check cancels the second move.",
         PowerupKind.Poison => "If this piece is captured, the capturer dies too. A king cannot capture it. Wears off after 5 of your turns.",
         PowerupKind.SpikedArmor => "Uncapturable and immune to effects for 3 turns. An armored king can't be checked, and may even stand next to the enemy king and check it.",

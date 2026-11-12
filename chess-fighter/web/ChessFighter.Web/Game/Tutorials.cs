@@ -289,13 +289,13 @@ public static class Tutorials
         .Then(300, c => c.Become("b2", PieceType.Queen).Say("It becomes another piece on the spot")),
         [PowerupKind.Leap] = new DemoScript
         {
-            Setup = c => c.Place("b2", PieceType.Pawn, W, Buff.Leap).Place("c3", PieceType.Knight, B).Say("Leap jumps a rival on the next diagonal, like checkers"),
+            Setup = c => c.Place("b2", PieceType.Pawn, W, Buff.Leap).Place("c3", PieceType.Knight, B).Say("Checkers: jump a rival on the next diagonal"),
         }
         .Then(1000, c => c.Aim("d4"))
         .Then(700, c => c.Aim().Fx("ring", "c3", css: "gold").Say("It lands on the empty square behind it..."))
         .Then(800, c => c.Kill("c3").Move("b2", "d4").Strip("d4", Buff.Leap).Say("...and captures what it jumped"))
         .Then(2000, c => c.Clear().Place("a1", PieceType.Rook, W, Buff.Leap).Place("b2", PieceType.Pawn, B).Place("d4", PieceType.Bishop, B).Place("f6", PieceType.Knight, B)
-            .Say("Leap II and III chain jumps in one turn"))
+            .Say("Checkers II and III chain jumps in one turn"))
         .Then(900, c => c.Kill("b2").Move("a1", "c3"))
         .Then(700, c => c.Kill("d4").Move("c3", "e5"))
         .Then(700, c => c.Kill("f6").Move("e5", "g7").Strip("g7", Buff.Leap).Say("Using it costs your turn. One use")),

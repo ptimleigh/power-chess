@@ -356,7 +356,7 @@ window.pcclip = (function () {
                     case 'Leaped': {
                         const a = sqC(e.f), b = sqC(e.t);
                         const chainLast = evs.slice(i + 1).every(x => x.k !== 'Leaped'), chainLen = evs.filter(x => x.k === 'Leaped').length;
-                        later(T, () => { const p = at(e.f); if (p && isLast && beat.mate && spot.indexOf(p) < 0) spot.push(p); if (p) slide(p, e.t, 420, easeInOut, 44); callout('LEAP!', a.x, a.y - 70, GOLD, true); S.slash(); if (chainLast && (chainLen >= 2 || comboHits >= 1)) bigPunch(e.t, 1.09, .5, 700); });
+                        later(T, () => { const p = at(e.f); if (p && isLast && beat.mate && spot.indexOf(p) < 0) spot.push(p); if (p) slide(p, e.t, 420, easeInOut, 44); callout('JUMP!', a.x, a.y - 70, GOLD, true); S.slash(); if (chainLast && (chainLen >= 2 || comboHits >= 1)) bigPunch(e.t, 1.09, .5, 700); });
                         T += 450;
                         break;
                     }

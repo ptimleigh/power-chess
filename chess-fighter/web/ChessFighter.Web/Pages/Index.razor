@@ -558,7 +558,18 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                         {
                             <div class="unlocks">Unlocked: @string.Join(", ", rw.NewPowerups.Select(Names.Name).Concat(rw.NewTeleporters ? new[] { "Teleporters" } : Array.Empty<string>()))</div>
                         }
-                        <UnlockStrip Items="newUnlocks" Compact="true" OnTry="TryPreset" OnSeenAll="() => unseenUnlocks = false" />
+                        @* the full explanation is in the spotlight pop-up; the card just lists what was earned *@
+                        @if (newUnlocks.Count > 0)
+                        {
+                            <div class="unlock-line" data-testid="unlock-line">
+                                <span class="ul-label">Unlocked</span>
+                                @foreach (var nm in UnlockNames(newUnlocks))
+                                {
+                                    <span class="ul-chip">@nm</span>
+                                }
+                                <button class="link-btn" data-action="show-unlocks" @onclick="() => spotlightOpen = true">Show me</button>
+                            </div>
+                        }
                     }
                     else
                     {
@@ -1487,6 +1498,17 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     {
         newUnlocks = reward != null && reward.NewLevel > reward.OldLevel ? Unlocks.Between(reward.OldLevel, reward.NewLevel) : new();
         if (newUnlocks.Count > 0) unseenUnlocks = true;
+    }
+
+    /// <summary>Short names for what a level-up unlocked: powers, upgrades, each new card, rule sets.</summary>
+    static IEnumerable<string> UnlockNames(List<UnlockItem> items)
+    {
+        foreach (var it in items)
+        {
+            if (it.Type == UnlockType.Powerup || it.Type == UnlockType.Transforms) yield return Names.Name(it.Kind);
+            else if (it.Type == UnlockType.Cards) { foreach (var c in it.CardKinds) yield return Names.CardName(c); }
+            else yield return it.Name ?? "New";
+        }
     }
 
     void TryPreset(string id)

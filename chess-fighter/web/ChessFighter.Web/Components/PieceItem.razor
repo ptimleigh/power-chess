@@ -24,7 +24,7 @@
     <div class="badges">
         @if (P.Buffs.HasFlag(Buff.DoubleMove)) { <span class="badge dm" title="Double Move">@Icons.Svg("x2")</span> }
         @if (P.Buffs.HasFlag(Buff.TripleMove)) { <span class="badge dm" title="Triple Move">@Icons.Svg("x3")</span> }
-        @if (P.Buffs.HasFlag(Buff.Ghost)) { <span class="badge gh" title="Ghost">@Icons.Svg("ghost")</span> }
+        @if (P.Buffs.HasFlag(Buff.Ghost) && P.Ghost <= 0) { <span class="badge gh" title="Ghost">@Icons.Svg("ghost")</span> }
         @if (P.Buffs.HasFlag(Buff.Poison)) { <span class="badge ps" title="Poison">@Icons.Svg("skull")</span> }
         @if (P.Buffs.HasFlag(Buff.Leap)) { <span class="badge fb tier@(P.Tier >= 2 ? 2 : 1)" title="@Names.TierName(PowerupKind.Leap, P.Tier)">@(P.Tier >= 3 ? "III" : P.Tier >= 2 ? "II" : "I")</span> }
         @if (P.Buffs.HasFlag(Buff.Fireball)) { <span class="badge fb tier@(P.Tier >= 2 ? 2 : 1)" title="@Names.TierName(PowerupKind.Fireball, P.Tier)">@(P.Tier >= 2 ? "II" : "I")</span> }

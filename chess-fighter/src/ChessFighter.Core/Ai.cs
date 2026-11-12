@@ -48,7 +48,7 @@ namespace ChessFighter.Core
             {
                 case 1: return new Ai(1) { RandomChance = 0.25 };
                 case 6: return new Ai(2) { QuiescenceDepth = 0, RandomChance = 0.15 };
-                case 3: return new Ai(3) { QuiescenceDepth = 4, CheckExtension = true, FullEval = true };
+                case 3: return new Ai(3) { QuiescenceDepth = 4, CheckExtension = true, FullEval = true, TimeMs = 1500 }; // capped so a slow phone never stalls
                 case 4: return new Ai(6) { QuiescenceDepth = 4, CheckExtension = true, FullEval = true, TimeMs = 1000 };
                 case 5: return new Ai(8) { QuiescenceDepth = 6, CheckExtension = true, FullEval = true, TimeMs = 2000 };
                 default: return new Ai(2) { QuiescenceDepth = 2, CheckExtension = true, SlipChance = 0.20, SlipMarginCp = 80 };

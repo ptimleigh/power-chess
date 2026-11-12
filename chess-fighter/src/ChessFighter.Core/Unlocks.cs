@@ -130,10 +130,10 @@ namespace ChessFighter.Core
             if (level == FighterUnlocks.TierTwoLevel(PowerupKind.Leap))
             {
                 list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.SmallBomb, Name = "Bomb II", Blurb = "Land on a second Bomb square: the blast grows from 3x3 to 5x5." });
-                list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Leap, Name = "Leap II", Blurb = "Land on a second Leap square: the piece can chain two jumps in a row." });
+                list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Leap, Name = "Checkers II", Blurb = "Land on a second Checkers square: the piece can chain two jumps in a row." });
             }
             if (level == FighterUnlocks.TierThreeLevel(PowerupKind.Leap))
-                list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Leap, Name = "Leap III", Blurb = "Land on a third Leap square: the piece can chain jumps for as long as there are rivals to jump." });
+                list.Add(new UnlockItem { Type = UnlockType.Upgrade, Level = level, Kind = PowerupKind.Leap, Name = "Checkers III", Blurb = "Land on a third Checkers square: the piece can chain jumps for as long as there are rivals to jump." });
             if (level == Progression.TeleporterLevel)
                 list.Add(new UnlockItem { Type = UnlockType.Teleporters, Level = level, Name = "Teleporters", Blurb = "Land on one teleporter square to jump to its twin on the other side." });
             if (level == Presets.FrequencyLevel)

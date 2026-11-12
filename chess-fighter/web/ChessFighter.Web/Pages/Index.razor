@@ -68,7 +68,7 @@
     @if (S.SummonSplash != CardKind.None)
     {
         <div class="summon-splash s-@S.SummonSplash.ToString().ToLowerInvariant()" @key="@("summon" + S.SummonSerial)" aria-hidden="true" data-testid="summon-splash">
-            <img src="img/summons/@(S.SummonSplash == CardKind.SummonShiva ? "shiva" : S.SummonSplash == CardKind.SummonMars ? "mars" : "caissa").png" alt="" />
+            <img src="img/summons/@(S.SummonSplash == CardKind.SummonDeath ? "death" : S.SummonSplash == CardKind.SummonMars ? "mars" : "caissa").png" alt="" />
             <div class="ss-name">@Names.CardShort(S.SummonSplash).ToUpperInvariant()!<small>@(S.VsAi ? (S.SummonBy == S.HumanSide ? "YOU SUMMON" : "RIVAL SUMMONS") : (S.SummonBy == Side.White ? "WHITE SUMMONS" : "BLACK SUMMONS"))</small></div>
         </div>
     }

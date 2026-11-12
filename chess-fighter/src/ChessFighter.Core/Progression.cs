@@ -31,8 +31,8 @@ namespace ChessFighter.Core
         public bool FrozeKing;
         /// <summary>The longest run of the player's own moves with no rival move between (a combo makes these).</summary>
         public int BestRun;
-        /// <summary>Most rival pieces one Dragon Strike burned, and most pieces one Shiva summon struck.</summary>
-        public int BestDragonBurn, BestSmite;
+        /// <summary>Most rival pieces one Dragon Strike burned, and most pieces one Death summon struck.</summary>
+        public int BestDragonBurn, BestReaper;
         /// <summary>The player's level once this match's XP is counted (set while awarding, for the level trophies).</summary>
         public int LevelAfter;
 
@@ -58,7 +58,7 @@ namespace ChessFighter.Core
         public void Observe(IList<GameEvent> events)
         {
             Side me = s.Me;
-            int shot = -1, bomb = -1, dragon = -1, smite = 0;
+            int shot = -1, bomb = -1, dragon = -1, reaper = 0;
             for (int i = 0; i < events.Count; i++)
             {
                 var e = events[i];
@@ -135,8 +135,8 @@ namespace ChessFighter.Core
                     case EventKind.PieceRestored:
                         if (e.Side == me && e.Piece == PieceType.Queen) s.RestoredQueen = true;
                         break;
-                    case EventKind.ShivaStrike:
-                        if (e.Side == me) { smite++; if (smite > s.BestSmite) s.BestSmite = smite; }
+                    case EventKind.DeathStrike:
+                        if (e.Side == me) { reaper++; if (reaper > s.BestReaper) s.BestReaper = reaper; }
                         break;
                 }
             }
@@ -223,7 +223,7 @@ namespace ChessFighter.Core
             new Trophy(23, "Combo Breaker", "Make 5 moves in a row with a +4 combo.", (m, p) => m.BestRun >= 5),
             new Trophy(24, "Level II", "Upgrade a power to its second tier.", (m, p) => m.Upgrades > 0),
             new Trophy(25, "Dragon's Breath", "Burn 3 or more rival pieces with one Dragon Strike.", (m, p) => m.BestDragonBurn >= 3),
-            new Trophy(26, "Smite", "Strike three pieces with one Summon Shiva.", (m, p) => m.BestSmite >= 3),
+            new Trophy(26, "Reaper", "Strike three pieces with one Summon Death.", (m, p) => m.BestReaper >= 3),
             new Trophy(27, "Incoming!", "Win with a Missile Strike.", (m, p) => m.Won && m.Reason == "Missile strike"),
             new Trophy(28, "Veteran", "Reach level 10.", (m, p) => m.LevelAfter >= 10),
             new Trophy(29, "Master of Squares", "Reach level 20.", (m, p) => m.LevelAfter >= 20),

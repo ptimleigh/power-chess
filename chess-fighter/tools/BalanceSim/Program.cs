@@ -91,7 +91,7 @@ P("## How often powers are actually used (per game)");
 P($"- Fireball shots {all.Average(g => g.FireShots):0.00}, Leap shots {all.Average(g => g.LeapShots):0.00}, Stun bolts {all.Average(g => g.Zaps):0.00}, Bomb detonations {all.Average(g => g.Detonations):0.00}, Steals {all.Average(g => g.Grabs):0.00}");
 P();
 P("## Pieces destroyed by");
-P($"- Normal captures per game: {all.Average(g => g.Captures):0.0}; fireball {all.Average(g => g.Fireball):0.00}, bombs {all.Average(g => g.Bomb):0.00}, dragon {all.Average(g => g.Dragon):0.00}, shiva {all.Average(g => g.Shiva):0.00}, missile {all.Average(g => g.Missile):0.00}, poison {all.Average(g => g.Poison):0.00}");
+P($"- Normal captures per game: {all.Average(g => g.Captures):0.0}; fireball {all.Average(g => g.Fireball):0.00}, bombs {all.Average(g => g.Bomb):0.00}, dragon {all.Average(g => g.Dragon):0.00}, death {all.Average(g => g.Death):0.00}, missile {all.Average(g => g.Missile):0.00}, poison {all.Average(g => g.Poison):0.00}");
 P($"- Games with a missile strike: {Pct(all.Count(g => g.Missile > 0 || g.Reason == "Missile strike"), games)}; ended by missile: {Pct(all.Count(g => g.Reason == "Missile strike"), games)}");
 
 var path = Path.Combine(AppContext.BaseDirectory, "balance-report.md");
@@ -140,12 +140,12 @@ static Game PlayOne(ulong seed, int aiLevel, int aiLevelB, int unlock, int maxPl
                 case EventKind.FireballFired: cause = "f"; break;
                 case EventKind.Detonated: cause = "b"; break;
                 case EventKind.DragonFire: cause = "d"; break;
-                case EventKind.ShivaStrike: cause = "s"; break;
+                case EventKind.DeathStrike: cause = "s"; break;
                 case EventKind.MissileStruck: cause = "m"; break;
                 case EventKind.PoisonTriggered: g.Poison++; break;
                 case EventKind.Captured: cause = ""; break;
                 case EventKind.Destroyed:
-                    if (cause == "f") g.Fireball++; else if (cause == "b") g.Bomb++; else if (cause == "d") g.Dragon++; else if (cause == "s") g.Shiva++; else if (cause == "m") g.Missile++;
+                    if (cause == "f") g.Fireball++; else if (cause == "b") g.Bomb++; else if (cause == "d") g.Dragon++; else if (cause == "s") g.Death++; else if (cause == "m") g.Missile++;
                     break;
             }
         }
@@ -164,6 +164,6 @@ sealed class Game
     public int Plies;
     public Dictionary<PowerupKind, int> PickedW = new(), PickedB = new();
     public Dictionary<CardKind, int> CardsW = new(), CardsB = new();
-    public int Captures, Fireball, Bomb, Dragon, Shiva, Missile, Poison;
+    public int Captures, Fireball, Bomb, Dragon, Death, Missile, Poison;
     public int FireShots, LeapShots, Zaps, Detonations, Grabs, MovesW, MovesB;
 }

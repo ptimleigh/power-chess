@@ -303,8 +303,8 @@ namespace ChessFighter.Core
         TurnRewound,
         /// <summary>Dragon Strike scorched a row: From and To are its two ends.</summary>
         DragonFire,
-        /// <summary>Summon Shiva struck a piece.</summary>
-        ShivaStrike,
+        /// <summary>Summon Death struck a piece.</summary>
+        DeathStrike,
         /// <summary>A missile was launched at a quadrant (From is its corner square).</summary>
         MissileLaunched,
         /// <summary>The missile landed.</summary>

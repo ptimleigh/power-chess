@@ -19,7 +19,7 @@ namespace ChessFighter.Core
 
         public static bool RareCard(CardKind k)
         {
-            return k == CardKind.MissileStrike || k == CardKind.DragonStrike || k == CardKind.SummonShiva
+            return k == CardKind.MissileStrike || k == CardKind.DragonStrike || k == CardKind.SummonDeath
                 || k == CardKind.WorldUpsideDown || k == CardKind.HitRestart;
         }
 

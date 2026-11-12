@@ -65,7 +65,7 @@ namespace ChessFighter.Core
                 case CardKind.NoMorePowers:
                     return 16;
                 case CardKind.DragonStrike:
-                case CardKind.SummonShiva:
+                case CardKind.SummonDeath:
                     return 18;
                 default: // Hit restart, World turned upside down, Missile strike
                     return 19;

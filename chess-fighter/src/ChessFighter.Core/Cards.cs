@@ -33,8 +33,8 @@ namespace ChessFighter.Core
         SummonMars,
         /// <summary>A dragon burns every piece on one row (rows 3 to 6, not a row holding a king).</summary>
         DragonStrike,
-        /// <summary>Shiva strikes up to 3 random rival pieces (never kings).</summary>
-        SummonShiva,
+        /// <summary>Death strikes up to 3 random rival pieces (never kings).</summary>
+        SummonDeath,
         /// <summary>Immediate: every piece returns to its starting square, keeping its powers.</summary>
         HitRestart,
         /// <summary>Immediate: the board rotates 180 degrees and every piece changes sides, so you command the other army.</summary>
@@ -98,7 +98,7 @@ namespace ChessFighter.Core
                 case CardKind.TakeBack: return s.TurnStarts != null && s.TurnStarts[0] != null ? 4 : 0;
                 case CardKind.SummonMars: return 5;
                 case CardKind.DragonStrike: return 5;
-                case CardKind.SummonShiva: return RivalTargets(s, drawer) > 0 ? 5 : 0;
+                case CardKind.SummonDeath: return RivalTargets(s, drawer) > 0 ? 5 : 0;
                 case CardKind.HitRestart: return 4;
                 case CardKind.WorldUpsideDown: return 4;
                 case CardKind.MissileStrike: return s.MissileLeft == 0 ? 4 : 0;
@@ -257,7 +257,7 @@ namespace ChessFighter.Core
                     }
                     break;
 
-                case CardKind.SummonShiva:
+                case CardKind.SummonDeath:
                     if (RivalTargets(s, me) > 0) o.Add(Play(kind, 0, 0));
                     break;
 
@@ -405,7 +405,7 @@ namespace ChessFighter.Core
                     break;
                 }
 
-                case CardKind.SummonShiva:
+                case CardKind.SummonDeath:
                 {
                     // Three random rival pieces, never one whose removal would expose your own king. Randomness is drawn from a copy
                     // of the generator in lookahead and legality probes, so those never disturb the real sequence.
@@ -423,7 +423,7 @@ namespace ChessFighter.Core
                         bool exposes = Geometry.IsKingAttacked(s, me);
                         s.Cells[t] = saved;
                         if (exposes) continue;
-                        Rules.Emit(ev, EventKind.ShivaStrike, t, t, saved.Type, me, PowerupKind.None);
+                        Rules.Emit(ev, EventKind.DeathStrike, t, t, saved.Type, me, PowerupKind.None);
                         Rules.Destroy(s, t, ev);
                         struck++;
                     }

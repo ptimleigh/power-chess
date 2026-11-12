@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Cleans the three summon portraits: hard alpha edge, cropped to the figure, scaled to one height on a pixel grid, palette limited.
-Usage: python3 -I tools/make-summons.py <shiva.png> <caissa.png> <mars.png>   (writes web/ChessFighter.Web/wwwroot/img/summons/*.png)"""
+Usage: python3 -I tools/make-summons.py <death.png> <caissa.png> <mars.png>   (writes web/ChessFighter.Web/wwwroot/img/summons/*.png)"""
 import os, sys
 from PIL import Image
 H = 160
 out = os.path.join(os.path.dirname(__file__), "..", "web", "ChessFighter.Web", "wwwroot", "img", "summons")
-for name, src in zip(("shiva", "caissa", "mars"), sys.argv[1:4]):
+for name, src in zip(("death", "caissa", "mars"), sys.argv[1:4]):
     im = Image.open(src).convert("RGBA")
     a = im.getchannel("A").point(lambda v: 255 if v >= 128 else 0)
     im.putalpha(a)

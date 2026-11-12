@@ -915,7 +915,7 @@ public sealed class GameSession
             case CardKind.NuhUh: return "Nuh-uh answers a card your rival plays.";
             case CardKind.MissileStrike: return "A missile is already on its way.";
             case CardKind.SummonCaissa: return State.Captured.Skip((int)Turn * 8).Take(8).Sum(x => (int)x) == 0 ? "You haven't lost a piece yet." : "There is no free square to place it.";
-            case CardKind.SummonShiva: return "No rival piece can be struck. Kings and armored pieces are safe.";
+            case CardKind.SummonDeath: return "No rival piece can be struck. Kings and armored pieces are safe.";
             case CardKind.DragonStrike: return "No row from 3 to 6 has a piece to burn without a king in it.";
             case CardKind.TakeBack: return "There isn't enough history to rewind yet.";
             case CardKind.SmashBoulder: return "There is no boulder on the board.";
@@ -1914,8 +1914,8 @@ public sealed class GameSession
         int movedId = -1;
         int fireFrom = -1;
         var fireDelay = new Dictionary<int, int>();
-        var strikeDelay = new Dictionary<int, int>(); // piece square -> ms until the sword or dragon reaches it
-        int smiteCount = 0;
+        var strikeDelay = new Dictionary<int, int>(); // piece square -> ms until the scythe or dragon reaches it
+        int reaperCount = 0;
         for (int ei = 0; ei < events.Count; ei++)
         {
             var e = events[ei];
@@ -1984,7 +1984,7 @@ public sealed class GameSession
                     var v = At(e.From);
                     if (v != null && strikeDelay.TryGetValue(e.From, out var sdelay))
                     {
-                        // Stays on the board until the sword lands or the dragon passes.
+                        // Stays on the board until the scythe lands or the dragon passes.
                         v.PendingDeath = true;
                         int at = e.From;
                         Later(T(sdelay), () => { v.PendingDeath = false; Kill(v); AddFx("burst", at, css: "boom"); Shake(); });
@@ -2077,10 +2077,10 @@ public sealed class GameSession
                     Sfx?.Invoke("pickup");
                     break;
                 case EventKind.CardPlayed:
-                    if (e.Card == CardKind.SummonCaissa || e.Card == CardKind.SummonMars || e.Card == CardKind.SummonShiva)
+                    if (e.Card == CardKind.SummonCaissa || e.Card == CardKind.SummonMars || e.Card == CardKind.SummonDeath)
                         ShowSummon(e.Card);
                     // Cards with their own show (portrait splash, dragon) do not also pop a toast over the board.
-                    if (e.Card != CardKind.DragonStrike && e.Card != CardKind.SummonCaissa && e.Card != CardKind.SummonMars && e.Card != CardKind.SummonShiva)
+                    if (e.Card != CardKind.DragonStrike && e.Card != CardKind.SummonCaissa && e.Card != CardKind.SummonMars && e.Card != CardKind.SummonDeath)
                         AddToast("PLAYED: " + Names.CardName(e.Card), Names.CardDesc(e.Card), "gold", Names.CardIcon(e.Card));
                     else if (e.Card != CardKind.DragonStrike)
                         SummonBy = e.Side;
@@ -2146,14 +2146,14 @@ public sealed class GameSession
                     Sfx?.Invoke("fire");
                     break;
                 }
-                case EventKind.ShivaStrike:
+                case EventKind.DeathStrike:
                 {
-                    // One sword per victim, dropped in turn after the portrait has had its moment.
-                    int drop = 1700 + smiteCount * 650;
-                    smiteCount++;
+                    // One scythe per victim, dropped in turn after the portrait has had its moment.
+                    int drop = 1700 + reaperCount * 650;
+                    reaperCount++;
                     int at = e.From;
                     strikeDelay[at] = drop + 380;
-                    Later(T(drop), () => AddFx("sword", at, durMs: 700));
+                    Later(T(drop), () => AddFx("scythe", at, durMs: 700));
                     Later(T(drop + 380), () => { AddFx("ring", at, radius: 1, css: "gold"); Sfx?.Invoke("slash"); });
                     lastFireMs = Math.Max(lastFireMs, T(drop + 1000));
                     break;

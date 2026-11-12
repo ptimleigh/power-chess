@@ -5,7 +5,7 @@ using ChessFighter.Core;
 
 namespace ChessFighter.Core.Tests
 {
-    /// <summary>The larger cards: Take back, Mars, Dragon Strike, Shiva, Hit restart, World turned upside down and Missile Strike.</summary>
+    /// <summary>The larger cards: Take back, Mars, Dragon Strike, Death, Hit restart, World turned upside down and Missile Strike.</summary>
     public class FighterBigCardTests
     {
         static List<GameAction> Plays(GameState s, CardKind kind)
@@ -102,18 +102,18 @@ namespace ChessFighter.Core.Tests
             Assert.AreEqual(PieceType.Knight, T.At(s, "d4").Type, "other rows are untouched");
         }
 
-        // ---------- Summon Shiva ----------
+        // ---------- Summon Death ----------
 
         [Test]
-        public void Shiva_strikes_up_to_three_rival_pieces_never_kings_and_never_exposes_your_own_king()
+        public void Death_strikes_up_to_three_rival_pieces_never_kings_and_never_exposes_your_own_king()
         {
             for (ulong seed = 1; seed <= 30; seed++)
             {
                 // Black rook on e8 sits behind a black pawn on e5 pointing at the white king on e1: striking the pawn alone would expose the king.
                 var s = T.Fen("4r2k/8/8/4p3/8/8/n1b5/4K3 w - - 0 1");
                 s.Rng = new Rng(seed);
-                s.AddCard(Side.White, CardKind.SummonShiva, 1);
-                PlayCard(s, CardKind.SummonShiva);
+                s.AddCard(Side.White, CardKind.SummonDeath, 1);
+                PlayCard(s, CardKind.SummonDeath);
                 int rivals = Enumerable.Range(0, 64).Count(i => s.Cells[i].Side == Side.Black && !s.Cells[i].IsEmpty);
                 Assert.GreaterOrEqual(rivals, 2, "black has its king plus at most one survivor...");
                 Assert.AreEqual(PieceType.King, T.At(s, "h8").Type, "the black king is never hit");
@@ -122,15 +122,15 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Shiva_never_disturbs_the_real_random_sequence_in_a_legality_check()
+        public void Death_never_disturbs_the_real_random_sequence_in_a_legality_check()
         {
             var s = T.Fen("4r2k/8/8/4p3/8/8/n1b5/4K3 w - - 0 1");
             s.Rng = new Rng(12345);
-            s.AddCard(Side.White, CardKind.SummonShiva, 1);
+            s.AddCard(Side.White, CardKind.SummonDeath, 1);
             ulong before = s.Rng.State;
             MoveGen.LegalActions(s);
             Assert.AreEqual(before, s.Rng.State, "generating and probing the card leaves the generator alone");
-            PlayCard(s, CardKind.SummonShiva);
+            PlayCard(s, CardKind.SummonDeath);
             Assert.AreNotEqual(before, s.Rng.State, "the real play draws from it");
         }
 
@@ -358,9 +358,9 @@ namespace ChessFighter.Core.Tests
             Assert.Greater(Cards.Weight(s, Side.White, CardKind.MissileStrike), 0);
             s.MissileLeft = 5;
             Assert.AreEqual(0, Cards.Weight(s, Side.White, CardKind.MissileStrike));
-            Assert.AreEqual(0, Cards.Weight(s, Side.White, CardKind.SummonShiva), "only a king is left on the other side, and kings are never struck");
+            Assert.AreEqual(0, Cards.Weight(s, Side.White, CardKind.SummonDeath), "only a king is left on the other side, and kings are never struck");
             var pawn = T.Fen("7k/8/8/8/8/p7/8/R3K3 w - - 0 1");
-            Assert.Greater(Cards.Weight(pawn, Side.White, CardKind.SummonShiva), 0);
+            Assert.Greater(Cards.Weight(pawn, Side.White, CardKind.SummonDeath), 0);
         }
     }
 }

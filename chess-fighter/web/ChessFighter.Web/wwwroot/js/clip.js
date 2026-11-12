@@ -192,7 +192,7 @@ window.pcclip = (function () {
             const handled = [];              // squares whose destruction a fireball already animated
             hud.moveNo = index + 1; hud.label = beat.label; hud.mover = beat.mover;
             hud.bannerAt = clock;
-            const BIG = ['Captured', 'Destroyed', 'Converted', 'FireballFired', 'Detonated', 'MissileStruck', 'DragonFire', 'ShivaStrike', 'Leaped', 'ZapFired', 'BoardFlipped'];
+            const BIG = ['Captured', 'Destroyed', 'Converted', 'FireballFired', 'Detonated', 'MissileStruck', 'DragonFire', 'DeathStrike', 'Leaped', 'ZapFired', 'BoardFlipped'];
             const dramatic = evs.some(e => BIG.indexOf(e.k) >= 0);
             // Quiet beats (plain moves, nothing at stake) play fast, and faster the longer the quiet stretch, so the big moments stand out.
             const quiet = !dramatic && !beat.check && !beat.mate && !isLast && index > 0 && evs.every(e => e.k === 'Moved' || e.k === 'Castled');
@@ -405,7 +405,7 @@ window.pcclip = (function () {
                     }
                     case 'CardPlayed': {
                         const nm = cardName(e);
-                        const who = /CAISSA/.test(nm) ? 'caissa' : /MARS/.test(nm) ? 'mars' : /SHIVA/.test(nm) ? 'shiva' : '';
+                        const who = /CAISSA/.test(nm) ? 'caissa' : /MARS/.test(nm) ? 'mars' : /DEATH/.test(nm) ? 'death' : '';
                         if (who && imgOk(who)) {
                             // a summon: the figure slides in over the board, like in the game
                             const by = data.vsAi ? (e.s === 0 ? 'YOU SUMMON' : 'RIVAL SUMMONS') : (e.s === 0 ? 'WHITE SUMMONS' : 'BLACK SUMMONS');
@@ -447,7 +447,7 @@ window.pcclip = (function () {
                         T += 520;
                         break;
                     }
-                    case 'ShivaStrike': {
+                    case 'DeathStrike': {
                         const c = sqC(e.f);
                         later(T, () => { addFx({ kind: 'drop', x: c.x, y: c.y, dur: 520 }); S.slash(); });
                         later(T + 420, () => { callout('SMITE!', c.x, c.y - 70, GOLD, true); doShake(12); });
@@ -628,7 +628,7 @@ window.pcclip = (function () {
             jobs.push(new Promise(res => { li.onload = li.onerror = res; }));
             li.src = 'img/logo.png';
             logoImg = li;
-            for (const n of ['caissa', 'mars', 'shiva', 'dragon-white', 'dragon-black', 'sword']) {
+            for (const n of ['caissa', 'mars', 'death', 'dragon-white', 'dragon-black', 'scythe']) {
                 const im = new Image();
                 jobs.push(new Promise(res => { im.onload = im.onerror = res; }));
                 im.src = 'img/summons/' + n + '.png';
@@ -1106,7 +1106,7 @@ window.pcclip = (function () {
                     ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 24;
                     ctx.drawImage(im, W / 2 - iw / 2 + slide, H * .5 - ih / 2, iw, ih);
                     ctx.restore();
-                    const col = f.who === 'mars' ? '#ff5a4a' : f.who === 'shiva' ? '#6fb7ff' : GOLD;
+                    const col = f.who === 'mars' ? '#ff5a4a' : f.who === 'death' ? '#b48cff' : GOLD;
                     const pop = k < .15 ? 2.4 - (k / .15) * 1.4 : 1;
                     ctx.save(); ctx.translate(W / 2, H * .8); ctx.scale(pop, pop);
                     ptext(f.name, 0, 0, 56, col);
@@ -1137,8 +1137,8 @@ window.pcclip = (function () {
                     const ky = k < .8 ? k / .8 : 1;
                     const y = f.y - 420 * (1 - ky * ky);
                     ctx.globalAlpha = k < .85 ? 1 : 1 - (k - .85) / .15;
-                    if (imgOk('sword')) {
-                        const im = sumImg.sword, h = 230, w = h * im.naturalWidth / im.naturalHeight;
+                    if (imgOk('scythe')) {
+                        const im = sumImg.scythe, h = 230, w = h * im.naturalWidth / im.naturalHeight;
                         ctx.save(); ctx.imageSmoothingEnabled = false; ctx.shadowColor = '#bfe3ff'; ctx.shadowBlur = 16;
                         ctx.drawImage(im, f.x - w / 2, y + 30 - h, w, h);
                         ctx.restore();

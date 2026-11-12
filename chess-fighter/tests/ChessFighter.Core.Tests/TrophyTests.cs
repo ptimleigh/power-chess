@@ -81,7 +81,7 @@ namespace ChessFighter.Core.Tests
         }
 
         [Test]
-        public void Dragon_smite_missile_and_level_trophies()
+        public void Dragon_reaper_missile_and_level_trophies()
         {
             var burn = new List<GameEvent> { E(EventKind.DragonFire, Side.White) };
             burn.AddRange(Enumerable.Range(0, 3).Select(_ => E(EventKind.Destroyed, Side.Black, PieceType.Pawn)));
@@ -89,8 +89,8 @@ namespace ChessFighter.Core.Tests
             burn.Insert(1, E(EventKind.Destroyed, Side.White, PieceType.Pawn)); // own pieces do not count
             burn.RemoveAt(burn.Count - 1);
             Assert.IsFalse(Earns("Dragon's Breath", Play(burn.ToArray())));
-            var smite = Enumerable.Range(0, 3).Select(_ => E(EventKind.ShivaStrike, Side.White)).ToArray();
-            Assert.IsTrue(Earns("Smite", Play(smite)));
+            var reaper = Enumerable.Range(0, 3).Select(_ => E(EventKind.DeathStrike, Side.White)).ToArray();
+            Assert.IsTrue(Earns("Reaper", Play(reaper)));
             var t = new MatchTracker(Side.White, 2);
             Assert.IsTrue(Earns("Incoming!", t.Finish(GameResult.WhiteWins, "Missile strike")));
             Assert.IsFalse(Earns("Incoming!", new MatchTracker(Side.White, 2).Finish(GameResult.WhiteWins, "Checkmate")));

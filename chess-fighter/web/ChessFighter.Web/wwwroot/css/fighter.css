@@ -592,15 +592,15 @@ html, body {
 .summon-splash img { grid-area: 1 / 1; height: min(62vh, 480px); image-rendering: pixelated; filter: drop-shadow(4px 4px 0 #000) drop-shadow(0 0 18px #ffd23f); animation: ssin 2s steps(12) forwards; }
 .summon-splash .ss-name { grid-area: 1 / 1; align-self: end; margin-bottom: 16vh; font-family: var(--px); font-size: 26px; color: var(--gold); text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; animation: ssname 2s steps(10) forwards; }
 .summon-splash.s-summonmars .ss-name { color: #ff5a4a; }
-.summon-splash.s-summonshiva .ss-name { color: #6fb7ff; }
+.summon-splash.s-summondeath .ss-name { color: #b48cff; }
 @keyframes ssbg { 0% { opacity: 0; } 15%, 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes ssin { 0% { transform: translateX(-60vw) scale(1.1); opacity: 0; } 20% { transform: none; opacity: 1; } 80% { transform: none; opacity: 1; } 100% { transform: translateX(10vw); opacity: 0; } }
 @keyframes ssname { 0%, 15% { transform: scale(2.4); opacity: 0; } 30%, 80% { transform: none; opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .summon-splash, .summon-splash img, .summon-splash .ss-name { animation: none; } }
 
-/* Shiva's sword drops onto its target; dragons sweep a row */
-.fx-sword { position: absolute; z-index: 9; height: auto; image-rendering: pixelated; pointer-events: none; transform: translate(-50%, -100%); filter: drop-shadow(2px 2px 0 #000) drop-shadow(0 0 8px #bfe3ff); animation: swordfall .8s steps(8) forwards; }
-@keyframes swordfall { 0% { top: -30%; opacity: 1; } 50% { top: var(--ty); opacity: 1; } 80% { top: var(--ty); opacity: 1; } 100% { top: var(--ty); opacity: 0; } }
+/* Death's scythe drops onto its target; dragons sweep a row */
+.fx-scythe { position: absolute; z-index: 9; height: auto; image-rendering: pixelated; pointer-events: none; transform: translate(-50%, -100%); filter: drop-shadow(2px 2px 0 #000) drop-shadow(0 0 8px #bfe3ff); animation: scythefall .8s steps(8) forwards; }
+@keyframes scythefall { 0% { top: -30%; opacity: 1; } 50% { top: var(--ty); opacity: 1; } 80% { top: var(--ty); opacity: 1; } 100% { top: var(--ty); opacity: 0; } }
 .fx-dragonrow { position: absolute; inset: 0; z-index: 9; overflow: hidden; pointer-events: none; }
 .fx-dragonrow .dr-fire { position: absolute; left: 0; top: var(--cy); height: 14px; margin-top: -7px; width: 0; background: repeating-linear-gradient(90deg, #fffbd0 0 6px, #ffb400 6px 12px, #ff3b2f 12px 18px); box-shadow: 0 0 0 2px #000, 0 0 14px #ff7a1f; animation: drfire var(--dur) steps(16) forwards, drfade .4s steps(4) calc(var(--dur) + 100ms) forwards; }
 .fx-dragonrow .dr-img { position: absolute; top: var(--cy); left: -10%; width: var(--span); height: auto; image-rendering: pixelated; transform: translate(-50%, -50%) rotate(-90deg); filter: drop-shadow(3px 3px 0 #000); animation: drfly var(--dur) steps(16) forwards, drfade .4s steps(4) calc(var(--dur) + 100ms) forwards; }
@@ -613,7 +613,7 @@ html, body {
 .fx-dragonrow .dr-ball i:nth-child(3) { inset: 32% 4% 32% 60%; background: #fffbd0; }
 @keyframes drball { from { left: 6%; } to { left: 140%; } }
 @keyframes drfade { to { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .fx-sword { animation-duration: .01s; } }
+@media (prefers-reduced-motion: reduce) { .fx-scythe { animation-duration: .01s; } }
 
 .cp-note { font-family: var(--mono); font-size: 12px; color: var(--text); text-align: center; line-height: 1.4; max-width: 30ch; }
 
@@ -777,8 +777,8 @@ html, body {
 /* ---------- playing Black: the board is turned half way round so your pieces are at the bottom; pieces and text stay upright ---------- */
 .board.pov-black { rotate: 180deg; }
 .board.pov-black .sq, .board.pov-black .piece, .board.pov-black .fx-callout { rotate: 180deg; }
-.board.pov-black .fx-sword { transform: translate(-50%, 0); rotate: 180deg; animation-name: swordfall-r; }
-@keyframes swordfall-r { 0% { top: 130%; opacity: 1; } 50% { top: var(--ty); opacity: 1; } 80% { top: var(--ty); opacity: 1; } 100% { top: var(--ty); opacity: 0; } }
+.board.pov-black .fx-scythe { transform: translate(-50%, 0); rotate: 180deg; animation-name: scythefall-r; }
+@keyframes scythefall-r { 0% { top: 130%; opacity: 1; } 50% { top: var(--ty); opacity: 1; } 80% { top: var(--ty); opacity: 1; } 100% { top: var(--ty); opacity: 0; } }
 .seg.three { display: grid; grid-template-columns: repeat(3, 1fr); }
 .board.pov-black .finale-hit { rotate: 180deg; }
 

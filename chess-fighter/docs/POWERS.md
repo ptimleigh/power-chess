@@ -53,13 +53,13 @@ The design source of truth. Status: **Built** = in the engine, tested and playab
 | Missile Strike | Pick a quadrant. Each player has 5 turns (10 moves in all) to evacuate the highlighted zone, counting down. If the king cannot get out, the missile shows incoming and freezes before the strike to show the checkmate animation. | at will |
 | Summon Mars | Tells the player the best possible move for 3 turns, starting now. Does not cost the turn. | at will |
 | Summon Caïssa | Bring back 1 captured piece and place it anywhere on the board. | at will |
-| Summon Shiva | Strikes 3 random rival pieces with falling weapons, capturing them (never kings). | at will |
+| Summon Death | Strikes 3 random rival pieces with falling scythes, capturing them (never kings). | at will |
 | Dragon Strike | A dragon wipes out 1 row with dragonfire. Rows 3 to 6 only, and not a row occupied by a king. | at will |
 | Nuh-uh | Cancel the other player's card. Prompted whenever a card is activated. | reaction |
 | Take back | Undo 1 round of moves. | at will |
 
 **All fifteen cards are built:** Place a boulder, Smash boulder, You get a promotion!, Role reversal, Horse Sacrifice, No more powers, Summon Caïssa,
-Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World turned upside down and Missile Strike.
+Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Death, Hit restart, World turned upside down and Missile Strike.
 
 ## Assumptions made while building (change any of these)
 
@@ -87,7 +87,7 @@ Nuh-uh, Take back, Summon Mars, Dragon Strike, Summon Shiva, Hit restart, World 
   It does **not** cost the turn: after rewinding, the player who played it moves again. (If the rival cancels it with Nuh-uh, the turn is spent as usual.)
 - **Summon Mars** shows the best move automatically this turn and your next 2 (free, no XP penalty). Playing it does **not** cost your turn (the other summons do). It does not stack.
 - **Dragon Strike** burns every piece on rows 3 to 6 that has no king on it, both colors, except armored pieces. Boulders and powerup squares stay.
-- **Summon Shiva** strikes up to 3 random rival pieces (never kings, never armored), skipping any whose removal would leave your own king in check.
+- **Summon Death** strikes up to 3 random rival pieces (never kings, never armored), skipping any whose removal would leave your own king in check.
 - **Hit restart** sends each piece to the square it started the game on (a promoted pawn returns to the pawn's square; a stolen piece keeps its
   origin; a piece with no known origin, such as one Caissa brought back, stays put). Boulders, powerup squares and teleporters on a landing
   square are cleared. Unplayable only if it would leave your own king in check.
@@ -139,7 +139,7 @@ deck through Draw Card squares, so they appear once Draw Card (level 7) and thei
 | 15 | Combo +4 |
 | 16 | Cards: Summon Mars, Summon Caïssa, No More Powers |
 | 17 | Fireworks and Royal Court modes |
-| 18 | Cards: Dragon Strike, Summon Shiva |
+| 18 | Cards: Dragon Strike, Summon Death |
 | 19 | Cards: Hit Restart, World Turned Upside Down, Missile Strike |
 | 20 | Oops! All Bombs mode, custom rules builder |
 
@@ -152,13 +152,13 @@ Code: `FighterUnlocks` in `Unlocks.cs`.
 Original: First Win, Checkmate, Flawless, Pyro (burn 3 pieces with fireballs in one game), Demolition, Collector (5 power squares of any kind),
 Thief, Warp Drive, Phantom, Hard Won, Regular, Daily Dose, On a Roll, Week Warrior, Devoted, Grandmaster Slayer.
 Added: Nuh-uh!, Card Shark (5 cards in a game), Caïssa's Favor (bring back a queen), Upside Down, Take Two, King Me, Deep Freeze (stun a queen),
-Combo Breaker (5 moves in a row), Level II (upgrade a power), Dragon's Breath (3+ pieces with one Dragon Strike), Smite (3 pieces with Summon Shiva),
+Combo Breaker (5 moves in a row), Level II (upgrade a power), Dragon's Breath (3+ pieces with one Dragon Strike), Reaper (3 pieces with Summon Death),
 Incoming! (win with a missile), Veteran (level 10), Master of Squares (level 20).
 Each new trophy is worth 25 XP, but one game pays at most 50 XP in trophies.
 
 ## Late-game ramp
 
-Rare powers (Combo +4, Steal, Leap) and the big cards (Missile Strike, Dragon Strike, Summon Shiva, World Turned Upside Down, Hit Restart) get likelier as a
+Rare powers (Combo +4, Steal, Leap) and the big cards (Missile Strike, Dragon Strike, Summon Death, World Turned Upside Down, Hit Restart) get likelier as a
 game runs: 1x until ply 30 (move 15), rising to 2x at ply 100 (move 50). A card draw by the side behind in material gets up to +0.5 more, with 2x as the
 ceiling. Common powers are unchanged. Code: `LateRamp.cs`; the simulator can compare settings (`BalanceSim ... ramp start full`).
 
@@ -170,4 +170,4 @@ ceiling. Common powers are unchanged. Code: `LateRamp.cs`; the simulator can com
 | Average length (plies) | 78 | 80 | 77 |
 | Side with more squares wins | 81% | 81% | 80% |
 | Ended by missile | 2% | 3% | 3% |
-| Pieces struck by Shiva per game | 0.25 | - | 0.42 |
+| Pieces struck by Death per game | 0.25 | - | 0.42 |

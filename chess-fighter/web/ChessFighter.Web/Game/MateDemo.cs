@@ -60,20 +60,50 @@ public static class MateDemo
                 break;
 
             default:
-                bool capture = e.Kind == EscapeKind.Capture && mated.Cells[e.To].Side == them;
-                bool kingStep = e.Kind == EscapeKind.KingStep;
-                string what = kingStep ? $"{myKing} steps away?" : capture ? $"{mover} takes {checker}?" : $"{mover} moves?";
-                script.Setup += c => c.Aim(K(e.From)).Say($"{myKing} is in check. What if {what}");
+                // What was tried: a plain move or capture, a Fireball shot, a checker jump or a bomb. Anything standing on the target square is taken.
+                var act = e.Try;
+                bool isMove = act.Kind == ActionKind.Move;
+                bool capture = isMove && !mated.Cells[e.To].IsEmpty && mated.Cells[e.To].Side == them;
+                string what = act.Kind switch
+                {
+                    ActionKind.Fireball => $"{mover} fires its Fireball",
+                    ActionKind.Leap => $"{mover} jumps",
+                    ActionKind.Detonate => $"{mover} blows up",
+                    _ => capture ? $"{mover} takes {Piece(e.To)}" : e.Kind == EscapeKind.KingStep ? $"{myKing} steps away" : $"{mover} moves",
+                };
+                script.Setup += c => c.Aim(K(e.From)).Say($"{myKing} is in check. What if {what}?");
                 Show(1300, c => c.Aim(K(e.From), K(e.To)));
                 Show(1000, c =>
                 {
                     c.Aim();
-                    if (capture) c.Kill(K(e.To));
-                    c.Move(K(e.From), K(e.To));
                     bool poison = false;
                     foreach (var ev in e.TryEvents) if (ev.Kind == EventKind.PoisonTriggered) poison = true;
-                    if (poison) { c.Kill(K(e.To), true); c.Fx("burst", K(e.To), css: "boom"); c.Say("The poison kills it too!"); }
-                    else c.Say(capture ? "It takes it..." : "It moves...");
+                    if (act.Kind == ActionKind.Fireball)
+                    {
+                        c.Fx("fireball", K(e.From), K(e.To), durMs: 500);
+                        foreach (var ev in e.TryEvents) if (ev.Kind == EventKind.Destroyed || ev.Kind == EventKind.Captured) c.Kill(K(ev.To), true);
+                        c.Say("The Fireball takes it out...");
+                    }
+                    else if (act.Kind == ActionKind.Detonate)
+                    {
+                        c.Fx("burst", K(e.From), css: "boom");
+                        foreach (var ev in e.TryEvents) if (ev.Kind == EventKind.Destroyed || ev.Kind == EventKind.Captured || ev.Kind == EventKind.Detonated) c.Kill(K(ev.To), true);
+                        c.Say("The blast takes everything around it...");
+                    }
+                    else if (act.Kind == ActionKind.Leap)
+                    {
+                        int mid = Sq.Make((Sq.File(e.From) + Sq.File(e.To)) / 2, (Sq.Rank(e.From) + Sq.Rank(e.To)) / 2);
+                        c.Kill(K(mid));
+                        c.Move(K(e.From), K(e.To));
+                        c.Say("It jumps and takes it...");
+                    }
+                    else
+                    {
+                        if (capture) c.Kill(K(e.To));        // the piece that was standing there is taken
+                        c.Move(K(e.From), K(e.To));
+                        if (poison) { c.Kill(K(e.To), true); c.Fx("burst", K(e.To), css: "boom"); c.Say("The poison kills it too!"); }
+                        else c.Say(capture ? "It takes it..." : "It moves...");
+                    }
                 });
                 if (e.AttackerSquare >= 0 && e.KingSquare >= 0)
                 {

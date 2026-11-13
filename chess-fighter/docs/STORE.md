@@ -43,7 +43,7 @@ is required. "Ad choices" in the help sheet reopens it. The browser build has no
 ## Listing draft
 **Title:** Chess Fighter: Arcade Chess
 
-**Short description (80):** Chess with power squares, cards and 16-bit fighter flair. Fireballs, dragons, combos.
+**Short description (80):** Arcade chess with power squares, cards, fireballs, dragons and a big K.O.
 
 **Long description:**
 Chess, but every game is a fight. Powerup squares appear on the board in matching pairs. Land on one to load a Fireball, hook a rival

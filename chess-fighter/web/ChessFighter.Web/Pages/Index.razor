@@ -614,8 +614,17 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
                 <button class="btn ghost" data-action="review-game" @onclick="() => S.ReviewStep(-1)">Review the game</button>
                 <button class="btn yellow" data-action="open-clip" @onclick="OpenClip">Watch Replay!</button>
             }
+            @if (MateScripts.Count > 0)
+            {
+                <button class="btn ghost" data-action="why-mate" @onclick="() => showMateWhy = true">Why is this mate?</button>
+            }
         </div>
     </div>
+}
+
+@if (showMateWhy && MateScripts.Count > 0)
+{
+    <MateWhy Scripts="MateScripts" OnClose="() => showMateWhy = false" />
 }
 
 @if (spotlightOpen && newUnlocks.Count > 0)
@@ -1549,6 +1558,33 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
     // ---------- replay clip ----------
 
     bool showResign;
+    bool showMateWhy;
+
+    // The "Why is this mate?" animations, built once per finished game.
+    int mateKey = -1;
+    List<DemoScript> mateScripts = new();
+    List<DemoScript> MateScripts
+    {
+        get
+        {
+            if (!S.GameOver || S.ResultReason != "Checkmate" || S.Reviewing) return new List<DemoScript>();
+            int key = S.GameSerial * 10000 + S.Moves;
+            if (key != mateKey)
+            {
+                mateKey = key;
+                mateScripts = new List<DemoScript>();
+                try
+                {
+                    foreach (var esc in MateExplainer.Explain(S.State))
+                        mateScripts.Add(MateDemo.Build(S.State, esc, OwnerWord));
+                }
+                catch (Exception) { mateScripts = new List<DemoScript>(); }
+            }
+            return mateScripts;
+        }
+    }
+
+    string OwnerWord(Side side) => S.VsAi ? (side == S.HumanSide ? "your" : "their") : (side == Side.White ? "White's" : "Black's");
     int inspectMore = -1;   // the square whose full info card the player asked for
 
     /// <summary>Back and forward arrows around the History button. Going back enters history mode, where the button reads "Back to game"; forward is dimmed while the game is up to date.</summary>

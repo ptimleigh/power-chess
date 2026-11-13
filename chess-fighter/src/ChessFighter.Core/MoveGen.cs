@@ -76,6 +76,23 @@ namespace ChessFighter.Core
             return result;
         }
 
+        /// <summary>
+        /// Every board action the side to move could try if king safety were ignored: moves, fireballs, jumps and detonations (no cards, no
+        /// pickup or effect choices). Used to explain why a position is checkmate.
+        /// </summary>
+        public static List<GameAction> PseudoActions(GameState s)
+        {
+            var pseudo = new List<GameAction>(96);
+            Side me = s.ToMove;
+            for (int sq = 0; sq < 64; sq++)
+            {
+                var p = s.Cells[sq];
+                if (!p.IsEmpty && p.Side == me) GenPiece(s, sq, pseudo, true);
+            }
+            GenSpecials(s, pseudo);
+            return pseudo;
+        }
+
         static bool IsTactical(GameState s, GameAction a)
         {
             switch (a.Kind)

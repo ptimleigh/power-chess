@@ -30,6 +30,8 @@ public sealed class PieceView
     /// <summary>Dies in flames (hit by a fireball) rather than just fading.</summary>
     public bool Burning;
     public int AnimSeq;
+    /// <summary>Drawn faded: a piece that is not part of the story being shown (the mate explanation).</summary>
+    public bool Dim;
 }
 
 public sealed class FxItem

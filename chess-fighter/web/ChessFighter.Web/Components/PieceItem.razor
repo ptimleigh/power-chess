@@ -86,6 +86,7 @@
         {
             var c = "piece t-" + P.Type.ToString().ToLowerInvariant() + " " + (P.Side == Side.White ? "side-w" : "side-b");
             if (P.Dying) c += " dying";
+            if (P.Dim) c += " dim";
             if (P.Burning) c += " burning";
             if (P.Stun > 0) c += " stunned";
             if (P.Buffs.HasFlag(Buff.Armor)) c += " armored";

@@ -44,6 +44,13 @@ public sealed class DemoCtx
         return this;
     }
 
+    /// <summary>Place a piece exactly as it stands on the real board (used by the mate explanation).</summary>
+    public DemoCtx PlaceReal(int sq, Piece p, bool dim)
+    {
+        Pieces.Add(new PieceView { Id = nextId++, Type = p.Type, Side = p.Side, Square = sq, Buffs = p.Buffs, Stun = p.StunTurns, Armor = p.ArmorTurns, Ghost = p.GhostTurns, Tier = p.Tier, Dim = dim });
+        return this;
+    }
+
     public DemoCtx Swap(string a, string b)
     {
         var pa = At(a);

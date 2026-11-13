@@ -1,6 +1,6 @@
 @implements IDisposable
 @* A small looping animation of one powerup, drawn with the same piece art and effects as the real board. *@
-<div class="demo-wrap" data-testid="demo" data-kind="@(Teleporter ? "teleporter" : Kind.ToString())">
+<div class="demo-wrap" data-testid="demo" data-kind="@(Custom != null ? "mate" : Teleporter ? "teleporter" : Kind.ToString())">
     <div class="board demo-board" style="--cols:@Cols">
         @for (int rank = Cols - 1; rank >= 0; rank--)
         {
@@ -31,16 +31,29 @@
     [Parameter] public PowerupKind Kind { get; set; }
     /// <summary>Show the teleporter demo instead of a powerup's.</summary>
     [Parameter] public bool Teleporter { get; set; }
+    /// <summary>A script built on the fly (the mate explanation); when set it replaces the powerup demo.</summary>
+    [Parameter] public DemoScript? Custom { get; set; }
+    DemoScript? runningCustom;
 
     DemoCtx ctx = new();
     CancellationTokenSource? cts;
     PowerupKind running = PowerupKind.None;
     bool runningTele;
-    DemoScript Script => Teleporter ? Tutorials.TeleporterDemo : Tutorials.For(Kind);
+    DemoScript Script => Custom ?? (Teleporter ? Tutorials.TeleporterDemo : Tutorials.For(Kind));
     int Cols => Script.Cols;
 
     protected override void OnParametersSet()
     {
+        if (Custom != null)
+        {
+            if (ReferenceEquals(Custom, runningCustom)) return;
+            runningCustom = Custom;
+            cts?.Cancel();
+            cts = new CancellationTokenSource();
+            ctx = new DemoCtx();
+            _ = Run(Script, ctx, cts.Token);
+            return;
+        }
         var norm = Tutorials.Normalize(Kind);
         if (norm == running && Teleporter == runningTele) return;
         running = norm;

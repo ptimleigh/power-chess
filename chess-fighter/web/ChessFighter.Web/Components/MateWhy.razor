@@ -1,0 +1,20 @@
+@* "Why is this mate?": steps through the ways out of a checkmate, each one played on the real position and shown failing. *@
+<div class="modal spotlight mate-why" data-testid="mate-why" @onclick="Close">
+    <div class="card help" @onclick:stopPropagation="true">
+        <div class="kicker">Why is this mate?</div>
+        <p class="mw-count" data-testid="mate-count">@(index + 1) of @Scripts.Count</p>
+        <DemoBoard @key="index" Custom="Scripts[index]" />
+        <div class="mw-nav">
+            <button class="btn small ghost" data-action="mate-prev" disabled="@(index == 0)" @onclick="() => index--">Back</button>
+            <button class="btn small ghost" data-action="mate-next" disabled="@(index >= Scripts.Count - 1)" @onclick="() => index++">Next</button>
+        </div>
+        <button class="btn primary" data-action="mate-close" @onclick="Close">Got it</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<DemoScript> Scripts { get; set; } = new();
+    [Parameter] public EventCallback OnClose { get; set; }
+    int index;
+    Task Close() => OnClose.InvokeAsync();
+}

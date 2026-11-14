@@ -70,6 +70,72 @@ window.pcfx = (function () {
         draw: () => { tone(440, 0.3, 'triangle', 0.1); tone(440, 0.3, 'triangle', 0.1, null, 0.25); },
     };
 
+    // ---------- menu music: one looping track while the start menu is open ----------
+    const MUSIC_URL = 'audio/menu.mp3';
+    const MUSIC_VOL = 0.5;
+    let musicBuf = null, musicLoading = false;
+    let musicSrc = null, musicGain = null;
+    let wantMenu = false;
+
+    function musicLoad(c) {
+        if (musicBuf || musicLoading) return;
+        musicLoading = true;
+        fetch(MUSIC_URL).then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => c.decodeAudioData(b, res, rej)))
+            .then(buf => { musicBuf = buf; musicLoading = false; musicSync(); })
+            .catch(() => { musicLoading = false; });
+    }
+
+    function musicStop(fade) {
+        if (!musicSrc) return;
+        const src = musicSrc, g = musicGain;
+        musicSrc = null; musicGain = null;
+        try {
+            const t = ctx.currentTime;
+            g.gain.cancelScheduledValues(t);
+            g.gain.setValueAtTime(g.gain.value, t);
+            g.gain.linearRampToValueAtTime(0, t + fade);
+            src.stop(t + fade + 0.05);
+        } catch (e) { try { src.stop(); } catch (e2) { } }
+    }
+
+    // Start or stop to match what the screen wants: music plays only while the menu is open, the sound is on and the page is visible.
+    function musicSync() {
+        const on = wantMenu && !muted && !document.hidden;
+        if (!on) { musicStop(wantMenu && !muted ? 0.2 : 0.8); return; }
+        const c = ensure();
+        if (!c) return;
+        if (!musicBuf) { musicLoad(c); return; }
+        if (musicSrc) return;
+        const src = c.createBufferSource();
+        const g = c.createGain();
+        src.buffer = musicBuf;
+        src.loop = true;
+        g.gain.setValueAtTime(0, c.currentTime);
+        g.gain.linearRampToValueAtTime(MUSIC_VOL, c.currentTime + 1.5);
+        src.connect(g).connect(c.destination);
+        src.start();
+        musicSrc = src; musicGain = g;
+    }
+
+    // Browsers keep audio locked until the first tap: remember that the menu wants music and start on the first touch.
+    function unlock() { if (wantMenu) musicSync(); }
+    ['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, unlock, { passive: true }));
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { musicStop(0.1); if (ctx && ctx.state === 'running') ctx.suspend(); } else { musicSync(); } });
+
+    // The menu is a Blazor element; watch for it appearing and disappearing instead of wiring every place that opens or closes it.
+    function watchMenu() {
+        let queued = false;
+        const check = () => {
+            queued = false;
+            const open = !!document.querySelector('.start-menu');
+            if (open !== wantMenu) { wantMenu = open; musicSync(); }
+        };
+        new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(check); } })
+            .observe(document.body, { childList: true, subtree: true });
+        check();
+    }
+    if (document.body) watchMenu(); else document.addEventListener('DOMContentLoaded', watchMenu);
+
     return {
         today: function () { const d = new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000); },
         // Share text through the native sheet, the Web Share API, or the clipboard. Resolves to shared | copied | cancelled | failed.
@@ -105,6 +171,8 @@ window.pcfx = (function () {
         carouselTo: function (el, i) { if (el) el.scrollTo({ left: i * (el.clientWidth + 10), behavior: 'smooth' }); },
         copy: function (text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return false; } },
         play: function (name) { try { const f = sounds[name]; if (f) f(); } catch (e) { } },
-        setMuted: function (m) { muted = !!m; },
+        setMuted: function (m) { muted = !!m; musicSync(); },
+        /** For tests and diagnostics: what the menu music is doing. */
+        music: function () { return { want: wantMenu, playing: !!musicSrc, loaded: !!musicBuf, ctx: ctx ? ctx.state : 'none', muted: muted }; },
     };
 })();

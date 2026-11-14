@@ -67,8 +67,34 @@ window.pcfx = (function () {
         rewind: () => { tone(900, 0.4, 'triangle', 0.12, 220); tone(600, 0.4, 'sine', 0.08, 150, 0.05); },
         win: () => { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.22, 'triangle', 0.14, null, i * 0.12)); },
         lose: () => { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.28, 'sawtooth', 0.09, null, i * 0.16)); },
+        select: () => { [660, 880, 660, 880, 1320].forEach((f, i) => tone(f, 0.07, 'square', 0.09, null, i * 0.075)); tone(1320, 0.28, 'square', 0.08, 1760, 0.4); buzz(30); },
+        blip: () => tone(880, 0.05, 'square', 0.07),
         draw: () => { tone(440, 0.3, 'triangle', 0.1); tone(440, 0.3, 'triangle', 0.1, null, 0.25); },
     };
+
+    // ---------- your own sound effects: any name listed in audio/sfx/manifest.json is loaded from audio/sfx/<name>.mp3 and replaces the synth sound ----------
+    const overrides = {};
+    function loadOverrides() {
+        fetch('audio/sfx/manifest.json').then(r => r.ok ? r.json() : []).then(names => {
+            const c = ensure();
+            if (!c || !Array.isArray(names)) return;
+            names.forEach(n => fetch('audio/sfx/' + n + '.mp3').then(r => r.arrayBuffer())
+                .then(b => new Promise((res, rej) => c.decodeAudioData(b, res, rej)))
+                .then(buf => { overrides[n] = buf; }).catch(() => { }));
+        }).catch(() => { });
+    }
+    function playOverride(name) {
+        const buf = overrides[name];
+        if (!buf || muted) return false;
+        const c = ensure();
+        if (!c) return false;
+        const src = c.createBufferSource(), g = c.createGain();
+        src.buffer = buf; g.gain.value = 0.9;
+        src.connect(g).connect(c.destination);
+        src.start();
+        return true;
+    }
+    setTimeout(loadOverrides, 1500);
 
     // ---------- menu music: one looping track while the start menu is open ----------
     const MUSIC_URL = 'audio/menu.mp3';
@@ -170,7 +196,7 @@ window.pcfx = (function () {
         },
         carouselTo: function (el, i) { if (el) el.scrollTo({ left: i * (el.clientWidth + 10), behavior: 'smooth' }); },
         copy: function (text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return false; } },
-        play: function (name) { try { const f = sounds[name]; if (f) f(); } catch (e) { } },
+        play: function (name) { try { if (playOverride(name)) return; const f = sounds[name]; if (f) f(); } catch (e) { } },
         setMuted: function (m) { muted = !!m; musicSync(); },
         /** For tests and diagnostics: what the menu music is doing. */
         music: function () { return { want: wantMenu, playing: !!musicSrc, loaded: !!musicBuf, ctx: ctx ? ctx.state : 'none', muted: muted }; },

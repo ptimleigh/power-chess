@@ -927,12 +927,12 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         <div class="sm-buttons">
             @if (S.Moves > 0 && !S.GameOver)
             {
-                <button class="btn primary sm-btn" data-action="menu-continue" @onclick="MenuContinue">Continue</button>
+                <button class="btn primary sm-btn @Blink("continue")" data-action="menu-continue" @onclick="PressContinue">Continue</button>
             }
-            <button class="btn @(S.Moves > 0 && !S.GameOver ? "" : "primary") sm-btn" data-action="menu-play" @onclick="MenuPlay">@(S.Moves > 0 && !S.GameOver ? "New game" : "Play")</button>
-            <button class="btn sm-btn" data-action="menu-daily" @onclick="MenuDaily">Daily challenge @if (!Daily.SolvedToday(profile, today)) { <i class="dot"></i> }</button>
-            <button class="btn sm-btn" data-action="menu-options" @onclick="() => showOptions = true">Options</button>
-            <button class="btn sm-btn" data-action="menu-about" @onclick="() => showAbout = true">About</button>
+            <button class="btn @(S.Moves > 0 && !S.GameOver ? "" : "primary") sm-btn @Blink("play")" data-action="menu-play" @onclick="PressPlay">@(S.Moves > 0 && !S.GameOver ? "New game" : "Play")</button>
+            <button class="btn sm-btn @Blink("daily")" data-action="menu-daily" @onclick="PressDaily">Daily challenge @if (!Daily.SolvedToday(profile, today)) { <i class="dot"></i> }</button>
+            <button class="btn sm-btn @Blink("options")" data-action="menu-options" @onclick="PressOptions">Options</button>
+            <button class="btn sm-btn @Blink("about")" data-action="menu-about" @onclick="PressAbout">About</button>
         </div>
         <div class="sm-ver">Level @profile.Level</div>
     </div>
@@ -1428,6 +1428,27 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
         pendingResume = false;
         await S.ResumeAi();
     }
+
+    // Arcade-style button press: the pressed menu item blinks and a select jingle plays before the screen changes.
+    string? pressed;
+    string Blink(string key) => pressed == key ? "blink" : "";
+
+    async Task Press(string key, int ms, Func<Task> act)
+    {
+        if (pressed != null) return;
+        pressed = key;
+        try { await JS.InvokeVoidAsync("pcfx.play", "select"); } catch { }
+        StateHasChanged();
+        await Task.Delay(ms);
+        pressed = null;
+        await act();
+    }
+
+    Task PressContinue() => Press("continue", 450, MenuContinue);
+    Task PressPlay() => Press("play", 650, MenuPlay);
+    Task PressDaily() => Press("daily", 450, MenuDaily);
+    Task PressOptions() => Press("options", 300, () => { showOptions = true; return Task.CompletedTask; });
+    Task PressAbout() => Press("about", 300, () => { showAbout = true; return Task.CompletedTask; });
 
     async Task MenuContinue()
     {

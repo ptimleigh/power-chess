@@ -74,7 +74,7 @@
     }
 
     <div class="board-frame">
-        <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "") @(S.FinaleOn ? "finale" : "") @(S.VsAi && S.HumanSide == Side.Black ? "pov-black" : "")" data-testid="board">
+        <div class="board @(S.Flipping ? "flipping" : "") @(S.Shaking ? "shaking sk" + S.ShakeLevel : "") @(S.Frozen ? "freeze" : "") @(S.Punch ? "punch" : "") @(S.FinaleOn ? "finale" : "") @(S.VsAi && S.HumanSide == Side.Black ? "pov-black" : "") @(S.ActiveCard == CardKind.MissileStrike ? (S.CardPreview >= 0 ? "missile-picked" : "missile-aim") : "")" data-testid="board">
             @for (int rank = 7; rank >= 0; rank--)
             {
                 for (int file = 0; file < 8; file++)
@@ -1417,7 +1417,16 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             try { await JS.InvokeVoidAsync("pcsynth.start", "menuBg"); } catch { }
         }
         else if (!showMenu) synthRunning = false;
+
+        // A card that needs a Fire or Play tap puts its buttons low on the screen: bring them into view when they appear.
+        string panel = S != null && !S.GameOver ? (S.CardPreview >= 0 ? "preview" + S.CardPreview : "") : "";
+        if (panel != lastCardPanel)
+        {
+            lastCardPanel = panel;
+            if (panel != "") { try { await JS.InvokeVoidAsync("pcfx.reveal", "[data-action=\"card-fire\"]"); } catch { } }
+        }
     }
+    string lastCardPanel = "";
 
     void OpenMenu() { showMenu = true; }
     void CloseAbout() { showAbout = false; shareMsg = ""; }
@@ -1932,11 +1941,14 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
             {
                 // Four big blocks instead of 64 lit squares: only the outer edge of each quadrant is drawn.
                 int f = Sq.File(sq) % 4, r = Sq.Rank(sq) % 4;
-                c += " quad";
-                if (f == 0) c += " ql";
-                if (f == 3) c += " qr";
-                if (r == 0) c += " qb";
-                if (r == 3) c += " qt";
+                // Playing Black the board is turned round (and each square turned back upright), so a quadrant's edges and centre swap sides.
+                bool turned = S.VsAi && S.HumanSide == Side.Black;
+                c += (Sq.File(sq) / 4 + Sq.Rank(sq) / 4) % 2 == 0 ? " quad quad-a" : " quad quad-b";
+                if (turned ? (f == 2 && r == 2) : (f == 1 && r == 1)) c += " qc";   // this square's corner touches the centre of its quadrant: the TAP tag goes there
+                if (f == 0) c += turned ? " qr" : " ql";
+                if (f == 3) c += turned ? " ql" : " qr";
+                if (r == 0) c += turned ? " qt" : " qb";
+                if (r == 3) c += turned ? " qb" : " qt";
             }
             else c += " aim";
         }

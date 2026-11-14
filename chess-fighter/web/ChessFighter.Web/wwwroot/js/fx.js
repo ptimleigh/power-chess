@@ -196,6 +196,8 @@ window.pcfx = (function () {
         },
         carouselTo: function (el, i) { if (el) el.scrollTo({ left: i * (el.clientWidth + 10), behavior: 'smooth' }); },
         copy: function (text) { try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch (e) { return false; } },
+        /** Scroll an element into view only if it is cut off (used for buttons that appear low on the screen). */
+        reveal: function (sel) { setTimeout(() => { const el = document.querySelector(sel); if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 60); },
         play: function (name) { try { if (playOverride(name)) return; const f = sounds[name]; if (f) f(); } catch (e) { } },
         setMuted: function (m) { muted = !!m; musicSync(); },
         /** For tests and diagnostics: what the menu music is doing. */

@@ -105,7 +105,20 @@ public static class MateDemo
                         else c.Say(capture ? "It takes it..." : "It moves...");
                     }
                 });
-                if (e.AttackerSquare >= 0 && e.KingSquare >= 0)
+                if (e.AttackerSquare >= 0 && e.KingSquare >= 0 && e.ReplyFireball)
+                {
+                    // A banked Fireball reaches the king from where it stands: fire it, the shooter does not move.
+                    Show(1200, c => c.Aim(K(e.AttackerSquare), K(e.KingSquare)).Say($"{attacker} can fire its Fireball at {myKing}!"));
+                    Show(800, c => { c.Aim().Fx("fireball", K(e.AttackerSquare), K(e.KingSquare), durMs: 500); });
+                    Show(700, c => { c.Kill(K(e.KingSquare), true).Say("So that move is not allowed."); });
+                }
+                else if (e.AttackerSquare >= 0 && e.KingSquare >= 0 && e.ReplyBomb)
+                {
+                    Show(1200, c => c.Aim(K(e.AttackerSquare), K(e.KingSquare)).Say($"{attacker} can set off its bomb next to {myKing}!"));
+                    Show(800, c => { c.Aim().Fx("ring", K(e.AttackerSquare), radius: 1, css: "boom").Fx("burst", K(e.AttackerSquare), css: "boom"); });
+                    Show(500, c => { c.Kill(K(e.KingSquare), true).Say("So that move is not allowed."); });
+                }
+                else if (e.AttackerSquare >= 0 && e.KingSquare >= 0)
                 {
                     Show(1200, c => c.Aim(K(e.AttackerSquare), K(e.KingSquare)).Say($"{attacker} can now take {myKing}!"));
                     Show(900, c => { c.Aim().Move(K(e.AttackerSquare), K(e.KingSquare)); });

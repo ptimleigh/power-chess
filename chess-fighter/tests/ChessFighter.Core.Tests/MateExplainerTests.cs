@@ -38,6 +38,21 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(cap.TryEvents.Any(e => e.Kind == EventKind.PoisonTriggered), "the poison kills the capturer too");
         }
 
+
+        [Test]
+        public void A_fireball_that_gives_the_final_blow_is_reported_as_a_shot_not_a_move()
+        {
+            // Black king boxed in by its own rooks and pawns; a white knight on g1 with a banked Fireball shoots straight up the open g-file.
+            var s = T.Fen("5rkr/5p1p/8/8/8/8/8/4K1N1 b - - 0 1");
+            T.Give(s, "g1", Buff.Fireball);
+            Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(s), "the Fireball is the check and there is no escape");
+            var list = MateExplainer.Explain(s, 8);
+            var step = list.FirstOrDefault(e => e.Kind == EscapeKind.KingStep);
+            Assert.IsNotNull(step, "the king stepping to g7 still fails");
+            Assert.AreEqual(Sq.Parse("g1"), step.AttackerSquare);
+            Assert.IsTrue(step.ReplyFireball, "the knight reaches the king by Fireball, not by moving there");
+        }
+
         [Test]
         public void Armored_checker_is_explained()
         {

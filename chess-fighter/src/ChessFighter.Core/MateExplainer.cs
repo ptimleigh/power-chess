@@ -33,6 +33,8 @@ namespace ChessFighter.Core
         /// <summary>After the attempt: the rival piece that takes the king, where it stands now, and where the king is.</summary>
         public int AttackerSquare = -1, KingSquare = -1;
         public PieceType AttackerType;
+        /// <summary>The attacker reaches the king with a banked Fireball (it fires from where it stands) or a bomb blast, not by moving there.</summary>
+        public bool ReplyFireball, ReplyBomb;
     }
 
     /// <summary>
@@ -93,6 +95,8 @@ namespace ChessFighter.Core
                 {
                     Kind = kind, Try = a, From = a.From, To = a.To, MoverType = mover.Type, CheckerSquare = checker,
                     TryEvents = ev, AttackerSquare = att, KingSquare = k2, AttackerType = att >= 0 ? c.Cells[att].Type : PieceType.None,
+                    ReplyFireball = att >= 0 && k2 >= 0 && ReachesOnlyWith(c, k2, me.Opponent(), att, Buff.Fireball),
+                    ReplyBomb = att >= 0 && k2 >= 0 && ReachesOnlyWith(c, k2, me.Opponent(), att, Buff.SmallBomb | Buff.BigBomb),
                 });
             }
 
@@ -136,16 +140,33 @@ namespace ChessFighter.Core
             {
                 var p = s.Cells[sq];
                 if (p.IsEmpty || p.Side != by) continue;
-                var c = s.Clone();
-                for (int o = 0; o < 64; o++)
-                {
-                    if (o == sq) continue;
-                    var q = c.Cells[o];
-                    if (!q.IsEmpty && q.Side == by) c.Cells[o] = new Piece(PieceType.Pawn, by.Opponent());
-                }
-                if (Geometry.IsAttacked(c, king, by)) return sq;
+                if (Geometry.IsAttacked(Alone(s, by, sq), king, by)) return sq;
             }
             return -1;
+        }
+
+        /// <summary>A copy where every rival piece except the one on <paramref name="keep"/> is a neutral blocker.</summary>
+        static GameState Alone(GameState s, Side by, int keep)
+        {
+            var c = s.Clone();
+            for (int o = 0; o < 64; o++)
+            {
+                if (o == keep) continue;
+                var q = c.Cells[o];
+                if (!q.IsEmpty && q.Side == by) c.Cells[o] = new Piece(PieceType.Pawn, by.Opponent());
+            }
+            return c;
+        }
+
+        /// <summary>True when the piece on <paramref name="att"/> attacks the king only through the given banked power(s): take them away and the attack is gone.</summary>
+        static bool ReachesOnlyWith(GameState s, int king, Side by, int att, Buff powers)
+        {
+            if ((s.Cells[att].Buffs & powers) == Buff.None) return false;
+            var c = Alone(s, by, att);
+            var q = c.Cells[att];
+            q.Buffs &= ~powers;
+            c.Cells[att] = q;
+            return !Geometry.IsAttacked(c, king, by);
         }
     }
 }

@@ -107,8 +107,23 @@ window.pcfx = (function () {
         if (musicBuf || musicLoading) return;
         musicLoading = true;
         fetch(MUSIC_URL).then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => c.decodeAudioData(b, res, rej)))
-            .then(buf => { musicBuf = buf; musicLoading = false; musicSync(); })
+            .then(buf => { musicBuf = buf; musicLoading = false; musicTrim(buf); musicSync(); })
             .catch(() => { musicLoading = false; });
+    }
+
+    // MP3 files carry a little encoder padding (digital silence) at both ends. Looping the raw file would play both gaps back to back, so find
+    // the first and last audible samples and loop only between them.
+    let loopStart = 0, loopEnd = 0;
+    function musicTrim(buf) {
+        const n = buf.length, ch = [];
+        for (let k = 0; k < buf.numberOfChannels; k++) ch.push(buf.getChannelData(k));
+        const T = 0.0005;
+        let first = 0, last = n - 1;
+        const loud = i => { for (let k = 0; k < ch.length; k++) if (Math.abs(ch[k][i]) > T) return true; return false; };
+        while (first < n && !loud(first)) first++;
+        while (last > first && !loud(last)) last--;
+        loopStart = first / buf.sampleRate;
+        loopEnd = (last + 1) / buf.sampleRate;
     }
 
     function musicStop(fade) {
@@ -136,6 +151,7 @@ window.pcfx = (function () {
         const g = c.createGain();
         src.buffer = musicBuf;
         src.loop = true;
+        if (loopEnd > loopStart) { src.loopStart = loopStart; src.loopEnd = loopEnd; }
         g.gain.setValueAtTime(0, c.currentTime);
         g.gain.linearRampToValueAtTime(MUSIC_VOL, c.currentTime + 1.5);
         src.connect(g).connect(c.destination);
@@ -201,6 +217,6 @@ window.pcfx = (function () {
         play: function (name) { try { if (playOverride(name)) return; const f = sounds[name]; if (f) f(); } catch (e) { } },
         setMuted: function (m) { muted = !!m; musicSync(); },
         /** For tests and diagnostics: what the menu music is doing. */
-        music: function () { return { want: wantMenu, playing: !!musicSrc, loaded: !!musicBuf, ctx: ctx ? ctx.state : 'none', muted: muted }; },
+        music: function () { return { loopStart: loopStart, loopEnd: loopEnd, dur: musicBuf ? musicBuf.duration : 0, want: wantMenu, playing: !!musicSrc, loaded: !!musicBuf, ctx: ctx ? ctx.state : 'none', muted: muted }; },
     };
 })();

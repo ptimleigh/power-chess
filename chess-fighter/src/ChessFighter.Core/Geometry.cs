@@ -29,6 +29,19 @@ namespace ChessFighter.Core
             return IsAttacked(s, k, side.Opponent());
         }
 
+        /// <summary>
+        /// True when the king of <paramref name="side"/> wears Armor that lapses after its owner's next move while a rival piece attacks the king.
+        /// The armor only delays the attack: nothing the owner does can save the king, so with no legal move left this is checkmate, not stalemate.
+        /// </summary>
+        public static bool IsKingAttackedOnceArmorLapses(GameState s, Side side)
+        {
+            int k = FindKing(s, side);
+            if (k < 0) return false;
+            var p = s.Cells[k];
+            if (!p.Has(Buff.Armor) || p.ArmorTurns > 1) return false;
+            return IsAttacked(s, k, side.Opponent());
+        }
+
         /// <summary>Is <paramref name="sq"/> attacked by <paramref name="by"/>? Stunned pieces exert no attacks; boulders block lines.</summary>
         public static bool IsAttacked(GameState s, int sq, Side by)
         {

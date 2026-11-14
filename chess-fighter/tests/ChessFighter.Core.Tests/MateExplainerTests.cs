@@ -63,5 +63,16 @@ namespace ChessFighter.Core.Tests
             if (Rules.GetResult(s) == GameResult.BlackWins)
                 Assert.IsTrue(list.Any(e => e.Kind == EscapeKind.CannotTakeArmored) || list.Count > 0);
         }
+
+        [Test]
+        public void Armored_king_with_the_armor_about_to_lapse_gets_an_explanation()
+        {
+            var s = T.Fen("1r6/p5p1/4N3/3p1pkp/5Q2/4K3/q3PPPP/5B1R b - - 0 1");
+            T.Give(s, "g5", Buff.Armor, 1);
+            T.Give(s, "e6", Buff.Fireball);
+            T.Tier(s, "e6", 1);
+            Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(s));
+            Assert.IsNotEmpty(MateExplainer.Explain(s));
+        }
     }
 }

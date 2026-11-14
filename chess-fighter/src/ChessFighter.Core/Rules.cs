@@ -1022,7 +1022,7 @@ namespace ChessFighter.Core
 
             if (MoveGen.LegalActions(s).Count == 0)
             {
-                if (Geometry.IsKingAttacked(s, s.ToMove))
+                if (Geometry.IsKingAttacked(s, s.ToMove) || Geometry.IsKingAttackedOnceArmorLapses(s, s.ToMove))
                 {
                     reason = "Checkmate";
                     return s.ToMove == Side.White ? GameResult.BlackWins : GameResult.WhiteWins;

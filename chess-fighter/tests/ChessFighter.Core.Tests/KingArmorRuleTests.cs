@@ -60,5 +60,27 @@ namespace ChessFighter.Core.Tests
             Assert.IsTrue(Geometry.IsAttacked(s, Sq.Parse("e1"), Side.Black));
             Assert.IsFalse(Geometry.IsKingAttacked(s, Side.White));
         }
+
+        [Test]
+        public void No_legal_move_with_an_armor_that_is_about_to_lapse_under_attack_is_checkmate_not_stalemate()
+        {
+            // Black's king on g5 is armored for one more turn, attacked by the white queen and knight. Every Black move would leave it
+            // attacked once the armor lapses, so Black has no legal move: that is mate, and White wins.
+            var s = T.Fen("1r6/p5p1/4N3/3p1pkp/5Q2/4K3/q3PPPP/5B1R b - - 0 1");
+            T.Give(s, "g5", Buff.Armor, 1);
+            T.Give(s, "e6", Buff.Fireball);   // its shot along the sixth rank covers g6 and h6, so the king cannot run
+            T.Tier(s, "e6", 1);
+            string reason;
+            Assert.AreEqual(GameResult.WhiteWins, Rules.GetResult(s, out reason));
+            Assert.AreEqual("Checkmate", reason);
+        }
+
+        [Test]
+        public void With_armor_for_longer_the_same_position_is_still_a_game()
+        {
+            var s = T.Fen("1r6/p5p1/4N3/3p1pkp/5Q2/4K3/q3PPPP/5B1R b - - 0 1");
+            T.Give(s, "g5", Buff.Armor, 3);
+            Assert.AreEqual(GameResult.Ongoing, Rules.GetResult(s));
+        }
     }
 }

@@ -71,7 +71,10 @@ public static class MateDemo
                     ActionKind.Detonate => $"{mover} blows up",
                     _ => capture ? $"{mover} takes {Piece(e.To)}" : e.Kind == EscapeKind.KingStep ? $"{myKing} steps away" : $"{mover} moves",
                 };
-                script.Setup += c => c.Aim(K(e.From)).Say($"{myKing} is in check. What if {what}?");
+                string head = mated.Cells[king].Has(Buff.Armor)
+                    ? $"{myKing}'s armor wears off after this move, and it is under attack. What if"
+                    : $"{myKing} is in check. What if";
+                script.Setup += c => c.Aim(K(e.From)).Say($"{head} {what}?");
                 Show(1300, c => c.Aim(K(e.From), K(e.To)));
                 Show(1000, c =>
                 {

@@ -878,5 +878,31 @@ namespace ChessFighter.Core.Tests
             }
             TestContext.Out.WriteLine(string.Join(", ", results.Select(kv => kv.Key + "=" + kv.Value)));
         }
+
+        [Test]
+        public void A_king_may_land_on_a_Steal_square_when_stealing_the_checking_piece_ends_the_check()
+        {
+            // The red bishop on b4 (with a banked Fireball) attacks c3 and d2. The white king on d3 steps onto the Steal square on c3
+            // and takes the bishop over: legal, because the follow-up removes the attack.
+            var s = T.Fen("8/8/4k3/1p5p/1b6/1P1K4/8/8 w - - 0 1");
+            T.Give(s, "b4", Buff.Fireball);
+            T.Tier(s, "b4", 1);
+            T.Square(s, "c3", PowerupKind.StealGrab);
+            Assert.IsTrue(T.IsLegal(s, "d3c3"), "the steal removes the attack");
+            Assert.IsFalse(T.IsLegal(s, "d3d2"), "d2 stays attacked: no steal there");
+            T.Do(s, "d3c3");
+            Assert.AreEqual(PowerupKind.StealGrab, s.EffectKind, "the steal choice is pending");
+            T.Do(s, "StealPick c3->b4");
+            Assert.AreEqual(Side.White, T.At(s, "b4").Side, "the bishop now fights for White");
+        }
+
+        [Test]
+        public void A_king_may_not_land_on_a_Steal_square_when_nothing_in_reach_ends_the_check()
+        {
+            // The rook on c8 attacks c3; the only piece next to c3 is a pawn that is not the attacker, so stealing it does not help.
+            var s = T.Fen("2r1k3/8/8/8/1p6/3K4/8/8 w - - 0 1");
+            T.Square(s, "c3", PowerupKind.StealGrab);
+            Assert.IsFalse(T.IsLegal(s, "d3c3"));
+        }
     }
 }

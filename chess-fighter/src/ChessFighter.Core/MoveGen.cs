@@ -167,7 +167,22 @@ namespace ChessFighter.Core
             Rules.Apply(c, a, null);
             // Take back restores a position that may start in check; that is allowed.
             if (a.Kind == ActionKind.PlayCard && Cards.KindOf(a.Aux) == CardKind.TakeBack) return true;
-            return !Geometry.IsKingAttacked(c, s.ToMove);
+            if (!Geometry.IsKingAttacked(c, s.ToMove)) return true;
+
+            // Landing on a revealed Steal or Stun square gives the mover an immediate follow-up (take over or freeze a rival). If the
+            // king is attacked on landing but one of those follow-ups ends the attack, the landing is legal.
+            if (a.Kind == ActionKind.Move && a.To >= 0 && a.To < 64 && s.Mystery[a.To])
+            {
+                var shown = (PowerupKind)s.Content[a.To];
+                if (shown == PowerupKind.StealGrab || shown == PowerupKind.StunBolt)
+                {
+                    var c2 = s.Clone();
+                    c2.SearchMode = true;
+                    Rules.Apply(c2, a, null);
+                    if (c2.EffectKind != PowerupKind.None && c2.ToMove == s.ToMove) return LegalActions(c2).Count > 0;
+                }
+            }
+            return false;
         }
 
         /// <summary>Would a plain move from <paramref name="from"/> to <paramref name="to"/> exist if king safety were ignored? Used to explain blocked moves.</summary>

@@ -1488,13 +1488,28 @@ window.pcclip = (function () {
         }
     }
 
-    function save() {
-        if (!lastClip) return;
-        const { blob, name } = lastClip;
+    // Browser: a normal file download. Android app: its web view ignores that, so the file goes to the Downloads folder through the native
+    // DownloadSaver plugin, and falls back to the share sheet (which has a Save option) if that is refused. Resolves to downloaded | saved | shared | cancelled | error.
+    async function save() {
+        if (!lastClip) return 'error';
+        const { blob, name, mime } = lastClip;
+        const cap = window.Capacitor;
+        if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
+            try {
+                if (cap.Plugins && cap.Plugins.DownloadSaver) {
+                    const data = await blobToBase64(blob);
+                    await cap.Plugins.DownloadSaver.save({ name, data, mime: mime || 'video/mp4' });
+                    return 'saved';
+                }
+            } catch (e) { /* fall through to the share sheet */ }
+            const how = await share('');
+            return how === 'shared' ? 'shared' : how === 'cancelled' ? 'cancelled' : 'error';
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return 'downloaded';
     }
 
     function clipInfo() { return lastClip ? { mime: lastClip.mime, size: lastClip.blob.size, name: lastClip.name } : null; }

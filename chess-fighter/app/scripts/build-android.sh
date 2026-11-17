@@ -106,6 +106,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(DownloadSaver.class);
         super.onCreate(savedInstanceState);
         getWindow().getDecorView().setBackgroundColor(0xFF07061A);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
@@ -117,6 +118,8 @@ public class MainActivity extends BridgeActivity {
     }
 }
 ''')
+import shutil
+shutil.copy(os.path.join(os.path.dirname(root), 'native', 'DownloadSaver.java'), os.path.join(root, 'app/src/main/java/app/chessfighter/game/DownloadSaver.java'))
 PY
 
 ICON_DIR="$FIGHTER/web/ChessFighter.Web/wwwroot/icons"

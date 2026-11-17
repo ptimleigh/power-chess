@@ -1721,7 +1721,16 @@ else if (S.InspectSquare >= 0 && !S.Reviewing && S.Tutorial == null && S.State.M
 
     async Task SaveClip()
     {
-        try { await JS.InvokeVoidAsync("pcclip.save"); clipMsg = "Saved to your downloads."; } catch { clipMsg = "Could not save the video."; }
+        string how;
+        try { how = await JS.InvokeAsync<string>("pcclip.save"); } catch { how = "error"; }
+        clipMsg = how switch
+        {
+            "saved" => "Saved to your Downloads folder.",
+            "downloaded" => "Saved to your downloads.",
+            "shared" => "Pick where to keep it.",
+            "cancelled" => "",
+            _ => "Could not save the video. Try Share, then save it from there.",
+        };
     }
 
     async Task CloseClip()

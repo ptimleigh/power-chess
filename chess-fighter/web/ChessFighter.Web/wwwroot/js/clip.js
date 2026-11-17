@@ -1085,7 +1085,7 @@ window.pcclip = (function () {
                         ctx.imageSmoothingEnabled = false;
                         const spr = flameSprite(cols), w = 56 - i * 8, h = 110 - i * 22;
                         ctx.globalAlpha = 1 - i * .18;
-                        ctx.drawImage(spr, Math.round(-w / 2), Math.round(-h * .1), w, h);
+                        ctx.drawImage(spr, Math.round(-w / 2), Math.round(-h), w, h);   // the flame's base sits at (bx, by) near the head and its tip streams backwards
                         ctx.restore();
                     }
                     ctx.globalAlpha = 1;
